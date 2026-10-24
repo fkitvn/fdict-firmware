@@ -1,0 +1,39 @@
+menu "Fdict OTA"
+
+    config FD_OTA_LAB
+        bool "LAB: may chu dict trong LAN qua HTTP (chi build thu, KHONG phat hanh)"
+        default n
+        help
+            Khong con chon server (giu cho tuong thich sdkconfig). Server chon luc chay theo Che do nha phat trien:
+            bat = FD_OTA_LAB_BASE_URL (http LAN), tat = FD_OTA_BASE_URL (https + cert bundle, khong tat kiem cert).
+
+    config FD_OTA_LAB_BASE_URL
+        string "LAB base URL (http://IP:port, khong co /api)"
+        default "http://192.168.1.100:8001"
+
+    config FD_OTA_BASE_URL
+        string "Production base URL (https, khong co /api)"
+        default "https://your-server.example"
+        help
+            Endpoint: {base}/api/ota/check, {base}/api/ota/report, {base}/api/devices/pair/start|poll.
+
+    config FD_PAIR_LAB_WEB_URL
+        string "LAB: trang ghep tren web (QR, them ?code=<ma>)"
+        default "http://192.168.1.100:8001/pairing-device"
+
+    config FD_PAIR_WEB_URL
+        string "Production: trang ghep tren web (QR, them ?code=<ma>)"
+        default "https://your-server.example/pairing-device"
+
+    config FD_OTA_HW
+        string "Ma phan cung (hw)"
+        default "fnk0104b"
+
+    config FD_OTA_CHECK_INTERVAL_S
+        int "Chu ky kiem tra mac dinh (giay)"
+        range 3600 172800
+        default 43200
+        help
+            Dung khi may chu khong tra check_again_s. check_again_s duoc kep 1 h..48 h, +-10% ngau nhien.
+
+endmenu

@@ -1,0 +1,56 @@
+# ESP-IDF build output
+build/
+**/build/
+build-ci/
+.ci-tmp/
+dist/
+sdkconfig
+sdkconfig.old
+sdkconfig.old-*
+managed_components/
+dependencies.lock.bak
+*.bin
+!components/fd_tts/pico/lang/*.bin
+*.elf
+*.map
+flasher_args.json
+compile_commands.json
+
+# Logs / releases (published via GitHub Releases, not in source)
+logs/
+*.log
+build_out.txt
+release/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Backup / temp
+*~
+*.swp
+*.swo
+*.bak
+*.orig
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.cursor/
+.clangd
+.clangd/
+.cache/
+.DS_Store
+Thumbs.db
+Desktop.ini

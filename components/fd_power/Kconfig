@@ -1,0 +1,17 @@
+menu "Fdict Power"
+    config FD_BATTERY_ENABLE
+        bool "Doc dien ap pin (ADC) va hien % pin tren UI"
+        default y
+    config FD_BATTERY_ADC_GPIO
+        int "GPIO do dien ap pin (phai thuoc ADC1)"
+        depends on FD_BATTERY_ENABLE
+        range 1 10
+        default 9
+        help
+            FNK0104A/B: GPIO9 (Freenove Sketch_05.1_Battery_Voltage). FNK0104N: GPIO8.
+    config FD_BATTERY_DIVIDER
+        int "He so cau chia ap x100 (200 = Vbat/2 vao ADC)"
+        depends on FD_BATTERY_ENABLE
+        range 100 1000
+        default 200
+endmenu

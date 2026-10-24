@@ -1,0 +1,39 @@
+menu "Board FNK0104B (Freenove ESP32-S3 2.8\")"
+
+    choice BOARD_ORIENTATION
+        prompt "Huong man hinh"
+        default BOARD_ORIENTATION_LANDSCAPE
+        help
+            LCD (swap_xy/mirror) va cam ung tu dong theo huong nay.
+        config BOARD_ORIENTATION_LANDSCAPE
+            bool "Ngang 320x240"
+        config BOARD_ORIENTATION_PORTRAIT
+            bool "Doc 240x320"
+    endchoice
+
+    config BOARD_ROTATE_180
+        bool "Xoay 180 do"
+        default n
+        help
+            Bat neu man hinh bi lon nguoc (LCD va cam ung cung xoay).
+
+    config BOARD_LCD_PCLK_MHZ
+        int "Tan so SPI LCD (MHz)"
+        range 10 80
+        default 40
+        help
+            Freenove TFT_eSPI dung 40MHz, xiaozhi dung 20MHz. Giam neu man hinh nhieu/soc.
+
+    config BOARD_LCD_INVERT_COLOR
+        bool "LCD dao mau (invert)"
+        default y
+
+    config BOARD_LCD_BGR
+        bool "LCD thu tu mau BGR"
+        default y
+
+    config BOARD_BACKLIGHT_DEFAULT
+        int "Do sang mac dinh (%)"
+        range 0 100
+        default 80
+endmenu

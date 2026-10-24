@@ -1,0 +1,128 @@
+# Fdict - cau hinh chung (commit vao git). sdkconfig sinh ra tu file nay, KHONG commit sdkconfig.
+# Sau khi sua file nay: xoa sdkconfig (hoac idf.py fullclean + xoa sdkconfig) roi build lai.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# --- Board: huong man hinh (ngang 320x240 mac dinh) ---
+CONFIG_BOARD_ORIENTATION_LANDSCAPE=y
+
+# --- Partition ---
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_OFFSET=0x8000
+
+# --- CPU / FreeRTOS ---
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+
+# --- Toi uu / log (ban dev) ---
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y   # 20/10: -Os (truoc PERF)
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_BOOTLOADER_LOG_LEVEL_WARN=y
+
+# --- OTA / rollback ---
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# --- Coredump ---
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+
+# --- TLS (dung cho Phase 2+) ---
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+
+# --- FATFS cho the SD ---
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_API_ENCODING_UTF_8=y
+
+# --- LittleFS (joltwallet/littlefs) ---
+CONFIG_LITTLEFS_PAGE_SIZE=256
+
+# --- LVGL 9 ---
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_CLIB_MALLOC=y
+CONFIG_LV_USE_CLIB_STRING=y
+CONFIG_LV_USE_CLIB_SPRINTF=y
+CONFIG_LV_DEF_REFR_PERIOD=16
+CONFIG_LV_USE_FONT_COMPRESSED=y
+# Montserrat 14 giu lai vi chua LV_SYMBOL_* va dung cho perf monitor; text tieng Viet dung fd_font_noto_*
+CONFIG_LV_FONT_MONTSERRAT_14=y
+# CONFIG_LV_FONT_MONTSERRAT_24 is not set
+# CONFIG_LV_FONT_MONTSERRAT_32 is not set
+# CONFIG_LV_USE_SYSMON is not set
+# CONFIG_LV_USE_PERF_MONITOR is not set
+CONFIG_LV_USE_OBSERVER=y
+
+# WiFi: ho tro WPA3-SAE / WPA2-WPA3 mixed
+CONFIG_ESP_WIFI_ENABLE_WPA3_SAE=y
+
+CONFIG_LV_USE_QRCODE=y
+
+# --- 20/10 14:3x: giam flash (giu Wi-Fi STA, OTA HTTPS + cert bundle, am thanh, cam ung, moi man) ---
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y
+# CONFIG_ESP_WIFI_SOFTAP_SUPPORT is not set
+# CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT is not set
+# CONFIG_LV_USE_THEME_SIMPLE is not set
+# CONFIG_LV_USE_THEME_MONO is not set
+# CONFIG_LV_BUILD_EXAMPLES is not set
+# CONFIG_LV_BUILD_DEMOS is not set
+# Dinh dang ve: giu RGB565(+swapped), RGB565A8, A8, I1 (QR), ARGB8888 (layer/opa)
+# CONFIG_LV_DRAW_SW_SUPPORT_RGB888 is not set
+# CONFIG_LV_DRAW_SW_SUPPORT_XRGB8888 is not set
+# CONFIG_LV_DRAW_SW_SUPPORT_ARGB8888_PREMULTIPLIED is not set
+# CONFIG_LV_DRAW_SW_SUPPORT_L8 is not set
+# CONFIG_LV_DRAW_SW_SUPPORT_AL88 is not set
+# CONFIG_LV_USE_ANIMIMG is not set
+# CONFIG_LV_USE_ARCLABEL is not set
+# CONFIG_LV_USE_CALENDAR is not set
+# CONFIG_LV_USE_CHART is not set
+# CONFIG_LV_USE_CHECKBOX is not set
+# CONFIG_LV_USE_DROPDOWN is not set
+# CONFIG_LV_USE_IMAGEBUTTON is not set
+# CONFIG_LV_USE_LED is not set
+# CONFIG_LV_USE_LIST is not set
+# CONFIG_LV_USE_MENU is not set
+# CONFIG_LV_USE_MSGBOX is not set
+# CONFIG_LV_USE_ROLLER is not set
+# CONFIG_LV_USE_SCALE is not set
+# CONFIG_LV_USE_SPAN is not set
+# CONFIG_LV_USE_SPINBOX is not set
+# CONFIG_LV_USE_TABLE is not set
+# CONFIG_LV_USE_TABVIEW is not set
+# CONFIG_LV_USE_TILEVIEW is not set
+# CONFIG_LV_USE_WIN is not set
+# --- 20/10 14:44: TLS chi client (giu TLS1.2/1.3 + cert bundle), bo renegotiation, bo curve secp256k1/brainpool, bo DHCP server (SoftAP da tat) ---
+CONFIG_MBEDTLS_TLS_CLIENT_ONLY=y
+# CONFIG_MBEDTLS_SSL_RENEGOTIATION is not set
+# CONFIG_MBEDTLS_ECP_DP_SECP256K1_ENABLED is not set
+# CONFIG_MBEDTLS_ECP_DP_BP256R1_ENABLED is not set
+# CONFIG_MBEDTLS_ECP_DP_BP384R1_ENABLED is not set
+# CONFIG_MBEDTLS_ECP_DP_BP512R1_ENABLED is not set
+# CONFIG_LWIP_DHCPS is not set
+
+# fd_ota: tai OTA tung doan HTTP Range (~64 KB, noi lai khi WiFi yeu)
+CONFIG_ESP_HTTPS_OTA_ENABLE_PARTIAL_DOWNLOAD=y
+CONFIG_ESP_HTTP_CLIENT_ENABLE_GET_CONTENT_RANGE=y
+
+# --- 23/10: giam kich thuoc ban build ---
+# Montserrat 24/32 built-in -> fd_font_mont_24/32 (components/fd_fonts, chi glyph can dung, nen RLE)
+# Log V2: chuoi dinh dang ngan hon (dau ra log giu nguyen dang "I (ms) tag: ...")
+CONFIG_LOG_VERSION_2=y
+# Chi IPv4 (may chu + NTP dung IPv4)
+# CONFIG_LWIP_IPV6 is not set
+# Wi-Fi: giu WPA2/WPA3-SAE (+H2E); bo OWE (mang mo ma hoa) va SAE-PK (hiem dung)
+# CONFIG_ESP_WIFI_ENABLE_WPA3_OWE_STA is not set
+# CONFIG_ESP_WIFI_ENABLE_SAE_PK is not set
+# mbedTLS: bo ghi PEM, CRL (khong dung), duong cong P-521 (giu P-256/P-384/X25519)
+# CONFIG_MBEDTLS_PEM_WRITE_C is not set
+# CONFIG_MBEDTLS_X509_CRL_PARSE_C is not set
+# CONFIG_MBEDTLS_ECP_DP_SECP521R1_ENABLED is not set
+
+# --- Wi-Fi/LWIP: tiet kiem RAM noi bo (giong sdkconfig dang dung; CI build tu defaults phai ra cung cau hinh) ---
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER=y
+CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=2
+CONFIG_ESP_WIFI_RX_BA_WIN=2
+CONFIG_LWIP_TCP_OOSEQ_MAX_PBUFS=0

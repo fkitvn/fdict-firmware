@@ -1,0 +1,3 @@
+## fd_ota: cJSON (ESP-IDF 6 khong con component json trong IDF)
+dependencies:
+  espressif/cjson: "^1.7.19"

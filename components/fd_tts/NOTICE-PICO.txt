@@ -1,0 +1,10 @@
+SVOX Pico TTS (pico/lib, pico/lang/en-US_*.bin)
+Source: https://github.com/naggety/picotts (master, downloaded 2026-10-22), originally AOSP external/svox.
+License: Apache License 2.0 - see pico/lib/NOTICE (original notice kept unchanged).
+Copyright (C) 2008-2009 SVOX AG, Baslerstr. 30, 8048 Zuerich, Switzerland.
+
+Fdict modifications (marked "Fdict" in source):
+- picopltf.h: endianness test uses GCC __BYTE_ORDER__ macros.
+- picopal.c: picopal_fopen opens embedded resources via fmemopen (fd_pico_embedded).
+- picoos.c: added picoos_fd_filepos() accessor.
+- picorsrc.c: resource data used in place from flash (zero-copy) when 8-byte aligned.

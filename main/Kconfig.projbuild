@@ -1,0 +1,38 @@
+menu "Fdict"
+
+    config FD_TZ
+        string "Mui gio (POSIX TZ)"
+        default "ICT-7"
+        help
+            ICT-7 = Asia/Bangkok, UTC+7, khong doi gio mua he.
+
+    config FD_NTP_SERVER
+        string "May chu NTP"
+        default "pool.ntp.org"
+
+    menu "WiFi tuong thich (debug)"
+        config FD_WIFI_SAE_AUTO
+            bool "Chi bat WPA3/SAE khi AP quang ba WPA3 (WPA/WPA2 -> tat SAE, nguong WPA_PSK)"
+            default y
+        config FD_WIFI_HT20_BGN
+            bool "Ep 802.11 b/g/n + bang thong HT20"
+            default y
+        config FD_WIFI_INIT_BEFORE_DISPLAY
+            bool "Khoi dong WiFi truoc LCD/backlight/LVGL"
+            default y
+        config FD_WIFI_TX_POWER_QDBM
+            int "Cong suat phat toi da (don vi 0.25 dBm, 0 = mac dinh, vd 52 = 13 dBm, 80 = 20 dBm)"
+            range 0 84
+            default 0
+    endmenu
+
+    config FD_API_BASE_URL
+        string "Base URL API thiet bi"
+        default "https://your-server.example/api/device/v1"
+
+    config FD_HEAP_LOG_PERIOD_S
+        int "Chu ky log heap (giay, 0 = tat)"
+        default 60
+        help
+            Dung cho test chay 1 gio khong ro heap.
+endmenu

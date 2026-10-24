@@ -1,0 +1,10 @@
+menu "Fdict UI"
+
+    config FD_SLEEP_BTN
+        bool "Nut Ngu (deep sleep) trong bang cai dat nhanh"
+        default y
+        help
+            Hien nut Ngu trong bang keo xuong; xac nhan -> deep sleep ( danh thuc bang nut bat ky).
+            Disable if sleep (soft power-off) misbehaves, e.g. shared I2C with ES8311 on the Freenove board.
+
+endmenu
