@@ -640,6 +640,34 @@ static esp_err_t sha_partition(const esp_partition_t *p, uint32_t size, char out
 
 static esp_err_t auth_init_cb(esp_http_client_handle_t cl) { add_auth(cl); return ESP_OK; }
 
+/* 24/10: may chu (download) bat buoc ?device_id=<12 hex> khi co Bearer; URL tu /api/ota/check khong co -> tu them.
+ * Da co device_id -> giu nguyen. Khong vua bo dem -> log canh bao, giu URL goc. */
+static void url_add_dev_id(char *u, size_t cap)
+{
+    if (!s_dev_id[0] || strstr(u, "?device_id=") || strstr(u, "&device_id=")) return;
+    size_t n = strlen(u);
+    if (n >= cap) return;
+    int k = snprintf(u + n, cap - n, "%cdevice_id=%s", strchr(u, '?') ? '&' : '?', s_dev_id);
+    if (k < 0 || (size_t)k >= cap - n) {
+        u[n] = 0;
+        ESP_LOGW(TAG, "download: URL qua dai, khong them device_id");
+        return;
+    }
+    ESP_LOGI(TAG, "download: them device_id vao URL tai");
+}
+
+/* b cung host voi a va la duong dan /api/ota/download/ (khong ap cho URL ky san S3) */
+static bool same_host_download(const char *a, const char *b)
+{
+    const char *ha = strstr(a, "://"), *hb = strstr(b, "://");
+    if (!ha || !hb) return false;
+    ha += 3;
+    hb += 3;
+    size_t la = strcspn(ha, "/?#"), lb = strcspn(hb, "/?#");
+    if (la != lb || strncasecmp(ha, hb, la)) return false;
+    return !strncmp(hb + lb, "/api/ota/download/", 18);
+}
+
 /* URL tai: neu may chu chuyen huong 1 lan (302 toi URL ky san) -> dung Location va KHONG gui token toi host khac */
 static bool resolve_url(const char *url, char *out, size_t len, bool *with_auth)
 {
@@ -664,7 +692,8 @@ static bool resolve_url(const char *url, char *out, size_t len, bool *with_auth)
     if (code >= 300 && code < 400) {
         if (!rx.loc[0] || !url_allowed(rx.loc)) { ESP_LOGI(TAG, "download: redirect khong hop le"); return false; }
         strlcpy(out, rx.loc, len);
-        *with_auth = false;
+        *with_auth = same_host_download(url, out);   /* cung host /api/ota/download: giu token + device_id */
+        if (*with_auth && fd_ota_is_paired()) url_add_dev_id(out, len);
         log_url("download: redirect ->", out);
     }
     return code < 400;
@@ -703,7 +732,10 @@ static void do_update(bool manual)
 
     char url[256];
     bool with_auth = true;
-    if (!resolve_url(s_man.url, url, sizeof(url), &with_auth)) { fail("net", RS_FAILED, 0); return; }
+    char src[256];
+    strlcpy(src, s_man.url, sizeof(src));
+    if (fd_ota_is_paired()) url_add_dev_id(src, sizeof(src));
+    if (!resolve_url(src, url, sizeof(url), &with_auth)) { fail("net", RS_FAILED, 0); return; }
 
     esp_http_client_config_t hc;
     http_cfg(&hc, url, HTTP_TIMEOUT_MS);

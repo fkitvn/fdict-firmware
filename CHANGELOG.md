@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.0.7] - 2026-10-24
+
+- Sửa lỗi cập nhật OTA báo "Lỗi: mạng" và mất ghép: tự thêm device_id vào URL tải firmware khi thiết bị đã ghép.
+
 ## [1.0.6] - 2026-10-24
 
 - Sửa bước cài gh khi tạo GitHub Release; hạ log tên WiFi (SSID) xuống mức DEBUG.
