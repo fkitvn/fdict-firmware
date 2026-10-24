@@ -13,6 +13,7 @@ _English summary at the end._
 - [Yêu cầu build](#yêu-cầu-build)
 - [Cấu hình](#cấu-hình)
 - [Build và nạp](#build-và-nạp)
+- [app.bin và full.bin](#appbin-và-fullbin)
 - [Cập nhật OTA](#cập-nhật-ota)
 - [Phát hành OTA qua GitHub Actions](#phát-hành-ota-qua-github-actions)
 - [Cấu trúc dự án](#cấu-trúc-dự-án)
@@ -125,6 +126,28 @@ Chỉ cập nhật ứng dụng qua USB (máy đã có bảng phân vùng mới)
 esptool.py --chip esp32s3 -p <PORT> write_flash 0x20000 fdict-firmware-v<ver>-<build>.bin
 ```
 
+## app.bin và full.bin
+
+| | app.bin | full.bin |
+|---|---|---|
+| Tên file | `fdict-firmware-vX.Y.Z-<build_id>.bin` | `fdict-firmware-vX.Y.Z-<build_id>-full.bin` |
+| Kích thước | ~1,5 MB (phải < 4 MB) | ~16,3 MB (≤ 16 MiB) |
+| Nội dung | chỉ chương trình Fdict | ảnh gộp toàn bộ flash |
+| Nạp bằng | OTA | USB, từ offset `0x0` (ESP Web Tools / `esptool.py write_flash 0x0 ...`) |
+
+- **app.bin**: chỉ chương trình Fdict, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 4 MB) nên phải < 4 MB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
+- **full.bin**: ảnh gộp (merged image) nạp từ `0x0` qua USB, gồm:
+
+| Offset | Thành phần |
+|---|---|
+| `0x0` | bootloader |
+| `0x8000` | bảng phân vùng (partition table) |
+| `0x19000` | otadata |
+| `0x20000` | ứng dụng (`ota_0`) |
+| `0xE30000` | dữ liệu giọng `voice` (Pico) |
+
+**Khi nào dùng cái nào:** máy mới hoặc máy lỗi → nạp full.bin qua USB; máy đang chạy → cập nhật app.bin qua OTA. CI tạo cả hai từ **cùng một bản build** và đẩy lên máy chủ (`/api/admin/releases` cho app.bin, `/api/admin/releases/full` cho full.bin). File được lưu trên object storage (S3/MinIO) của máy chủ.
+
 ## Cập nhật OTA
 
 OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>.bin`, không dùng `-full.bin`). Bảng phân vùng và dữ liệu giọng không đổi qua OTA.
@@ -143,8 +166,10 @@ Workflow `.github/workflows/ota-prod.yml` chạy khi **push lên nhánh `prod`**
 1. Build ứng dụng trong container `espressif/idf:v6.1` bằng `scripts/ci-ota-build.sh`.
 2. Upload artifact (file app `.bin` và `build-info.json`).
 3. Đăng bản lên máy chủ: `POST {DICT_API_URL}/api/admin/releases`, multipart, header `X-CI-Token`, kênh `stable`, `rollout_percent=100`.
+4. Tải `-full.bin` của cùng bản build lên máy chủ: `POST {DICT_API_URL}/api/admin/releases/full` (gắn vào `release_id` vừa đăng), cho trình nạp USB trên web.
+5. Tạo **GitHub Release** tag `v<semver>` (tiêu đề `Fdict FDICT-<semver>`) với `...-full.bin`, `...-app.bin` và `SHA256SUMS.txt`, ghi chú lấy từ CHANGELOG. Mỗi bản prod đều xuất hiện ở mục Releases của repo; tag đã có thì bỏ qua, không ghi đè.
 
-Chỉ đẩy **bản app**, không bao giờ đẩy `-full.bin`. File phải nhỏ hơn 4 MB.
+Bước OTA chỉ đẩy **bản app** (< 4 MB); `-full.bin` đi qua endpoint riêng ở bước 4.
 
 ### Biến và secret cần tạo
 
@@ -176,7 +201,7 @@ Script dừng build nếu:
 
 `build_id` = `fdictdm10` + 4 hex đầu SHA256 file ELF, giống màn _Thông tin_.
 
-Máy chủ trả `201` khi đăng thành công. Nếu trả `409` (bản đã tồn tại): cùng sha256 thì coi là đã đăng, workflow vẫn xanh; khác sha256 thì workflow báo lỗi, hãy tăng phiên bản. Tóm tắt job ghi `fw_version`, `build_id`, kích thước, `sha256`, `release_id` và ghi chú.
+Máy chủ trả `201` khi đăng thành công (kèm `release_id`, dùng để gắn `-full.bin` và tạo GitHub Release). Nếu trả `409` (bản `fw_version`/`build_id` đã tồn tại), máy chủ chỉ trả `{"error":"exists"}`, không có `release_id`, nên workflow **báo lỗi** và dừng (không tải `-full.bin`, không tạo GitHub Release). Muốn phát hành lại: tăng `PROJECT_VER` trong `CMakeLists.txt`, thêm mục mới ở đầu `CHANGELOG.md`, rồi push lại lên `prod`. Tóm tắt job ghi `fw_version`, `build_id`, kích thước, `sha256`, `release_id` và ghi chú.
 
 ### Phát hành dần (canary)
 
@@ -236,5 +261,6 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 - **Build:** ESP-IDF 6.1, `idf.py set-target esp32s3 && idf.py build`; flash with `idf.py -p <PORT> flash monitor`.
 - **Configure:** server URLs are Kconfig options (`menuconfig`), placeholders by default; `sdkconfig` is git-ignored.
 - **First-time flashing:** write `fdict-firmware-v<ver>-<build>-full.bin` at `0x0` over USB (esptool or a web flasher).
+- **app.bin vs full.bin:** app.bin (~1.5 MB, < 4 MB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
 - **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
 - **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The Fdict / fkit.vn name and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.

@@ -19,6 +19,8 @@ permissions:
 jobs:
   ota:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     environment: production
     container:
       image: espressif/idf:v6.1
@@ -246,8 +248,11 @@ jobs:
               j = {}
           r = j.get("release") if isinstance(j, dict) else None
           print(str((r or {}).get("full_sha256") or "").lower())
-          if not r and isinstance(j, dict) and j.get("error"):
-              print("error=%s" % str(j["error"])[:80], file=sys.stderr)
+          if not r and isinstance(j, dict):
+              # chi in cac truong loi an toan (khong token/url/stack)
+              safe = {k: str(j[k])[:200] for k in ("statusCode", "statusMessage", "message", "error") if k in j}
+              if safe:
+                  print("server: %s" % json.dumps(safe, ensure_ascii=False), file=sys.stderr)
           PY
           )"
           {
@@ -258,3 +263,84 @@ jobs:
           [[ "$CODE" == "200" ]] || { echo "::error::Tai -full.bin that bai (HTTP $CODE)"; exit 1; }
           [[ "$RSHA" == "$FSHA" ]] || { echo "::error::full_sha256 server ($RSHA) != local ($FSHA)"; exit 1; }
           echo "Da tai -full.bin cho $REL: full_sha256=$RSHA (khop)"
+
+      # GitHub Release (chi chay khi Publish OTA + Upload full image thanh cong). Tag da ton tai -> bo qua, khong ghi de.
+      - name: GitHub Release
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_VERSION: "2.62.0"
+        run: |
+          set -euo pipefail
+          [[ "${FW_VERSION:?}" =~ ^FDICT-([0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "::error::fw_version sai: $FW_VERSION"; exit 1; }
+          SEMVER="${BASH_REMATCH[1]}"
+          TAG="v$SEMVER"
+          [[ "${BUILD_ID:?}" =~ ^fdictdm[0-9]{2}[0-9a-f]{4}$ ]]
+          test -f "${OTA_BIN:?}"; test -f "${FULL_BIN:?}"
+
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "Cai gh $GH_VERSION"
+            T="$(mktemp -d)"
+            curl -fsSL --retry 3 -o "$T/gh.tgz" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz"
+            curl -fsSL --retry 3 -o "$T/sums.txt" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_checksums.txt"
+            ( cd "$T" && grep " gh_${GH_VERSION}_linux_amd64.tar.gz\$" sums.txt | sed 's/ gh_.*/  gh.tgz/' | sha256sum -c - )
+            tar -xzf "$T/gh.tgz" -C "$T"
+            install -m 0755 "$T/gh_${GH_VERSION}_linux_amd64/bin/gh" /usr/local/bin/gh
+          fi
+          gh --version | head -n1
+
+          REPO="$GITHUB_REPOSITORY"
+          if gh api "repos/$REPO/git/ref/tags/$TAG" >/dev/null 2>&1 || gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            echo "::notice::Tag/release $TAG da ton tai - bo qua GitHub Release (khong ghi de)"
+            echo "| github release | $TAG da ton tai - bo qua |" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # chi 3 file: full.bin, app.bin, SHA256SUMS.txt (khong .elf, sdkconfig, log)
+          REL_DIR="$(mktemp -d)"
+          BASE="fdict-firmware-v${SEMVER}-${BUILD_ID}"
+          cp "$FULL_BIN" "$REL_DIR/${BASE}-full.bin"
+          cp "$OTA_BIN" "$REL_DIR/${BASE}-app.bin"
+          ( cd "$REL_DIR" && sha256sum "${BASE}-full.bin" "${BASE}-app.bin" > SHA256SUMS.txt )
+          FULL_SHA="$(awk -v f="${BASE}-full.bin" '$2==f{print $1}' "$REL_DIR/SHA256SUMS.txt")"
+          APP_SHA="$(awk -v f="${BASE}-app.bin" '$2==f{print $1}' "$REL_DIR/SHA256SUMS.txt")"
+          [[ "$FULL_SHA" == "${FULL_SHA256:?}" ]] || { echo "::error::sha256 full.bin khac ban da tai len server"; exit 1; }
+
+          BODY="$(mktemp)"
+          {
+            echo "## Fdict FDICT-$SEMVER"
+            echo ""
+            echo "${NOTES_VI:-Cập nhật firmware}"
+            echo ""
+            echo "- Build ID: \`$BUILD_ID\`"
+            echo "- \`${BASE}-full.bin\` sha256: \`$FULL_SHA\`"
+            echo "- \`${BASE}-app.bin\` sha256: \`$APP_SHA\`"
+            echo ""
+            echo "### full.bin (nạp từ 0x0)"
+            echo ""
+            echo "| Offset | Thành phần |"
+            echo "|---|---|"
+            echo "| \`0x0\` | bootloader |"
+            echo "| \`0x8000\` | bảng phân vùng |"
+            echo "| \`0x19000\` | otadata |"
+            echo "| \`0x20000\` | ứng dụng (ota_0) |"
+            echo "| \`0xE30000\` | dữ liệu giọng voice (Pico) |"
+            echo ""
+            echo "### Cách nạp"
+            echo ""
+            echo "- Máy mới / máy lỗi: nạp \`${BASE}-full.bin\` tại 0x0 qua USB bằng trình nạp web (Chrome/Edge), hoặc:"
+            echo "  \`esptool --chip esp32s3 write_flash 0x0 ${BASE}-full.bin\`"
+            echo "- \`${BASE}-app.bin\` chỉ dùng cho OTA (máy đang chạy tự cập nhật). **Không** nạp app.bin ở 0x0."
+          } > "$BODY"
+
+          gh release create "$TAG" \
+            --repo "$REPO" \
+            --target "$GITHUB_SHA" \
+            --title "Fdict FDICT-$SEMVER" \
+            --notes-file "$BODY" \
+            "$REL_DIR/${BASE}-full.bin" \
+            "$REL_DIR/${BASE}-app.bin" \
+            "$REL_DIR/SHA256SUMS.txt"
+          echo "Da tao GitHub Release $TAG (${BASE}-full.bin, ${BASE}-app.bin, SHA256SUMS.txt)"
+          echo "| github release | $TAG |" >> "$GITHUB_STEP_SUMMARY"
