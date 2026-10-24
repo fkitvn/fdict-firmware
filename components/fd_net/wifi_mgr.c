@@ -311,7 +311,7 @@ static void do_connect(const saved_net_t *n)
              cfg.sta.threshold.authmode, cfg.sta.pmf_cfg.capable, cfg.sta.pmf_cfg.required,
              cfg.sta.sae_pwe_h2e, cfg.sta.scan_method, cfg.sta.sort_method);
     esp_wifi_set_config(WIFI_IF_STA, &cfg);
-    ESP_LOGI(TAG, "Ket noi toi \"%s\"%s (mat khau %u ky tu)", n->ssid, s_target_new ? " (mang moi)" : "",
+    ESP_LOGD(TAG, "Ket noi toi \"%s\"%s (mat khau %u ky tu)", n->ssid, s_target_new ? " (mang moi)" : "",
              (unsigned)strlen(n->pass));
     esp_wifi_connect();
     fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
@@ -473,15 +473,16 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
             }
         }
         uint8_t cur_ch = 0; wifi_second_chan_t sec; esp_wifi_get_channel(&cur_ch, &sec);
-        ESP_LOGW(TAG, "Mat ket noi \"%s\" reason=%d (%s) rssi=%d bssid=" MACSTR " ch=%d (kenh radio=%u) lan=%d mode=%s authmode=%d",
-                 s_target.ssid, d->reason, reason_name(d->reason), d->rssi, MAC2STR(d->bssid), sc_ch, cur_ch,
+        ESP_LOGD(TAG, "Mat ket noi \"%s\"", s_target.ssid);
+        ESP_LOGW(TAG, "Mat ket noi reason=%d (%s) rssi=%d bssid=" MACSTR " ch=%d (kenh radio=%u) lan=%d mode=%s authmode=%d",
+                 d->reason, reason_name(d->reason), d->rssi, MAC2STR(d->bssid), sc_ch, cur_ch,
                  s_target_new ? s_new_attempts + 1 : s_backoff_n + 1, mode_name(s_compat), sc_auth);
         ESP_LOGW(TAG, "That bai o: %s", step_name(d->reason));
         /* Router khong tra loi auth (2) / connection fail (205): doi che do thuong <-> WPA2-compat cho lan sau */
         if ((d->reason == WIFI_REASON_AUTH_EXPIRE || d->reason == WIFI_REASON_CONNECTION_FAIL) && s_target.pass[0]) {
             int m = mode_slot(s_target.ssid, true);
             s_mode[m].compat = !s_compat;
-            ESP_LOGI(TAG, "Lan sau dung che do %s cho \"%s\"", mode_name(s_mode[m].compat), s_target.ssid);
+            ESP_LOGD(TAG, "Lan sau dung che do %s cho \"%s\"", mode_name(s_mode[m].compat), s_target.ssid);
         }
         if (s_target_new) {
             /* Mang moi: thu lai (sai mat khau: 1 lan nua; loi auth/assoc cua router: toi 4 lan), sau do bao loi */
@@ -498,7 +499,8 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
             s_target_new = false;
             s_state = FD_NET_IDLE;
             if (ev.auth_fail) {
-                ESP_LOGW(TAG, "Sai mat khau cho \"%s\"", ev.ssid);
+                ESP_LOGW(TAG, "Sai mat khau");
+                ESP_LOGD(TAG, "Sai mat khau cho \"%s\"", ev.ssid);
             }
             schedule_retry();   /* quay ve cac mang da luu (neu co) */
         } else if (!s_scanning) {
@@ -533,7 +535,7 @@ static void ip_event(void *arg, esp_event_base_t base, int32_t id, void *data)
     ESP_LOGI(TAG, "Ket noi thanh cong che do %s", mode_name(s_compat));
     xSemaphoreGive(s_mtx);
     xEventGroupSetBits(s_eg, BIT_CONNECTED);
-    ESP_LOGI(TAG, "Da ket noi \"%s\", IP %s", s_target.ssid, s_ip);
+    ESP_LOGD(TAG, "Da ket noi \"%s\", IP %s", s_target.ssid, s_ip);
     fd_net_time_start();
     fd_events_post(FD_EVT_WIFI_CONNECTED, NULL, 0);
 }
@@ -688,7 +690,7 @@ esp_err_t fd_net_forget(const char *ssid)
         memmove(&s_saved[i], &s_saved[i + 1], (s_saved_n - i - 1) * sizeof(saved_net_t));
         s_saved_n--;
         saved_store();
-        ESP_LOGI(TAG, "Da quen mang \"%s\"", ssid);
+        ESP_LOGD(TAG, "Da quen mang \"%s\"", ssid);
         if (strcmp(s_target.ssid, ssid) == 0 && s_state != FD_NET_IDLE) {
             esp_timer_stop(s_retry_timer);
             s_self_disconnect = (s_state == FD_NET_CONNECTED || s_state == FD_NET_CONNECTING);

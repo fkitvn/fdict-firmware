@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.0.6] - 2026-10-24
+
+- Sửa bước cài gh khi tạo GitHub Release; hạ log tên WiFi (SSID) xuống mức DEBUG.
+
 ## [1.0.5] - 2026-10-24
 
 - CI đẩy cả app.bin và full.bin của cùng một bản build lên máy chủ (lưu trên S3) và tự tạo GitHub Release (full.bin, app.bin, SHA256SUMS); chỉ thử lại khi lỗi mạng/429/5xx. README bổ sung phần app.bin và full.bin.

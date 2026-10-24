@@ -73,7 +73,7 @@ static void do_connect(void)
         set_status("Mật khẩu WPA cần ít nhất 8 ký tự", lv_palette_main(LV_PALETTE_RED));
         return;
     }
-    ESP_LOGI(TAG, "Ket noi \"%s\" (mat khau %u ky tu)", s_sel_ssid, (unsigned)strlen(pass));
+    ESP_LOGD(TAG, "Ket noi \"%s\" (mat khau %u ky tu)", s_sel_ssid, (unsigned)strlen(pass));
     fd_net_connect(s_sel_ssid, pass);
     panel_close();
     status_from_state();
