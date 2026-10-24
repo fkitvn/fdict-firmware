@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.0.8] - 2026-10-24
+
+- Bản kiểm tra luồng cập nhật OTA (sau bản vá device_id của 1.0.7); không thay đổi tính năng.
+
 ## [1.0.7] - 2026-10-24
 
 - Sửa lỗi cập nhật OTA báo "Lỗi: mạng" và mất ghép: tự thêm device_id vào URL tải firmware khi thiết bị đã ghép.
