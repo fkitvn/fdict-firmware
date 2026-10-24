@@ -3,6 +3,7 @@
  * 2 hang gon (quick_stats.c): Muc tieu hom nay 12/20 + thanh | Streak 4 ngay + 7 cham T2..CN (duoi tieu de, tren thanh truot).
  * Hang nut: Wi-Fi, Xoay (man chon huong), Home, Cai dat, Ngu. Dong: vuot len tren bang, cham nen mo, quay lai / giu B1, chuyen man. */
 #include <stdio.h>
+#include <string.h>
 #include "fd_audio.h"
 #include "fd_display.h"
 #include "fd_fonts.h"
@@ -21,6 +22,16 @@ LV_IMAGE_DECLARE(img_sleep);
 static lv_obj_t *s_ov, *s_panel, *s_bri_val, *s_vol_icon, *s_vol_val, *s_vol_sl;
 
 bool ui_quick_is_open(void) { return s_ov != NULL; }
+
+/* dong ho HH:MM canh pin (gio dia phuong CONFIG_FD_TZ; chua dong bo gio -> "--:--"), cap nhat 1 s khi bang mo */
+static void clock_update(lv_obj_t *l)
+{
+    char b[12];
+    ui_fmt_clock(b, sizeof(b), false);
+    if (strcmp(lv_label_get_text(l), b)) lv_label_set_text(l, b);   /* chi ve lai khi doi phut */
+}
+static void clock_tmr_cb(lv_timer_t *t) { clock_update((lv_obj_t *)lv_timer_get_user_data(t)); }
+static void clock_del_cb(lv_event_t *e) { lv_timer_delete((lv_timer_t *)lv_event_get_user_data(e)); }
 
 bool ui_quick_hit(const lv_point_t *p)
 {
@@ -329,6 +340,11 @@ void ui_quick_open(void)
     lv_obj_remove_style_all(hsp);
     lv_obj_set_size(hsp, 1, 1);
     lv_obj_set_flex_grow(hsp, 1);
+    lv_obj_t *clk = lv_label_create(hd);   /* dong ho ngay ben trai pin */
+    lv_obj_set_style_text_color(clk, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_label_set_text(clk, "");
+    clock_update(clk);
+    lv_obj_add_event_cb(clk, clock_del_cb, LV_EVENT_DELETE, lv_timer_create(clock_tmr_cb, 1000, clk));
     ui_batt_label_create_ex(hd, true);   /* luon hien, tu cap nhat 1 s khi bang mo */
     lv_obj_t *hsep = lv_obj_create(s_panel);
     lv_obj_remove_style_all(hsep);
