@@ -45,6 +45,7 @@ void fd_ota_set_hooks(bool (*is_idle)(void), void (*before_reboot)(void));
 
 void fd_ota_get_status(fd_ota_status_t *out);
 void fd_ota_check_now(void);    /* nut "Kiem tra cap nhat" */
+void fd_ota_reboot_now(void);   /* nut "Khoi dong lai ngay": chi khi REBOOT_PENDING, cung duong khoi dong lai khi ranh */
 void fd_ota_update_now(void);   /* nut [Cap nhat]: tai ngay (khong cho ranh); khoi dong lai van cho ranh */
 
 /* Kenh OTA: luon "stable". */

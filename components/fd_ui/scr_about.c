@@ -96,7 +96,7 @@ static void ota_show(void)
         break;
     }
     case FD_OTA_ST_DOWNLOADING: spin = true; snprintf(b, sizeof(b), "Đang tải %d%%", st.pct); break;
-    case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), "Sẽ khởi động lại khi rảnh"); break;
+    case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), "Sẽ khởi động lại khi rảnh"); btn = "Khởi động lại ngay"; break;
     default: col = 0xDC2626; snprintf(b, sizeof(b), "Lỗi: %s", ota_err_vi(st.err, eb, sizeof(eb))); break;
     }
     lv_obj_set_hidden(s_ota_msg, false);
@@ -230,7 +230,8 @@ static void ota_cb(lv_event_t *e)
     (void)e;
     fd_ota_status_t st;
     fd_ota_get_status(&st);
-    if (st.state == FD_OTA_ST_CHECKING || st.state == FD_OTA_ST_DOWNLOADING || st.state == FD_OTA_ST_REBOOT_PENDING) return;
+    if (st.state == FD_OTA_ST_REBOOT_PENDING) { fd_ota_reboot_now(); return; }   /* da tai xong: khoi dong lai ngay */
+    if (st.state == FD_OTA_ST_CHECKING || st.state == FD_OTA_ST_DOWNLOADING) return;
     if (st.state == FD_OTA_ST_AVAILABLE) fd_ota_update_now();
     else if (fd_net_is_connected()) { s_last_check_us = esp_timer_get_time(); s_popup_pending = true; fd_ota_check_now(); }
 }

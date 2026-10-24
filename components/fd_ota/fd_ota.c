@@ -67,7 +67,7 @@ uint32_t fd_ota_server_gen(void) { return s_srv_gen; }
 #define REPORT_RETRY_S  120
 #define RQ_MAX          6
 
-enum { CMD_CHECK = 1, CMD_UPDATE, CMD_PAIR_START, CMD_PAIR_STOP, CMD_UNPAIR, CMD_SWITCH };
+enum { CMD_CHECK = 1, CMD_UPDATE, CMD_PAIR_START, CMD_PAIR_STOP, CMD_UNPAIR, CMD_SWITCH, CMD_REBOOT };
 typedef enum { RS_DOWNLOADING, RS_DOWNLOADED, RS_VERIFY_FAILED, RS_FLASHED, RS_BOOTED_OK, RS_ROLLED_BACK, RS_FAILED } rstat_t;
 static const char *const RSTAT[] = {"downloading", "downloaded", "verify_failed", "flashed", "booted_ok", "rolled_back", "failed"};
 
@@ -143,6 +143,7 @@ static void send_cmd(int c)
 }
 void fd_ota_check_now(void) { send_cmd(CMD_CHECK); }
 void fd_ota_update_now(void) { send_cmd(CMD_UPDATE); }
+void fd_ota_reboot_now(void) { send_cmd(CMD_REBOOT); }
 
 /* ---------- NVS ---------- */
 void fd_ota_get_channel(char *out, size_t len) { strlcpy(out, FD_OTA_CHANNEL, len); }
@@ -1350,8 +1351,8 @@ static void ota_task(void *arg)
             next_check = esp_timer_get_time() + (int64_t)s * 1000000;
         }
         if (s_have_man && s_auto_pending && !s_reboot_pending && net && idle_now()) do_update(false);
-        if (s_reboot_pending && idle_now()) {
-            ESP_LOGI(TAG, "reboot: thiet bi ranh -> khoi dong lai de cap nhat");
+        if (s_reboot_pending && (cmd == CMD_REBOOT || idle_now())) {   /* nut "Khoi dong lai ngay" hoac thiet bi ranh */
+            ESP_LOGI(TAG, "reboot: %s -> khoi dong lai de cap nhat", cmd == CMD_REBOOT ? "nguoi dung bam" : "thiet bi ranh");
             if (s_before_reboot) s_before_reboot();
             vTaskDelay(pdMS_TO_TICKS(2000));
             esp_restart();
