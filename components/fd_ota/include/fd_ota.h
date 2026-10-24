@@ -36,7 +36,7 @@ typedef struct {
 
 /* Goi 1 lan sau khi display + storage da khoi tao (app_main). Neu firmware dang PENDING_VERIFY: tu kiem tra
  * (display_ok, storage_ok, WiFi ket noi trong 60 s) -> hop le + bao booted_ok, hoac rollback + khoi dong lai.
- * Khoi dong task OTA (kiem tra sau WiFi + dong bo gio + 30..120 s ngau nhien, roi dinh ky). */
+ * Khoi dong task OTA (kiem tra sau WiFi + 30..120 s ngau nhien, roi dinh ky; khong cho dong bo gio SNTP). */
 esp_err_t fd_ota_start(bool display_ok, bool storage_ok);
 
 /* UI cung cap: thiet bi ranh (khong thao tac >= 60 s hoac man hinh tat) va hien thong bao truoc khi khoi dong lai

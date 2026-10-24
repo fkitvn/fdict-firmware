@@ -436,7 +436,7 @@ static bool report_flush(void)
     rep_t q[RQ_MAX];
     int n = rq_load(q);
     if (!n) return true;
-    if (!fd_net_is_connected() || !fd_net_time_valid()) return false;
+    if (!fd_net_is_connected()) return false;
     char url[160];
     snprintf(url, sizeof(url), "%s/api/ota/report", FD_OTA_BASE);
     if (!url_allowed(url)) { ESP_LOGI(TAG, "report: base URL khong cho phep"); return false; }
@@ -511,7 +511,6 @@ static bool is_hex64(const char *s)
 static int do_check(bool manual)
 {
     if (!fd_net_is_connected()) { st_set(FD_OTA_ST_ERROR, 0, "no_wifi"); ESP_LOGI(TAG, "check: bo qua (chua WiFi)"); return RETRY_ERR_S; }
-    if (!fd_net_time_valid()) { st_set(FD_OTA_ST_ERROR, 0, "no_time"); ESP_LOGI(TAG, "check: bo qua (chua dong bo gio)"); return RETRY_ERR_S; }
     if (s_reboot_pending) { st_set(FD_OTA_ST_REBOOT_PENDING, 100, NULL); return CONFIG_FD_OTA_CHECK_INTERVAL_S; }
     st_set(FD_OTA_ST_CHECKING, 0, NULL);
     const char *ch = FD_OTA_CHANNEL;
@@ -1325,7 +1324,7 @@ static void ota_task(void *arg)
             pair_set(FD_PAIR_IDLE, false, 0, NULL);
             st_set(FD_OTA_ST_IDLE, 0, NULL);
             ESP_LOGI(TAG, "server switched to %s, unpaired", s_lab ? "lab" : "prod");
-            if (fd_net_is_connected() && fd_net_time_valid()) next_check = esp_timer_get_time() + 5LL * 1000000;
+            if (fd_net_is_connected()) next_check = esp_timer_get_time() + 5LL * 1000000;
             else next_check = 0;
             cmd = 0;
         }
@@ -1335,11 +1334,11 @@ static void ota_task(void *arg)
         }
         pair_tick();
         int64_t now = esp_timer_get_time();
-        bool net = fd_net_is_connected() && fd_net_time_valid();
+        bool net = fd_net_is_connected();   /* khong can dong bo gio (SNTP) */
         if (!next_check && net) {
             int d = 30 + (int)(esp_random() % 91);
             next_check = now + (int64_t)d * 1000000;
-            ESP_LOGI(TAG, "schedule: WiFi + gio OK -> kiem tra sau %d s", d);
+            ESP_LOGI(TAG, "schedule: WiFi OK -> kiem tra sau %d s", d);
         }
         if (cmd == CMD_CHECK) {
             int s = do_check(true);

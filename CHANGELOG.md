@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.1.2] - 2026-10-25
+
+- Kiểm tra cập nhật OTA không còn chờ đồng bộ giờ (SNTP); chỉ cần có WiFi.
+
 ## [1.1.1] - 2026-10-24
 
 - Thêm nút Khởi động lại ngay sau khi cập nhật OTA xong để áp dụng bản mới tức thì (vẫn tự khởi động lại khi rảnh).
