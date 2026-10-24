@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.0.9] - 2026-10-24
+
+- Kiểm tra cập nhật OTA hoạt động cả khi thiết bị chưa ghép (vẫn gửi device_id), không còn báo "Lỗi: mạng".
+
 ## [1.0.8] - 2026-10-24
 
 - Bản kiểm tra luồng cập nhật OTA (sau bản vá device_id của 1.0.7); không thay đổi tính năng.

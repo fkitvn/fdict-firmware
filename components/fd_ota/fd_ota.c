@@ -527,23 +527,42 @@ static int do_check(bool manual)
     rx_t rx = {.cap = 2048};
     rx.buf = calloc(1, rx.cap);
     if (!rx.buf) { st_set(FD_OTA_ST_ERROR, 0, "no_mem"); return RETRY_ERR_S; }
-    esp_http_client_config_t c;
-    http_cfg(&c, url, HTTP_TIMEOUT_MS);
-    c.event_handler = http_evt;
-    c.user_data = &rx;
-    esp_http_client_handle_t cl = esp_http_client_init(&c);
+    /* Kiem tra OTA doc lap voi ghep doi: luon gui device_id (MAC); Bearer chi khi co token.
+     * 401 co Bearer -> thu lai 1 lan khong Bearer. 401 khi chua ghep -> trang thai "http_401", khong phai "net". */
     esp_err_t e = ESP_FAIL;
     int code = -1;
-    if (cl) {
-        add_auth(cl);
-        esp_http_client_set_header(cl, "Cache-Control", "no-store");
-        e = esp_http_client_perform(cl);
-        code = esp_http_client_get_status_code(cl);
-        esp_http_client_cleanup(cl);
+    bool use_auth = fd_ota_is_paired();
+    for (int att = 0; att < 2; att++) {
+        rx.len = 0;
+        rx.json = false;
+        rx.retry_after = 0;
+        rx.loc[0] = 0;
+        esp_http_client_config_t c;
+        http_cfg(&c, url, HTTP_TIMEOUT_MS);
+        c.event_handler = http_evt;
+        c.user_data = &rx;
+        esp_http_client_handle_t cl = esp_http_client_init(&c);
+        e = ESP_FAIL;
+        code = -1;
+        if (cl) {
+            if (use_auth) add_auth(cl);
+            esp_http_client_set_header(cl, "Cache-Control", "no-store");
+            e = esp_http_client_perform(cl);
+            code = esp_http_client_get_status_code(cl);
+            esp_http_client_cleanup(cl);
+        }
+        ESP_LOGI(TAG, "check: %s HTTP %d, %d B (bearer=%s)", esp_err_to_name(e), code, rx.len, use_auth ? "co" : "khong");
+        if (code == 401) e = ESP_OK;   /* co phan hoi 401 = khong phai loi mang */
+        if (!(e == ESP_OK && code == 401 && use_auth)) break;
+        use_auth = false;   /* token bi tu choi: thu lai khong Bearer (khong xoa token o day) */
     }
-    ESP_LOGI(TAG, "check: %s HTTP %d, %d B", esp_err_to_name(e), code, rx.len);
     int ra = (e == ESP_OK && code >= 400) ? srv_error(code, &rx) : 0;
-    if (e == ESP_OK) auth_401(code);
+    if (e == ESP_OK && code == 401 && !fd_ota_is_paired()) {
+        st_set(FD_OTA_ST_ERROR, 0, "http_401");   /* UI: "may chu (401)", khong phai "mang" */
+        ESP_LOGI(TAG, "check: HTTP 401 khi chua ghep (may chu yeu cau Bearer cho device_id nay)");
+        free(rx.buf);
+        return RETRY_ERR_S;
+    }
     if (e == ESP_OK && code == 429) {   /* qua tai: cho retry_after roi tu kiem tra lai */
         st_set(FD_OTA_ST_ERROR, 0, "http_429");
         free(rx.buf);
@@ -693,7 +712,7 @@ static bool resolve_url(const char *url, char *out, size_t len, bool *with_auth)
         if (!rx.loc[0] || !url_allowed(rx.loc)) { ESP_LOGI(TAG, "download: redirect khong hop le"); return false; }
         strlcpy(out, rx.loc, len);
         *with_auth = same_host_download(url, out);   /* cung host /api/ota/download: giu token + device_id */
-        if (*with_auth && fd_ota_is_paired()) url_add_dev_id(out, len);
+        if (*with_auth) url_add_dev_id(out, len);
         log_url("download: redirect ->", out);
     }
     return code < 400;
@@ -734,7 +753,7 @@ static void do_update(bool manual)
     bool with_auth = true;
     char src[256];
     strlcpy(src, s_man.url, sizeof(src));
-    if (fd_ota_is_paired()) url_add_dev_id(src, sizeof(src));
+    url_add_dev_id(src, sizeof(src));   /* luon gui device_id (ca khi chua ghep) */
     if (!resolve_url(src, url, sizeof(url), &with_auth)) { fail("net", RS_FAILED, 0); return; }
 
     esp_http_client_config_t hc;
