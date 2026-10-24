@@ -23,7 +23,7 @@ static lv_obj_t *s_ov, *s_panel, *s_bri_val, *s_vol_icon, *s_vol_val, *s_vol_sl;
 
 bool ui_quick_is_open(void) { return s_ov != NULL; }
 
-/* dong ho HH:MM canh pin (gio dia phuong CONFIG_FD_TZ; chua dong bo gio -> "--:--"), cap nhat 1 s khi bang mo */
+/* dong ho HH:MM canh pin (gio dia phuong CONFIG_FD_TZ; chua dong bo gio -> "--:--"), cap nhat moi phut khi bang mo */
 static void clock_update(lv_obj_t *l)
 {
     char b[12];
@@ -344,7 +344,7 @@ void ui_quick_open(void)
     lv_obj_set_style_text_color(clk, lv_color_hex(FD_COLOR_TEXT), 0);
     lv_label_set_text(clk, "");
     clock_update(clk);
-    lv_obj_add_event_cb(clk, clock_del_cb, LV_EVENT_DELETE, lv_timer_create(clock_tmr_cb, 1000, clk));
+    lv_obj_add_event_cb(clk, clock_del_cb, LV_EVENT_DELETE, lv_timer_create(clock_tmr_cb, 60000, clk));
     ui_batt_label_create_ex(hd, true);   /* luon hien, tu cap nhat 1 s khi bang mo */
     lv_obj_t *hsep = lv_obj_create(s_panel);
     lv_obj_remove_style_all(hsep);

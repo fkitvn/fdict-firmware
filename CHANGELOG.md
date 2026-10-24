@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.1.4] - 2026-10-25
+
+- ??ng h? tr?n b?ng c?i ??t nhanh c?p nh?t m?i ph?t thay v? m?i gi?y.
+
 ## [1.1.3] - 2026-10-25
 
 - Thêm đồng hồ (giờ:phút) cạnh biểu tượng pin trên bảng cài đặt nhanh (vuốt từ trên xuống), tự cập nhật; hiện --:-- khi chưa đồng bộ giờ.
