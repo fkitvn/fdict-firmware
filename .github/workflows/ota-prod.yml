@@ -284,7 +284,7 @@ jobs:
             T="$(mktemp -d)"
             curl -fsSL --retry 3 -o "$T/gh.tgz" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz"
             curl -fsSL --retry 3 -o "$T/sums.txt" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_checksums.txt"
-            ( cd "$T" && grep " gh_${GH_VERSION}_linux_amd64.tar.gz\$" sums.txt | sed 's/ gh_.*/  gh.tgz/' | sha256sum -c - )
+            ( cd "$T" && awk -v f="gh_${GH_VERSION}_linux_amd64.tar.gz" '$2==f{print $1"  gh.tgz"}' sums.txt | grep -q . && awk -v f="gh_${GH_VERSION}_linux_amd64.tar.gz" '$2==f{print $1"  gh.tgz"}' sums.txt | sha256sum -c - )
             tar -xzf "$T/gh.tgz" -C "$T"
             install -m 0755 "$T/gh_${GH_VERSION}_linux_amd64/bin/gh" /usr/local/bin/gh
           fi
