@@ -80,7 +80,7 @@ static void run_app(void)
 void app_main(void)
 {
     ESP_LOGI(TAG, "firmware: %s", FD_FW_NAME);
-    { char sha[9]; esp_app_get_elf_sha256(sha, sizeof(sha)); ESP_LOGI(TAG, "build: " FD_BUILD_PREFIX "%.4s", sha); }
+    { char sha[11]; esp_app_get_elf_sha256(sha, sizeof(sha)); ESP_LOGI(TAG, "build: %s", sha); }
     {   /* eFuse OPTIONAL_UNIQUE_ID (128 bit, khong bi mat): chi log, chua dung */
         uint8_t uid[16] = {0};
         esp_err_t ue = esp_efuse_read_field_blob(ESP_EFUSE_OPTIONAL_UNIQUE_ID, uid, 128);

@@ -111,7 +111,7 @@ Khi đổi bảng phân vùng, phân vùng `/data` (LittleFS) bị định dạn
 ```sh
 esptool.py --chip esp32s3 merge_bin -o full.bin --flash_mode dio --flash_freq 80m --flash_size 16MB \
   0x0 bootloader/bootloader.bin 0x8000 partition_table/partition-table.bin 0x19000 ota_data_initial.bin \
-  0x20000 fdict-fw.bin 0xe30000 voice.bin
+  0x20000 fdict-firmware.bin 0xe30000 voice.bin
 ```
 
 ### Dữ liệu giọng đọc
@@ -154,10 +154,10 @@ OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>.bin
 
 1. Thiết bị đã ghép, có Wi-Fi và đã đồng bộ giờ sẽ định kỳ gọi `GET {base}/api/ota/check` với các tham số `hw`, `channel`, `fw_version`, `build_id`, `device_id`, `battery`, `rssi`.
 2. Máy chủ trả JSON. Nếu `update` là `false`, thiết bị coi là bản mới nhất (`check_again_s` là chu kỳ kiểm tra lại, tuỳ chọn). Nếu `update` là `true`, cần các trường `release_id`, `fw_version`, `sha256`, `size`, `url` (HTTPS). Các trường tuỳ chọn: `build_id`, `notes_vi`, `mandatory`, `min_battery`.
-3. Thiết bị **không tự so sánh số phiên bản**: máy chủ quyết định có bản mới hay không. Sau khi tải, thiết bị kiểm tra SHA256 của ảnh khớp `sha256`, và phiên bản trong ảnh (bắt đầu bằng `FDICT-` hoặc `FDict One - `) khớp `fw_version`.
+3. Thiết bị **không tự so sánh số phiên bản**: máy chủ quyết định có bản mới hay không. Sau khi tải, thiết bị kiểm tra SHA256 của ảnh khớp `sha256`, và phiên bản trong ảnh (bắt đầu bằng `FDict One - `) khớp `fw_version`.
 4. Thiết bị ghi vào slot OTA còn lại rồi khởi động lại. Bản mới tự kiểm tra (màn hình, bộ nhớ, Wi-Fi), lỗi thì rollback. Trạng thái được báo về `POST {base}/api/ota/report`.
 
-Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `FDict One - 1.1.8`; bản cũ: `FDICT-x.y.z`).
+Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `FDict One - 1.1.8`).
 
 ### Nạp firmware qua USB từ trình duyệt
 
@@ -203,7 +203,7 @@ Script dừng build nếu:
 - build có cảnh báo;
 - file bin từ 4 MB trở lên.
 
-`build_id` = `10` + 4 hex đầu SHA256 file ELF, giống màn _Thông tin_.
+`build_id` = 10 ký tự hex đầu (chữ thường) SHA256 file ELF, giống màn _Thông tin_.
 
 Máy chủ trả `201` khi đăng thành công (kèm `release_id`, dùng để gắn `-full.bin` và tạo GitHub Release). Nếu trả `409` (bản `fw_version`/`build_id` đã tồn tại), máy chủ chỉ trả `{"error":"exists"}`, không có `release_id`, nên workflow **báo lỗi** và dừng (không tải `-full.bin`, không tạo GitHub Release). Muốn phát hành lại: tăng `PROJECT_VER` trong `CMakeLists.txt`, thêm mục mới ở đầu `CHANGELOG.md`, rồi push lại lên `prod`. Tóm tắt job ghi `fw_version`, `build_id`, kích thước, `sha256`, `release_id` và ghi chú.
 

@@ -3,7 +3,7 @@
 #
 # - FW_VERSION: PROJECT_VER trong CMakeLists.txt goc ("FDict One - x.y.z", co dau cach), doi chieu voi esp_app_desc.version trong file bin.
 #   Ten file/tag chi dung SEMVER (x.y.z), khong dung FW_VERSION.
-# - BUILD_ID  : "10" + 4 hex dau SHA256 file ELF (= esp_app_get_elf_sha256() tren may, man Thong tin),
+# - BUILD_ID  : 10 hex dau (chu thuong) SHA256 file ELF (= esp_app_get_elf_sha256() tren may, man Thong tin),
 #               doi chieu voi app_elf_sha256 trong esp_app_desc cua file bin.
 # - NOTES_VI  : muc dau tien cua CHANGELOG.md (phai trung semver cua PROJECT_VER), van ban thuong, <= 500 ky tu.
 #
@@ -30,9 +30,9 @@ PY="$(command -v python3 || command -v python)"
 # ---------- phien ban tu source ----------
 FW_VERSION="$(sed -nE 's/^[[:space:]]*set\(PROJECT_VER[[:space:]]+"([^"]+)"\).*/\1/p' CMakeLists.txt | head -n1)"
 [[ -n "$FW_VERSION" ]] || die "Khong doc duoc PROJECT_VER trong CMakeLists.txt"
-FW_RE='^(FDICT-|FDict One - )([0-9]+)\.([0-9]+)\.([0-9]+)$'   # moi: "FDict One - x.y.z"; cu: FDICT-x.y.z
+FW_RE='^FDict One - ([0-9]+)\.([0-9]+)\.([0-9]+)$'   # dinh dang duy nhat
 [[ "$FW_VERSION" =~ $FW_RE ]] || die "PROJECT_VER sai dinh dang: $FW_VERSION"
-SEMVER="${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
+SEMVER="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
 
 CL_TOP="$(sed -nE 's/^## \[([^]]+)\].*/\1/p' CHANGELOG.md | head -n1)"
 [[ "$CL_TOP" == "$SEMVER" ]] || die "Muc dau CHANGELOG.md ($CL_TOP) khac PROJECT_VER ($SEMVER)"
@@ -100,14 +100,14 @@ if grep -E "(warning|error):" "$BUILD_DIR/build.log" >/dev/null; then
   die "Build co canh bao/loi (yeu cau 0 canh bao)"
 fi
 
-APP_BIN="$BUILD_DIR/fdict-fw.bin"
-ELF="$BUILD_DIR/fdict-fw.elf"
+APP_BIN="$BUILD_DIR/fdict-firmware.bin"
+ELF="$BUILD_DIR/fdict-firmware.elf"
 [[ -f "$APP_BIN" && -f "$ELF" ]] || die "Khong thay $APP_BIN / $ELF"
 
 # ---------- BUILD_ID + doi chieu esp_app_desc trong bin ----------
 ELF_SHA="$(sha256sum "$ELF" | awk '{print $1}')"
-BUILD_ID="10${ELF_SHA:0:4}"
-[[ "$BUILD_ID" =~ ^[0-9]{2}[0-9a-f]{4}$ ]] || die "BUILD_ID sai dinh dang: $BUILD_ID"
+BUILD_ID="${ELF_SHA:0:10}"
+[[ "$BUILD_ID" =~ ^[0-9a-f]{10}$ ]] || die "BUILD_ID sai dinh dang: $BUILD_ID"
 
 "$PY" - "$APP_BIN" "$FW_VERSION" "$ELF_SHA" <<'PY' || die "esp_app_desc trong bin khong khop source"
 import struct, sys
@@ -148,7 +148,7 @@ PY
 # bootloader 0x0 | partition-table 0x8000 | ota_data_initial 0x19000 | app (ota_0) 0x20000 | voice 0xE30000
 FULL_BIN="$OUT_DIR/fdict-firmware-v${SEMVER}-${BUILD_ID}-full.bin"
 [[ -f "$BUILD_DIR/flash_args" ]] || die "Khong thay $BUILD_DIR/flash_args"
-grep -q "fdict-fw.bin" "$BUILD_DIR/flash_args" || die "flash_args thieu app"
+grep -q "fdict-firmware.bin" "$BUILD_DIR/flash_args" || die "flash_args thieu app"
 FULL_ABS="$(cd "$OUT_DIR" && pwd)/$(basename "$FULL_BIN")"
 ( cd "$BUILD_DIR" && "$PY" -m esptool --chip esp32s3 merge-bin -o "$FULL_ABS" @flash_args ) \
   || die "merge-bin that bai"

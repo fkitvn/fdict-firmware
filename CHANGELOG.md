@@ -5,8 +5,10 @@ Build ID (màn *Thông tin*) = `10` + 4 hex đầu SHA256 của ELF.
 
 ## [1.1.8] - 2026-10-25
 
-- Đổi tên hiển thị của máy thành FDict One.
-- Màn Thông tin phiên bản: tiêu đề và dòng Firmware hiển thị dạng “FDict One - <phiên bản>” (ví dụ FDict One - 1.1.8).
+- Đổi tên hiển thị của máy thành FDict One; phần mềm máy tính tên là FDict.
+- Phiên bản chỉ còn dạng “FDict One - x.y.z” (màn Thông tin hiển thị đúng dạng này); màn khởi động chỉ còn logo và chữ FDict One.
+- Mã build mới: 10 ký tự hex đầu của SHA256 file ELF.
+- Máy đang chạy bản cũ (FDICT-x.y.z) cần nạp lại qua USB.
 
 ## [1.1.7] - 2026-10-25
 

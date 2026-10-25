@@ -43,7 +43,7 @@ static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_MAC, R_LCD,
                                -3, R_FLASH, R_DATA, R_RAM,
                                -4, R_IP, R_OTA};
 static lv_obj_t *s_val[R_COUNT];
-/* "FDict One - 1.1.8" (PROJECT_VER moi da dung dinh dang nay; dung FD_FW_SEMVER de khong lap tien to) */
+/* "FDict One - x.y.z": dung FD_FW_SEMVER de khong lap tien to */
 static const char *fw_display(void)
 {
     return "FDict One - " FD_FW_SEMVER;
@@ -311,9 +311,9 @@ static void refresh(void)
         ui_device_ident(id, sizeof(id));
         lv_label_set_text(s_val[R_DEVID], id);
     }
-    char sha[9];
+    char sha[11];
     esp_app_get_elf_sha256(sha, sizeof(sha));
-    lv_label_set_text_fmt(s_val[R_BUILD], FD_BUILD_PREFIX "%.4s", sha);   /* 10 + 4 hex SHA256 ELF */
+    lv_label_set_text(s_val[R_BUILD], sha);   /* build_id = 10 hex dau SHA256 ELF */
     lv_label_set_text_fmt(s_val[R_DATE], "%s %s", d->date, d->time);
     {
         char fs[48];

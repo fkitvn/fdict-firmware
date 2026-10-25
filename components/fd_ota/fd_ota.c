@@ -30,10 +30,6 @@
 #include "psa/crypto.h"
 #include "sdkconfig.h"
 
-#ifndef FD_BUILD_PREFIX
-#define FD_BUILD_PREFIX "10"
-#endif
-
 static const char *TAG = "fd_ota";
 
 /* Server chon luc chay theo che do nha phat trien (NVS fd/devmode): bat = Lab (http LAN), tat = chinh thuc (https + cert bundle).
@@ -523,10 +519,9 @@ static void url_enc(char *o, size_t n, const char *s)
     if (n) o[i < n ? i : n - 1] = 0;
 }
 
-/* "FDICT-x.y.z" (ban cu) hoac "FDict One - x.y.z" -> con tro toi "x.y.z"; NULL neu sai dinh dang */
+/* "FDict One - x.y.z" (dinh dang duy nhat) -> con tro toi "x.y.z"; NULL neu sai dinh dang */
 static const char *fw_semver(const char *v)
 {
-    if (!strncmp(v, "FDICT-", 6)) return v + 6;
     if (!strncmp(v, "FDict One - ", 12)) return v + 12;
     return NULL;
 }
@@ -1406,9 +1401,8 @@ esp_err_t fd_ota_start(bool display_ok, bool storage_ok)
     uint8_t m[6];
     esp_efuse_mac_get_default(m);
     snprintf(s_dev_id, sizeof(s_dev_id), "%02x%02x%02x%02x%02x%02x", m[0], m[1], m[2], m[3], m[4], m[5]);
-    char sha[9];
-    esp_app_get_elf_sha256(sha, sizeof(sha));
-    snprintf(s_build, sizeof(s_build), FD_BUILD_PREFIX "%.4s", sha);
+    /* build_id = 10 hex dau SHA256 ELF (chu thuong) */
+    esp_app_get_elf_sha256(s_build, 11);
     {
         nvs_handle_t h;
         uint8_t v = 0;   /* mac dinh TAT che do nha phat trien khi NVS chua co khoa */

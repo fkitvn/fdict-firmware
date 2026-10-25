@@ -52,10 +52,9 @@ static void q_add(char *u, size_t n, const char *k, const char *v)
 
 static void build_qr_url(char *u, size_t n)
 {
-    char id[16], b[20], sha[9];
+    char id[16], b[11];
     ui_device_ident(id, sizeof(id));
-    esp_app_get_elf_sha256(sha, sizeof(sha));
-    snprintf(b, sizeof(b), FD_BUILD_PREFIX "%.4s", sha);
+    esp_app_get_elf_sha256(b, sizeof(b));   /* build_id = 10 hex dau SHA256 ELF */
     snprintf(u, n, "%s?id=%s", PAIR_WEB_URL, id);   /* KHONG BAO GIO dua token/ma vao QR */
     q_add(u, n, "hw", CONFIG_FD_OTA_HW);
     q_add(u, n, "fw", esp_app_get_description()->version);

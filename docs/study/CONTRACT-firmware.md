@@ -1,6 +1,6 @@
 # Học tập qua API — hợp đồng phía firmware
 
-Firmware: FDICT-1.0.3 (fnk0104b). Màn Học tập không còn dùng bộ từ trên máy; câu hỏi lấy từ server.
+Firmware: FDict One - 1.0.3 (fnk0104b). Màn Học tập không còn dùng bộ từ trên máy; câu hỏi lấy từ server.
 Base URL giống OTA/ghép: Lab `http://192.168.1.100:8001`, production `https://your-server.example` (TLS, certificate bundle, không bao giờ tắt kiểm tra chứng chỉ).
 
 ## Xác thực
