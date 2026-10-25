@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.1.5] - 2026-10-25
+
+- Đồng hồ trên bảng cài đặt nhanh cập nhật mỗi phút thay vì mỗi giây.
+
 ## [1.1.4] - 2026-10-25
 
 - Đồng hồ trên bảng cài đặt nhanh cập nhật mỗi phút thay vì mỗi giây.
