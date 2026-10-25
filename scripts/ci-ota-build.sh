@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build ban app OTA (ESP-IDF 6.1, esp32s3) cho CI va ghi OTA_BIN, FW_VERSION, BUILD_ID, NOTES_VI vao $GITHUB_ENV.
 #
-# - FW_VERSION: PROJECT_VER trong CMakeLists.txt goc, doi chieu voi esp_app_desc.version trong file bin.
+# - FW_VERSION: PROJECT_VER trong CMakeLists.txt goc ("FDict One - x.y.z", co dau cach), doi chieu voi esp_app_desc.version trong file bin.
+#   Ten file/tag chi dung SEMVER (x.y.z), khong dung FW_VERSION.
 # - BUILD_ID  : "10" + 4 hex dau SHA256 file ELF (= esp_app_get_elf_sha256() tren may, man Thong tin),
 #               doi chieu voi app_elf_sha256 trong esp_app_desc cua file bin.
 # - NOTES_VI  : muc dau tien cua CHANGELOG.md (phai trung semver cua PROJECT_VER), van ban thuong, <= 500 ky tu.
@@ -29,8 +30,9 @@ PY="$(command -v python3 || command -v python)"
 # ---------- phien ban tu source ----------
 FW_VERSION="$(sed -nE 's/^[[:space:]]*set\(PROJECT_VER[[:space:]]+"([^"]+)"\).*/\1/p' CMakeLists.txt | head -n1)"
 [[ -n "$FW_VERSION" ]] || die "Khong doc duoc PROJECT_VER trong CMakeLists.txt"
-[[ "$FW_VERSION" =~ ^FDICT-([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "PROJECT_VER sai dinh dang: $FW_VERSION"
-SEMVER="${FW_VERSION#FDICT-}"
+FW_RE='^(FDICT-|FDict One - )([0-9]+)\.([0-9]+)\.([0-9]+)$'   # moi: "FDict One - x.y.z"; cu: FDICT-x.y.z
+[[ "$FW_VERSION" =~ $FW_RE ]] || die "PROJECT_VER sai dinh dang: $FW_VERSION"
+SEMVER="${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
 
 CL_TOP="$(sed -nE 's/^## \[([^]]+)\].*/\1/p' CHANGELOG.md | head -n1)"
 [[ "$CL_TOP" == "$SEMVER" ]] || die "Muc dau CHANGELOG.md ($CL_TOP) khac PROJECT_VER ($SEMVER)"

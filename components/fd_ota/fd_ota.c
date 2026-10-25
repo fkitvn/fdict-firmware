@@ -507,6 +507,40 @@ static bool is_hex64(const char *s)
     return true;
 }
 
+/* ma hoa % cho query (giu ky tu unreserved RFC 3986): "FDict One - 1.1.8" co dau cach */
+static void url_enc(char *o, size_t n, const char *s)
+{
+    static const char HEX[] = "0123456789ABCDEF";
+    size_t i = 0;
+    for (const unsigned char *p = (const unsigned char *)s; *p && i + 4 < n; p++) {
+        if ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z') || (*p >= '0' && *p <= '9') ||
+            *p == '-' || *p == '.' || *p == '_' || *p == '~') {
+            o[i++] = (char)*p;
+        } else {
+            o[i++] = '%'; o[i++] = HEX[*p >> 4]; o[i++] = HEX[*p & 15];
+        }
+    }
+    if (n) o[i < n ? i : n - 1] = 0;
+}
+
+/* "FDICT-x.y.z" (ban cu) hoac "FDict One - x.y.z" -> con tro toi "x.y.z"; NULL neu sai dinh dang */
+static const char *fw_semver(const char *v)
+{
+    if (!strncmp(v, "FDICT-", 6)) return v + 6;
+    if (!strncmp(v, "FDict One - ", 12)) return v + 12;
+    return NULL;
+}
+
+/* img = esp_app_desc.version (char[32], co the khong co NUL); so sanh theo x.y.z */
+static bool fw_same_version(const char img[32], const char *man)
+{
+    char a[33];
+    memcpy(a, img, 32);
+    a[32] = 0;
+    const char *x = fw_semver(a), *y = fw_semver(man);
+    return x && y && *x && !strcmp(x, y);
+}
+
 /* tra ve so giay den lan kiem tra ke tiep */
 static int do_check(bool manual)
 {
@@ -518,9 +552,10 @@ static int do_check(bool manual)
     bat = bat < 0 ? 0 : bat > 100 ? 100 : bat;
     int rssi = fd_net_rssi();
     if (rssi > 0) rssi = 0;
-    char url[320];
+    char url[320], ver_q[100];
+    url_enc(ver_q, sizeof(ver_q), esp_app_get_description()->version);
     snprintf(url, sizeof(url), "%s/api/ota/check?hw=%s&channel=%s&fw_version=%s&build_id=%s&device_id=%s&battery=%d&rssi=%d",
-             FD_OTA_BASE, CONFIG_FD_OTA_HW, ch, esp_app_get_description()->version, s_build, s_dev_id, bat, rssi);
+             FD_OTA_BASE, CONFIG_FD_OTA_HW, ch, ver_q, s_build, s_dev_id, bat, rssi);
     if (!url_allowed(url)) { st_set(FD_OTA_ST_ERROR, 0, "bad_url"); ESP_LOGI(TAG, "check: base URL khong phai https://"); return RETRY_ERR_S; }
     ESP_LOGI(TAG, "check: GET /api/ota/check (%s, channel=%s, %s, %s, token=%s)", manual ? "thu cong" : "tu dong",
              ch, s_build, s_dev_id, fd_ota_is_paired() ? "co" : "khong");
@@ -822,7 +857,7 @@ static void do_update(bool manual)
     const esp_app_desc_t *cur = esp_app_get_description();
     e = esp_ota_get_partition_description(part, &nd);
     bool desc_ok = e == ESP_OK && !strncmp(nd.project_name, cur->project_name, sizeof(nd.project_name)) &&
-                   !strncmp(nd.version, "FDICT-", 6) && !strncmp(nd.version, s_man.ver, sizeof(nd.version));
+                   fw_same_version(nd.version, s_man.ver);
     ESP_LOGI(TAG, "verify: app '%.32s' %.32s: %s", e == ESP_OK ? nd.project_name : "?", e == ESP_OK ? nd.version : "?", desc_ok ? "OK" : "SAI");
     if (!desc_ok) { esp_https_ota_abort(h); fail("bad_image", RS_FAILED, dur); return; }
     if (s_abort) { esp_https_ota_abort(h); ESP_LOGI(TAG, "download: huy (doi server)"); st_set(FD_OTA_ST_IDLE, 0, NULL); return; }

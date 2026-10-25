@@ -61,7 +61,8 @@ jobs:
           case "$OTA_BIN" in *-full.bin) echo "::error::Cam day -full.bin len OTA"; exit 1 ;; esac
           HW=fnk0104b
           [[ "$HW" =~ ^[a-z0-9]{3,32}$ ]]
-          [[ "${FW_VERSION:?}" =~ ^FDICT-([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || { echo "::error::fw_version sai: $FW_VERSION"; exit 1; }
+          FW_RE='^(FDICT-|FDict One - )([0-9]+)\.([0-9]+)\.([0-9]+)$'
+          [[ "${FW_VERSION:?}" =~ $FW_RE ]] || { echo "::error::fw_version sai: $FW_VERSION"; exit 1; }
           [[ "${BUILD_ID:?}" =~ ^[0-9]{2}[0-9a-f]{4}$ ]] || { echo "::error::build_id sai: $BUILD_ID"; exit 1; }
           SIZE="$(stat -c%s "$OTA_BIN")"
           test "$SIZE" -lt 4194304 || { echo "::error::bin >= 4 MB"; exit 1; }
@@ -273,8 +274,9 @@ jobs:
           GH_VERSION: "2.62.0"
         run: |
           set -euo pipefail
-          [[ "${FW_VERSION:?}" =~ ^FDICT-([0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "::error::fw_version sai: $FW_VERSION"; exit 1; }
-          SEMVER="${BASH_REMATCH[1]}"
+          FW_RE='^(FDICT-|FDict One - )([0-9]+)\.([0-9]+)\.([0-9]+)$'
+          [[ "${FW_VERSION:?}" =~ $FW_RE ]] || { echo "::error::fw_version sai: $FW_VERSION"; exit 1; }
+          SEMVER="${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
           TAG="v$SEMVER"
           [[ "${BUILD_ID:?}" =~ ^[0-9]{2}[0-9a-f]{4}$ ]]
           test -f "${OTA_BIN:?}"; test -f "${FULL_BIN:?}"
@@ -309,7 +311,7 @@ jobs:
 
           BODY="$(mktemp)"
           {
-            echo "## Fdict FDICT-$SEMVER"
+            echo "## FDict One - $SEMVER"
             echo ""
             echo "${NOTES_VI:-Cập nhật firmware}"
             echo ""
@@ -337,7 +339,7 @@ jobs:
           gh release create "$TAG" \
             --repo "$REPO" \
             --target "$GITHUB_SHA" \
-            --title "Fdict FDICT-$SEMVER" \
+            --title "FDict One - $SEMVER" \
             --notes-file "$BODY" \
             "$REL_DIR/${BASE}-full.bin" \
             "$REL_DIR/${BASE}-app.bin" \

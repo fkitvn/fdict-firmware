@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `10` + 4 hex đầu SHA256 của ELF.
 
+## [1.1.8] - 2026-10-25
+
+- Đổi tên hiển thị của máy thành FDict One.
+- Màn Thông tin phiên bản: tiêu đề và dòng Firmware hiển thị dạng “FDict One - <phiên bản>” (ví dụ FDict One - 1.1.8).
+
 ## [1.1.7] - 2026-10-25
 
 - Đổi định dạng mã build: bỏ tiền tố fdictdm, chỉ còn 2 chữ số + 4 ký tự hex (ví dụ 10a3f9).

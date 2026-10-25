@@ -1,6 +1,6 @@
-# Fdict One – Máy học từ vựng
+# FDict One – Máy học từ vựng
 
-Firmware cho **Fdict One**, máy học từ vựng tiếng Anh cầm tay chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
+Firmware cho **FDict One**, máy học từ vựng tiếng Anh cầm tay chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
 Viết bằng C trên ESP-IDF 6.1 và LVGL 9.
 
 _English summary at the end._
@@ -154,10 +154,10 @@ OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>.bin
 
 1. Thiết bị đã ghép, có Wi-Fi và đã đồng bộ giờ sẽ định kỳ gọi `GET {base}/api/ota/check` với các tham số `hw`, `channel`, `fw_version`, `build_id`, `device_id`, `battery`, `rssi`.
 2. Máy chủ trả JSON. Nếu `update` là `false`, thiết bị coi là bản mới nhất (`check_again_s` là chu kỳ kiểm tra lại, tuỳ chọn). Nếu `update` là `true`, cần các trường `release_id`, `fw_version`, `sha256`, `size`, `url` (HTTPS). Các trường tuỳ chọn: `build_id`, `notes_vi`, `mandatory`, `min_battery`.
-3. Thiết bị **không tự so sánh số phiên bản**: máy chủ quyết định có bản mới hay không. Sau khi tải, thiết bị kiểm tra SHA256 của ảnh khớp `sha256`, và phiên bản trong ảnh (bắt đầu bằng `FDICT-`) khớp `fw_version`.
+3. Thiết bị **không tự so sánh số phiên bản**: máy chủ quyết định có bản mới hay không. Sau khi tải, thiết bị kiểm tra SHA256 của ảnh khớp `sha256`, và phiên bản trong ảnh (bắt đầu bằng `FDICT-` hoặc `FDict One - `) khớp `fw_version`.
 4. Thiết bị ghi vào slot OTA còn lại rồi khởi động lại. Bản mới tự kiểm tra (màn hình, bộ nhớ, Wi-Fi), lỗi thì rollback. Trạng thái được báo về `POST {base}/api/ota/report`.
 
-Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `FDICT-1.0.3`).
+Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `FDict One - 1.1.8`; bản cũ: `FDICT-x.y.z`).
 
 ### Nạp firmware qua USB từ trình duyệt
 
@@ -171,7 +171,7 @@ Workflow `.github/workflows/ota-prod.yml` chạy khi **push lên nhánh `prod`**
 2. Upload artifact (file app `.bin` và `build-info.json`).
 3. Đăng bản lên máy chủ: `POST {DICT_API_URL}/api/admin/releases`, multipart, header `X-CI-Token`, kênh `stable`, `rollout_percent=100`.
 4. Tải `-full.bin` của cùng bản build lên máy chủ: `POST {DICT_API_URL}/api/admin/releases/full` (gắn vào `release_id` vừa đăng), cho trình nạp USB trên web.
-5. Tạo **GitHub Release** tag `v<semver>` (tiêu đề `Fdict FDICT-<semver>`) với `...-full.bin`, `...-app.bin` và `SHA256SUMS.txt`, ghi chú lấy từ CHANGELOG. Mỗi bản prod đều xuất hiện ở mục Releases của repo; tag đã có thì bỏ qua, không ghi đè.
+5. Tạo **GitHub Release** tag `v<semver>` (tiêu đề `FDict One - <semver>`) với `...-full.bin`, `...-app.bin` và `SHA256SUMS.txt`, ghi chú lấy từ CHANGELOG. Mỗi bản prod đều xuất hiện ở mục Releases của repo; tag đã có thì bỏ qua, không ghi đè.
 
 Bước OTA chỉ đẩy **bản app** (< 4 MB); `-full.bin` đi qua endpoint riêng ở bước 4.
 
@@ -192,7 +192,7 @@ Lỗi thường gặp: `DICT_API_URL rong` nghĩa là chưa đặt, hoặc đặ
 
 ### Cắt một bản mới
 
-1. Tăng `PROJECT_VER` trong `CMakeLists.txt` gốc, ví dụ `FDICT-1.0.4`. Mỗi bản phải có phiên bản mới.
+1. Tăng `PROJECT_VER` trong `CMakeLists.txt` gốc, ví dụ `FDict One - 1.1.9`. Mỗi bản phải có phiên bản mới.
 2. Thêm mục `## [1.0.3] - YYYY-MM-DD` **ở đầu** `CHANGELOG.md`, ghi thay đổi bằng tiếng Việt. Nội dung mục này thành ghi chú bản phát hành (tối đa 500 ký tự).
 3. Merge hoặc push lên `prod`.
 
@@ -260,7 +260,7 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 
 ## English
 
-**Fdict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, 2x2 multiple-choice quizzes, auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
+**FDict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, 2x2 multiple-choice quizzes, auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
 
 - **Build:** ESP-IDF 6.1, `idf.py set-target esp32s3 && idf.py build`; flash with `idf.py -p <PORT> flash monitor`.
 - **Configure:** server URLs are Kconfig options (`menuconfig`), placeholders by default; `sdkconfig` is git-ignored.

@@ -1,14 +1,24 @@
-# Fdict firmware (ESP32-S3, board Freenove FNK0104B)
+# FDict One firmware (ESP32-S3, board Freenove FNK0104B)
 cmake_minimum_required(VERSION 3.16)
 
 
-# Ten firmware = app version (esp_app_desc.version): "FDICT-1.0.6".
+# Ten firmware = app version (esp_app_desc.version, char[32]): "FDict One - x.y.z" (ban cu: "FDICT-x.y.z").
 # Ma build hien thi luc chay = "10" + 4 ky tu hex dau cua SHA256 ELF (vd 10a3f9).
-set(PROJECT_VER "FDICT-1.1.7")
+set(PROJECT_VER "FDict One - 1.1.8")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-# Ten firmware duy nhat (tieu de, dong Firmware, QR, log khoi dong) = PROJECT_VER
-idf_build_set_property(COMPILE_DEFINITIONS "FD_FW_NAME=\"${PROJECT_VER}\"" APPEND)
+# FD_FW_NAME = PROJECT_VER (QR, log khoi dong, OTA); FD_FW_SEMVER = phan x.y.z.
+# PROJECT_VER co dau cach -> khong truyen qua -D (de vo quoting tuy generator/shell);
+# sinh header build/fd_fw_name.h roi -include cho moi component.
+string(REGEX MATCH "([0-9]+\\.[0-9]+\\.[0-9]+)$" FD_FW_SEMVER "${PROJECT_VER}")
+if(NOT FD_FW_SEMVER)
+    message(FATAL_ERROR "PROJECT_VER phai ket thuc bang x.y.z: ${PROJECT_VER}")
+endif()
+set(FD_FW_NAME_H "${CMAKE_BINARY_DIR}/fd_fw_name.h")
+file(CONFIGURE OUTPUT "${FD_FW_NAME_H}"
+     CONTENT "#pragma once\n#define FD_FW_NAME \"@PROJECT_VER@\"\n#define FD_FW_SEMVER \"@FD_FW_SEMVER@\"\n" @ONLY)
+# SHELL: giu "-include <file>" thanh mot cap (CMake khong khu trung lap tach roi)
+idf_build_set_property(COMPILE_OPTIONS "SHELL:-include ${FD_FW_NAME_H}" APPEND)
 idf_build_set_property(COMPILE_DEFINITIONS "FD_BUILD_PREFIX=\"10\"" APPEND)
 
 project(fdict-fw)

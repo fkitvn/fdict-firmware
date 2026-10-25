@@ -1,8 +1,8 @@
 /* Cai dat > Thong tin phien ban (khong header, nen sang). Mot cot duy nhat, cuon doc, canh giua:
- *   FDICT-1.0.3          (Montserrat 32)   tieu de = FD_FW_NAME (= PROJECT_VER), 1 dong
- *   (neu ten co "-FW-" thi chia 2 dong; ten hien tai khong co)
+ *   FDict One - 1.1.8    (Montserrat 32; khong vua chieu ngang -> Montserrat 24, van khong vua thi xuong dong)
+ *   tieu de + dong Firmware = "FDict One - " FD_FW_SEMVER (x.y.z tach tu PROJECT_VER luc build, khong lap tien to)
  *   bang nhan | gia tri (toan chieu rong, nhan 96px xam nhat, hang >= 24px, ke manh)
- * FD_FW_NAME duoc dinh nghia luc build tu PROJECT_VER (CMakeLists.txt goc). */
+ * FD_FW_NAME / FD_FW_SEMVER sinh luc build tu PROJECT_VER (build/fd_fw_name.h, CMakeLists.txt goc). */
 #include <stdio.h>
 #include <string.h>
 #include "esp_app_desc.h"
@@ -43,6 +43,11 @@ static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_MAC, R_LCD,
                                -3, R_FLASH, R_DATA, R_RAM,
                                -4, R_IP, R_OTA};
 static lv_obj_t *s_val[R_COUNT];
+/* "FDict One - 1.1.8" (PROJECT_VER moi da dung dinh dang nay; dung FD_FW_SEMVER de khong lap tien to) */
+static const char *fw_display(void)
+{
+    return "FDict One - " FD_FW_SEMVER;
+}
 static lv_obj_t *s_ota_msg, *s_ota_spin;
 static lv_timer_t *s_ota_timer;
 
@@ -300,7 +305,7 @@ static void refresh(void)
 {
     if (!s_val[0]) return;
     const esp_app_desc_t *d = esp_app_get_description();
-    lv_label_set_text(s_val[R_FW], FD_FW_NAME);
+    lv_label_set_text(s_val[R_FW], fw_display());
     {
         char id[40];
         ui_device_ident(id, sizeof(id));
@@ -368,22 +373,17 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_bg_opa(col, LV_OPA_60, LV_PART_SCROLLBAR);
     lv_obj_set_style_radius(col, 2, LV_PART_SCROLLBAR);
 
-    /* Tieu de: FD_FW_NAME chia tai "-FW-" -> "FDICT-Fkit" / "FW-1.0" */
-    const char *fw = strstr(FD_FW_NAME, "-FW-");
+    /* Tieu de: "FDict One - <phien ban>". Mont 32 neu vua 1 dong, khong thi Mont 24 (van tran thi tu xuong dong) */
+    const char *title = fw_display();
+    int32_t avail = lv_display_get_horizontal_resolution(NULL) - 2 * 14;   /* pad_hor cua col */
+    lv_point_t ts;
+    lv_text_get_size(&ts, title, &fd_font_mont_32, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
     lv_obj_t *t1 = lv_label_create(col);
-    lv_obj_set_style_text_font(t1, &fd_font_mont_32, 0);
-    if (fw) {
-        lv_label_set_text_fmt(t1, "%.*s", (int)(fw - FD_FW_NAME), FD_FW_NAME);
-        lv_obj_t *t2 = lv_label_create(col);
-        lv_obj_set_style_text_font(t2, &fd_font_noto_18, 0);
-        lv_obj_set_style_text_color(t2, lv_color_hex(FD_COLOR_PRIMARY_TEXT), 0);
-        lv_label_set_text(t2, fw + 1);
-    } else {
-        lv_obj_set_width(t1, lv_pct(100));
-        lv_obj_set_style_text_align(t1, LV_TEXT_ALIGN_CENTER, 0);
-        lv_label_set_long_mode(t1, LV_LABEL_LONG_WRAP);
-        lv_label_set_text(t1, FD_FW_NAME);
-    }
+    lv_obj_set_style_text_font(t1, ts.x <= avail ? &fd_font_mont_32 : &fd_font_mont_24, 0);
+    lv_obj_set_width(t1, lv_pct(100));
+    lv_obj_set_style_text_align(t1, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(t1, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(t1, title);
 
 
     lv_obj_t *ob = lv_button_create(col);

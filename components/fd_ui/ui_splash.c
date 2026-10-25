@@ -1,5 +1,5 @@
 /* Man chao: logo Fdict giua man hinh nen trang trong 1 s, moi lan man hinh bat (boot + thuc tu tat man).
- * Logo 88x73 + dong chu "Fdict One - May hoc tu vung" (Noto 18). Lop phu tren lv_layer_sys() nen man dang mo phia duoi giu nguyen va hien lai sau khi het 1 s.
+ * Logo 88x73 + dong chu "FDict One - May hoc tu vung" (Noto 18). Lop phu tren lv_layer_sys() nen man dang mo phia duoi giu nguyen va hien lai sau khi het 1 s.
  * Trong luc hien: cham bi ui_nav.c chuyen thanh "nha" (touch_read_wrap), nut bi nuot (on_fd_event). */
 #include "esp_log.h"
 #include "fd_fonts.h"
@@ -54,7 +54,7 @@ void ui_splash_show(void)
     lv_obj_t *lbl = lv_label_create(grp);
     lv_obj_set_style_text_font(lbl, &fd_font_noto_18, 0);
     lv_obj_set_style_text_color(lbl, lv_color_hex(0x1E293B), 0);   /* slate dam tren nen trang */
-    lv_label_set_text(lbl, "Fdict One - M\xC3\xA1y h\xE1\xBB\x8D" "c t\xE1\xBB\xAB v\xE1\xBB\xB1ng");
+    lv_label_set_text(lbl, "FDict One - M\xC3\xA1y h\xE1\xBB\x8D" "c t\xE1\xBB\xAB v\xE1\xBB\xB1ng");
     lv_obj_center(grp);
     lv_obj_fade_in(grp, FADE_MS, 0);   /* opa cua nhom ap dung cho ca logo va chu */
     s_t = lv_timer_create(done_cb, SPLASH_MS, NULL);

@@ -335,7 +335,7 @@ void ui_quick_open(void)
     lv_obj_t *pn = lv_label_create(hd);
     lv_obj_set_style_text_font(pn, &fd_font_noto_18, 0);
     lv_obj_set_style_text_color(pn, lv_color_hex(FD_COLOR_TEXT), 0);
-    lv_label_set_text(pn, "Fdict One");
+    lv_label_set_text(pn, "FDict One");
     lv_obj_t *hsp = lv_obj_create(hd);   /* day pin sang phai */
     lv_obj_remove_style_all(hsp);
     lv_obj_set_size(hsp, 1, 1);
