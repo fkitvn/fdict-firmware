@@ -308,7 +308,7 @@ static void refresh(void)
     }
     char sha[9];
     esp_app_get_elf_sha256(sha, sizeof(sha));
-    lv_label_set_text_fmt(s_val[R_BUILD], FD_BUILD_PREFIX "%.4s", sha);   /* fdictdm10 + 4 hex SHA256 ELF */
+    lv_label_set_text_fmt(s_val[R_BUILD], FD_BUILD_PREFIX "%.4s", sha);   /* 10 + 4 hex SHA256 ELF */
     lv_label_set_text_fmt(s_val[R_DATE], "%s %s", d->date, d->time);
     {
         char fs[48];

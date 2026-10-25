@@ -1,7 +1,13 @@
 # Changelog
 
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
-Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
+Build ID (màn *Thông tin*) = `10` + 4 hex đầu SHA256 của ELF.
+
+## [1.1.7] - 2026-10-25
+
+- Đổi định dạng mã build: bỏ tiền tố fdictdm, chỉ còn 2 chữ số + 4 ký tự hex (ví dụ 10a3f9).
+- Đổi tên hiển thị của máy thành Fdict One.
+- Nạp firmware trực tiếp qua USB từ trình duyệt (Chrome/Edge): cắm cáp USB, mở https://fkit.vn/update?product=fkit, bấm Kết nối, chọn cổng rồi làm theo hướng dẫn.
 
 ## [1.1.6] - 2026-10-25
 

@@ -31,7 +31,7 @@
 #include "sdkconfig.h"
 
 #ifndef FD_BUILD_PREFIX
-#define FD_BUILD_PREFIX "fdictdm10"
+#define FD_BUILD_PREFIX "10"
 #endif
 
 static const char *TAG = "fd_ota";

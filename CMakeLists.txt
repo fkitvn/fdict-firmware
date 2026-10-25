@@ -3,13 +3,13 @@ cmake_minimum_required(VERSION 3.16)
 
 
 # Ten firmware = app version (esp_app_desc.version): "FDICT-1.0.6".
-# Ma build hien thi luc chay = "fdictdm10" + 4 ky tu hex dau cua SHA256 ELF (vd fdictdm10a3f9).
-set(PROJECT_VER "FDICT-1.1.6")
+# Ma build hien thi luc chay = "10" + 4 ky tu hex dau cua SHA256 ELF (vd 10a3f9).
+set(PROJECT_VER "FDICT-1.1.7")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # Ten firmware duy nhat (tieu de, dong Firmware, QR, log khoi dong) = PROJECT_VER
 idf_build_set_property(COMPILE_DEFINITIONS "FD_FW_NAME=\"${PROJECT_VER}\"" APPEND)
-idf_build_set_property(COMPILE_DEFINITIONS "FD_BUILD_PREFIX=\"fdictdm10\"" APPEND)
+idf_build_set_property(COMPILE_DEFINITIONS "FD_BUILD_PREFIX=\"10\"" APPEND)
 
 project(fdict-fw)
 

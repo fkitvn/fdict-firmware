@@ -2,7 +2,7 @@
 # Build ban app OTA (ESP-IDF 6.1, esp32s3) cho CI va ghi OTA_BIN, FW_VERSION, BUILD_ID, NOTES_VI vao $GITHUB_ENV.
 #
 # - FW_VERSION: PROJECT_VER trong CMakeLists.txt goc, doi chieu voi esp_app_desc.version trong file bin.
-# - BUILD_ID  : "fdictdm10" + 4 hex dau SHA256 file ELF (= esp_app_get_elf_sha256() tren may, man Thong tin),
+# - BUILD_ID  : "10" + 4 hex dau SHA256 file ELF (= esp_app_get_elf_sha256() tren may, man Thong tin),
 #               doi chieu voi app_elf_sha256 trong esp_app_desc cua file bin.
 # - NOTES_VI  : muc dau tien cua CHANGELOG.md (phai trung semver cua PROJECT_VER), van ban thuong, <= 500 ky tu.
 #
@@ -104,8 +104,8 @@ ELF="$BUILD_DIR/fdict-fw.elf"
 
 # ---------- BUILD_ID + doi chieu esp_app_desc trong bin ----------
 ELF_SHA="$(sha256sum "$ELF" | awk '{print $1}')"
-BUILD_ID="fdictdm10${ELF_SHA:0:4}"
-[[ "$BUILD_ID" =~ ^fdictdm[0-9]{2}[0-9a-f]{4}$ ]] || die "BUILD_ID sai dinh dang: $BUILD_ID"
+BUILD_ID="10${ELF_SHA:0:4}"
+[[ "$BUILD_ID" =~ ^[0-9]{2}[0-9a-f]{4}$ ]] || die "BUILD_ID sai dinh dang: $BUILD_ID"
 
 "$PY" - "$APP_BIN" "$FW_VERSION" "$ELF_SHA" <<'PY' || die "esp_app_desc trong bin khong khop source"
 import struct, sys

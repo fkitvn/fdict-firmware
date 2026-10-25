@@ -1,6 +1,6 @@
-# Fdict – Máy học từ vựng
+# Fdict One – Máy học từ vựng
 
-Firmware cho **Fdict**, máy học từ vựng tiếng Anh cầm tay chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
+Firmware cho **Fdict One**, máy học từ vựng tiếng Anh cầm tay chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
 Viết bằng C trên ESP-IDF 6.1 và LVGL 9.
 
 _English summary at the end._
@@ -92,7 +92,7 @@ Bản phát hành: `idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.d
 
 Trên Windows có thể dùng `tools\flash-monitor.ps1 [-Port COM6] [-NoFlash]` để nạp và ghi log monitor vào `logs\`.
 
-Build ID (màn _Thông tin phiên bản_) = `fdictdm10` + 4 ký tự hex đầu của SHA256 file ELF.
+Build ID (màn _Thông tin phiên bản_) = `10` + 4 ký tự hex đầu của SHA256 file ELF.
 
 ### Nạp lần đầu (ảnh đầy đủ)
 
@@ -159,6 +159,10 @@ OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>.bin
 
 Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `FDICT-1.0.3`).
 
+### Nạp firmware qua USB từ trình duyệt
+
+Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/update?product=fkit> bằng Chrome hoặc Edge, bấm *Kết nối*, chọn cổng của máy rồi làm theo hướng dẫn để nạp bản mới nhất. Không cần cài ESP-IDF.
+
 ## Phát hành OTA qua GitHub Actions
 
 Workflow `.github/workflows/ota-prod.yml` chạy khi **push lên nhánh `prod`**:
@@ -199,7 +203,7 @@ Script dừng build nếu:
 - build có cảnh báo;
 - file bin từ 4 MB trở lên.
 
-`build_id` = `fdictdm10` + 4 hex đầu SHA256 file ELF, giống màn _Thông tin_.
+`build_id` = `10` + 4 hex đầu SHA256 file ELF, giống màn _Thông tin_.
 
 Máy chủ trả `201` khi đăng thành công (kèm `release_id`, dùng để gắn `-full.bin` và tạo GitHub Release). Nếu trả `409` (bản `fw_version`/`build_id` đã tồn tại), máy chủ chỉ trả `{"error":"exists"}`, không có `release_id`, nên workflow **báo lỗi** và dừng (không tải `-full.bin`, không tạo GitHub Release). Muốn phát hành lại: tăng `PROJECT_VER` trong `CMakeLists.txt`, thêm mục mới ở đầu `CHANGELOG.md`, rồi push lại lên `prod`. Tóm tắt job ghi `fw_version`, `build_id`, kích thước, `sha256`, `release_id` và ghi chú.
 
@@ -256,7 +260,7 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 
 ## English
 
-**Fdict** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, 2x2 multiple-choice quizzes, auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
+**Fdict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, 2x2 multiple-choice quizzes, auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
 
 - **Build:** ESP-IDF 6.1, `idf.py set-target esp32s3 && idf.py build`; flash with `idf.py -p <PORT> flash monitor`.
 - **Configure:** server URLs are Kconfig options (`menuconfig`), placeholders by default; `sdkconfig` is git-ignored.
