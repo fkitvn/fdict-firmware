@@ -513,6 +513,21 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
     }
 }
 
+/* DNS du phong: router chi cap 1 DNS (hoac DNS loi) -> getaddrinfo EAI_FAIL. Them 1.1.1.1 / 8.8.8.8 vao o trong;
+ * lwIP tu thu DNS ke tiep khi DNS chinh khong tra loi. Khong ghi de DNS do DHCP cap. */
+static void dns_backup(void)
+{
+    static const uint32_t alt[] = { ESP_IP4TOADDR(1, 1, 1, 1), ESP_IP4TOADDR(8, 8, 8, 8) };
+    const esp_netif_dns_type_t ty[] = { ESP_NETIF_DNS_BACKUP, ESP_NETIF_DNS_FALLBACK };
+    for (int i = 0; i < 2; i++) {
+        esp_netif_dns_info_t d = {0};
+        if (esp_netif_get_dns_info(s_netif, ty[i], &d) == ESP_OK && d.ip.u_addr.ip4.addr != 0) continue;
+        d.ip.type = ESP_IPADDR_TYPE_V4;
+        d.ip.u_addr.ip4.addr = alt[i];
+        esp_netif_set_dns_info(s_netif, ty[i], &d);
+    }
+}
+
 static void ip_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg; (void)base;
@@ -536,6 +551,7 @@ static void ip_event(void *arg, esp_event_base_t base, int32_t id, void *data)
     xSemaphoreGive(s_mtx);
     xEventGroupSetBits(s_eg, BIT_CONNECTED);
     ESP_LOGD(TAG, "Da ket noi \"%s\", IP %s", s_target.ssid, s_ip);
+    dns_backup();
     fd_net_time_start();
     fd_events_post(FD_EVT_WIFI_CONNECTED, NULL, 0);
 }
