@@ -67,6 +67,19 @@ static const char *ota_err_vi(const char *e, char *buf, size_t n)
     return e;
 }
 
+/* Dong "Can Wi-Fi...": chi khi chua ket noi thi cham duoc (gach chan) va mo man WiFi */
+static void wifi_link(bool on)
+{
+    lv_obj_set_clickable(s_ota_msg, on);
+    lv_obj_set_style_text_decor(s_ota_msg, on ? LV_TEXT_DECOR_UNDERLINE : LV_TEXT_DECOR_NONE, 0);
+}
+
+static void wifi_link_cb(lv_event_t *e)
+{
+    (void)e;
+    if (!fd_net_is_connected()) fd_ui_show(FD_SCR_WIFI);   /* man WiFi co san */
+}
+
 static void ota_show(void)
 {
     if (!s_ota_msg) return;
@@ -82,11 +95,13 @@ static void ota_show(void)
         lv_obj_set_hidden(s_ota_spin, true);
         if (strcmp(lv_label_get_text(s_ota_msg), "Cần Wi-Fi để kiểm tra cập nhật")) lv_label_set_text(s_ota_msg, "Cần Wi-Fi để kiểm tra cập nhật");
         lv_obj_set_style_text_color(s_ota_msg, lv_color_hex(0xDC2626), 0);
+        wifi_link(true);   /* cham -> man WiFi */
         if (strcmp(lv_label_get_text(s_ota_btn_lbl), btn)) lv_label_set_text(s_ota_btn_lbl, btn);
         return;
     }
     switch (st.state) {
     case FD_OTA_ST_IDLE:
+        wifi_link(false);
         lv_obj_set_hidden(s_ota_msg, true);
         lv_obj_set_hidden(s_ota_spin, true);
         lv_label_set_text(s_ota_btn_lbl, btn);
@@ -104,6 +119,7 @@ static void ota_show(void)
     case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), "Sẽ khởi động lại khi rảnh"); btn = "Khởi động lại ngay"; break;
     default: col = 0xDC2626; snprintf(b, sizeof(b), "Lỗi: %s", ota_err_vi(st.err, eb, sizeof(eb))); break;
     }
+    wifi_link(false);
     lv_obj_set_hidden(s_ota_msg, false);
     lv_obj_set_hidden(s_ota_spin, !spin);
     if (strcmp(lv_label_get_text(s_ota_msg), b)) lv_label_set_text(s_ota_msg, b);
@@ -414,6 +430,10 @@ static void build(lv_obj_t *scr)
     lv_label_set_long_mode(s_ota_msg, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(s_ota_msg, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_hidden(s_ota_msg, true);
+    lv_obj_add_event_cb(s_ota_msg, wifi_link_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_text_opa(s_ota_msg, LV_OPA_50, LV_STATE_PRESSED);   /* phan hoi khi nhan */
+    lv_obj_set_ext_click_area(s_ota_msg, 10);
+    lv_obj_set_clickable(s_ota_msg, false);
     ota_show();
 
     s_popup_pending = true;

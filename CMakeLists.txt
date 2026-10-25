@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Ten firmware = app version (esp_app_desc.version, char[32]): "FDict One - x.y.z" (dinh dang duy nhat).
 # Build ID = 10 ky tu hex dau (chu thuong) cua SHA256 file ELF (vd 3fa9c01b7e).
-set(PROJECT_VER "FDict One - 1.2.3")
+set(PROJECT_VER "FDict One - 1.2.4")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # FD_FW_NAME = PROJECT_VER (QR, log khoi dong, OTA); FD_FW_SEMVER = phan x.y.z.
