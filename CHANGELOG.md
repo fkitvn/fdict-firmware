@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
+## [1.1.6] - 2026-10-25
+
+- Flash card lấy thẻ từ máy chủ (bộ từ của tài khoản) qua HTTPS với token thiết bị, lưu bộ nhớ đệm để dùng khi offline; chưa ghép hoặc chưa có dữ liệu thì dùng bộ từ mẫu.
+
 ## [1.1.5] - 2026-10-25
 
 - Đồng hồ trên bảng cài đặt nhanh cập nhật mỗi phút thay vì mỗi giây.

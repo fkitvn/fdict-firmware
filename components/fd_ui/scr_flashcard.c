@@ -3,11 +3,15 @@
  *          cac lua chon trong vung cuon, nut [Bat dau] 46 px ghim day man. Nho trong NVS fd/fc_cfg.
  *   CARD : the hai mat (cham de lat, < Truoc / Sau >, bo dem); thu tu ngau nhien them nut Tron.
  * Quay lai (vuot mep / giu B1): CARD -> SETUP -> Home (on_back). (Bo man danh sach: Ngau nhien da nam trong cai dat.)
- * Du lieu: mang fd_fc_item (sau nay lay tu dong bo), hien la 10 tu mau co dinh. */
+ * Du lieu (25/10, FDICT-1.1.6): the tu server (fd_flashcard: POST /api/study/cards, Bearer token, cache /data) - cung mau
+ *   Hoc tap (fd_study). Vao man -> tai nen; bam Bat dau -> chup danh sach the hien co. Chua ghep/offline/chua co cache ->
+ *   10 tu mau co dinh ben duoi (ITEMS). */
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
 #include "fd_fonts.h"
 #include "fd_audio.h"
+#include "fd_flashcard.h"
 #include "fd_dict_mini.h"   /* struct fd_fc_item (word, ipa, meaning, audio TODO) */
 #include "nvs.h"
 #include "ui_priv.h"
@@ -27,12 +31,30 @@ static const struct fd_fc_item ITEMS[] = {
 };
 #define N_ITEMS ((int)(sizeof(ITEMS) / sizeof(ITEMS[0])))
 
+/* bo the dang dung: server/cache (s_net) hoac ITEMS */
+static fd_fc_card_t *s_buf;                 /* FD_FC_MAX, PSRAM (chup tu fd_flashcard) */
+static struct fd_fc_item s_net[FD_FC_MAX];
+static const struct fd_fc_item *s_items = ITEMS;
+static int s_nitems = N_ITEMS;
+
+static void pick_items(void)
+{
+    s_items = ITEMS;
+    s_nitems = N_ITEMS;
+    if (!s_buf) s_buf = heap_caps_calloc(FD_FC_MAX, sizeof(fd_fc_card_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    int n = s_buf ? fd_fc_copy(s_buf, FD_FC_MAX) : 0;
+    if (n <= 0) return;
+    for (int i = 0; i < n; i++) s_net[i] = (struct fd_fc_item){s_buf[i].word, s_buf[i].ipa, s_buf[i].meaning, NULL};
+    s_items = s_net;
+    s_nitems = n;
+}
+
 typedef enum { V_SETUP, V_CARD } view_t;
 static view_t s_view;
 static lv_obj_t *s_body;
 static lv_obj_t *s_front, *s_back, *s_count;
-static uint8_t s_order[N_ITEMS];
-static int s_n;                  /* so the trong phien (<= N_ITEMS) */
+static uint8_t s_order[FD_FC_MAX];
+static int s_n;                  /* so the trong phien (<= s_nitems) */
 static int s_pos;
 static bool s_flipped;
 static int32_t s_pad_hor0;       /* pad ngang mac dinh cua trang (SETUP giong Hoc tap) */
@@ -72,12 +94,12 @@ static void card_say(void)
 {
     if (s_reps == 0) return;   /* Tat: chi nut loa */
     const fd_pron_cfg_t c = {FD_PRON_AUTO, s_reps, true};   /* nhu ui_pron_say (cache -> Pico + tai nen), lap 1/2 lan */
-    ui_pron_say_cfg(ITEMS[s_order[s_pos]].word, &c);
+    ui_pron_say_cfg(s_items[s_order[s_pos]].word, &c);
 }
 
 static void card_refresh(void)
 {
-    const struct fd_fc_item *c = &ITEMS[s_order[s_pos]];
+    const struct fd_fc_item *c = &s_items[s_order[s_pos]];
     /* Mat truoc = Tu: truoc [tu], sau [ipa, nghia]. Mat truoc = Nghia: truoc [nghia], sau [tu, ipa]. */
     lv_label_set_text(lv_obj_get_child(s_front, 0), s_mfront ? c->meaning : c->word);
     lv_label_set_text(lv_obj_get_child(s_back, 0), s_mfront ? c->word : c->ipa);
@@ -113,7 +135,7 @@ static void shuffle_cb(lv_event_t *e) { (void)e; shuffle(); card_refresh(); card
 static void speak_cb(lv_event_t *e)
 {
     (void)e;
-    const struct fd_fc_item *c = &ITEMS[s_order[s_pos]];
+    const struct fd_fc_item *c = &s_items[s_order[s_pos]];
     ui_pron_say(c->word);   /* duong chung: cache -> Pico + tai nen */
 }
 
@@ -160,10 +182,11 @@ static void nav_btn(lv_obj_t *row, const char *txt, lv_event_cb_t cb, intptr_t u
 static void show_card(void)
 {
     s_view = V_CARD;
-    s_n = NOPT[s_ncfg] && NOPT[s_ncfg] < N_ITEMS ? NOPT[s_ncfg] : N_ITEMS;
-    for (int i = 0; i < N_ITEMS; i++) s_order[i] = (uint8_t)i;
+    pick_items();
+    s_n = NOPT[s_ncfg] && NOPT[s_ncfg] < s_nitems ? NOPT[s_ncfg] : s_nitems;
+    for (int i = 0; i < s_nitems; i++) s_order[i] = (uint8_t)i;
     if (s_rnd) {   /* ngau nhien: tron toan bo roi lay s_n the dau */
-        int n = s_n; s_n = N_ITEMS; shuffle(); s_n = n;
+        int n = s_n; s_n = s_nitems; shuffle(); s_n = n;
     }
     s_pos = 0;
     s_flipped = false;
@@ -377,6 +400,7 @@ static void build(lv_obj_t *scr)
     s_pad_hor0 = lv_obj_get_style_pad_left(s_body, LV_PART_MAIN);
     lv_obj_set_style_pad_column(s_body, 6, 0);
     cfg_load();
+    fd_fc_refresh();   /* tai the nen (da ghep + WiFi); khong chan */
     show_setup();
 }
 
