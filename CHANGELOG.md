@@ -5,7 +5,7 @@ Build ID (màn *Thông tin*) = `fdictdm10` + 4 hex đầu SHA256 của ELF.
 
 ## [1.1.4] - 2026-10-25
 
-- ??ng h? tr?n b?ng c?i ??t nhanh c?p nh?t m?i ph?t thay v? m?i gi?y.
+- Đồng hồ trên bảng cài đặt nhanh cập nhật mỗi phút thay vì mỗi giây.
 
 ## [1.1.3] - 2026-10-25
 
