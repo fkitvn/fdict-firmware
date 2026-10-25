@@ -53,7 +53,7 @@ for ln in lines:
 s = " ".join(out).strip()
 if not s:
     sys.exit("CHANGELOG.md: muc [%s] trong" % ver)
-if "\ufffd" in s or re.search(r"(?<=\w)\?(?=\w)", s):
+if "\ufffd" in s or re.search(r"(?<=\w)\?(?=\w)", re.sub(r"https?://\S+", "", s)):
     sys.exit("CHANGELOG.md: muc [%s] co ky tu loi ma hoa (U+FFFD hoac ? giua chu) - hay luu file UTF-8" % ver)
 print(s[:500].rstrip())
 PY
