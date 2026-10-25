@@ -1,4 +1,4 @@
-# Fdict – Hợp đồng API giọng đọc (firmware)
+# FDict One – Hợp đồng API giọng đọc (firmware)
 
 
 ## 1. Endpoint

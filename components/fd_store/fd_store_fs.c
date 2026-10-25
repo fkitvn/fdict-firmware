@@ -35,7 +35,7 @@ esp_err_t fd_store_info(size_t *total, size_t *used)
 esp_err_t fd_store_selftest(void)
 {
     const char *path = FD_STORE_BASE_PATH "/.selftest";
-    const char *msg = "Fdict LittleFS OK - Tiếng Việt ✓";
+    const char *msg = "FDict One LittleFS OK - Tiếng Việt ✓";
     FILE *f = fopen(path, "w");
     if (!f) {
         ESP_LOGE(TAG, "selftest: khong mo duoc %s de ghi", path);

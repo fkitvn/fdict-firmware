@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sinh icon C (LVGL 9) cho Fdict.
+"""Sinh icon C (LVGL 9) cho FDict One.
 
   * 9 o Home: Microsoft Fluent Emoji 3D (MIT) -> 48x48 RGB565A8 (Lanczos, alpha nhan truoc).
   * Icon nho: Material Symbols Rounded (Apache-2.0) -> A8 (to mau bang image_recolor).

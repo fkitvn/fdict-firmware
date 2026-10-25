@@ -1,4 +1,4 @@
-/* fd_ota: OTA tu API may chu Fdict (CONFIG_FD_OTA_BASE_URL, xem include/fd_ota.h).
+/* fd_ota: OTA tu API may chu FDict One (CONFIG_FD_OTA_BASE_URL, xem include/fd_ota.h).
  * Log tag fd_ota, INFO, moi buoc 1 dong. KHONG BAO GIO log token (Authorization) hay query cua URL tai. */
 #include "fd_ota.h"
 #include <stdio.h>

@@ -1,4 +1,4 @@
-menu "Fdict Power"
+menu "FDict One Power"
     config FD_BATTERY_ENABLE
         bool "Doc dien ap pin (ADC) va hien % pin tren UI"
         default y

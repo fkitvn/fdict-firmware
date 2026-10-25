@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fdict: dong goi du lieu giong Pico en-US -> voice.bin cho phan vung flash 'voice' (fd_tts mmap, khong sao chep RAM).
+"""FDict One: dong goi du lieu giong Pico en-US -> voice.bin cho phan vung flash 'voice' (fd_tts mmap, khong sao chep RAM).
 Dung: python tools/mk_voice.py <ta.bin> <sg.bin> <out voice.bin>
 Header 32 B (little-endian): magic "FDVOICE1", u32 version=1, u32 ta_off, u32 ta_len, u32 sg_off, u32 sg_len,
 u32 crc32 (zlib, tu byte 32 den het sg). ta_off = 36 (= 4 mod 16: du lieu sau header SVOX 124 B thang hang 8 B),

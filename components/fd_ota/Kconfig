@@ -1,4 +1,4 @@
-menu "Fdict OTA"
+menu "FDict One OTA"
 
     config FD_OTA_LAB
         bool "LAB: may chu dict trong LAN qua HTTP (chi build thu, KHONG phat hanh)"

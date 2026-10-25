@@ -71,8 +71,8 @@ Mỗi slot ứng dụng 4 MB, nên file ứng dụng `.bin` phải nhỏ hơn 4 
 
 Firmware không chứa địa chỉ máy chủ thật. Đặt URL trong `idf.py menuconfig`:
 
-- `Fdict OTA → Production base URL` (`CONFIG_FD_OTA_BASE_URL`, HTTPS, không kèm `/api`)
-- `Fdict OTA → Production: trang ghep tren web` (`CONFIG_FD_PAIR_WEB_URL`)
+- `FDict One OTA → Production base URL` (`CONFIG_FD_OTA_BASE_URL`, HTTPS, không kèm `/api`)
+- `FDict One OTA → Production: trang ghep tren web` (`CONFIG_FD_PAIR_WEB_URL`)
 - `CONFIG_FD_API_BASE_URL` (API thiết bị)
 
 Giá trị mặc định là placeholder `https://your-server.example`. _Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) dùng `CONFIG_FD_OTA_LAB_BASE_URL` (HTTP trong mạng LAN, chỉ dùng khi phát triển).
@@ -132,10 +132,10 @@ esptool.py --chip esp32s3 -p <PORT> write_flash 0x20000 fdict-firmware-v<ver>-<b
 |---|---|---|
 | Tên file | `fdict-firmware-vX.Y.Z-<build_id>.bin` | `fdict-firmware-vX.Y.Z-<build_id>-full.bin` |
 | Kích thước | ~1,5 MB (phải < 4 MB) | ~16,3 MB (≤ 16 MiB) |
-| Nội dung | chỉ chương trình Fdict | ảnh gộp toàn bộ flash |
+| Nội dung | chỉ chương trình FDict One | ảnh gộp toàn bộ flash |
 | Nạp bằng | OTA | USB, từ offset `0x0` (ESP Web Tools / `esptool.py write_flash 0x0 ...`) |
 
-- **app.bin**: chỉ chương trình Fdict, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 4 MB) nên phải < 4 MB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
+- **app.bin**: chỉ chương trình FDict One, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 4 MB) nên phải < 4 MB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
 - **full.bin**: ảnh gộp (merged image) nạp từ `0x0` qua USB, gồm:
 
 | Offset | Thành phần |
@@ -252,7 +252,7 @@ partitions.csv        bảng phân vùng 16 MB
 Mã nguồn phát hành theo **Apache License 2.0**, xem [LICENSE](LICENSE) và [NOTICE](NOTICE).
 Copyright 2026 fkit.vn / Đinh Thanh Thịnh.
 
-Tên **Fdict**, **fkit.vn** và logo Fdict/fkit.vn (`assets/images/fdict-logo-full.svg` và các ảnh dẫn xuất) là thương hiệu thuộc sở hữu của **fkit.vn**, **không** thuộc phạm vi giấy phép Apache-2.0. Muốn sử dụng cần được fkit.vn cho phép.
+Tên **FDict** (thiết bị: **FDict One**), **fkit.vn** và logo FDict/fkit.vn (`assets/images/fdict-logo-full.svg` và các ảnh dẫn xuất) là thương hiệu thuộc sở hữu của **fkit.vn**, **không** thuộc phạm vi giấy phép Apache-2.0. Muốn sử dụng cần được fkit.vn cho phép.
 
 Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, biểu tượng…): xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -267,4 +267,4 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 - **First-time flashing:** write `fdict-firmware-v<ver>-<build>-full.bin` at `0x0` over USB (esptool or a web flasher).
 - **app.bin vs full.bin:** app.bin (~1.5 MB, < 4 MB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
 - **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
-- **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The Fdict / fkit.vn name and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.
+- **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The FDict (device: FDict One) / fkit.vn names and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.

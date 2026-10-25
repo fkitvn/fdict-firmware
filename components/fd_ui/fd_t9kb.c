@@ -1,5 +1,5 @@
 /*
- * fd_t9kb.c - Ban phim T9 multi-tap cho Fdict (LVGL 9.6, 320x240).
+ * fd_t9kb.c - Ban phim T9 multi-tap cho FDict One (LVGL 9.6, 320x240).
  *
  * Bo cuc (grid 5 cot x 3 hang, giong ban phim dien thoai):
  *   [1 .@-_!?] [2 abc] [3 def] | [ ⌫ ] [QWE]   <- QWE: chuyen sang ban phim QWERTY (lv_keyboard)

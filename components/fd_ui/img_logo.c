@@ -1,6 +1,6 @@
-/* Logo Fdict (mark) cho header quick panel
+/* Logo FDict One (mark) cho header quick panel
  * Raster truc tiep tu assets/images/fdict-logo-full.svg dung kich thuoc hien thi (cairosvg, khong resample/zoom) - 28x28 RGB565A8.
- * Logo/ten Fdict la thuong hieu cua fkit.vn (xem NOTICE). Sinh tu dong, khong sua tay. */
+ * Logo/ten FDict la thuong hieu cua fkit.vn (xem NOTICE). Sinh tu dong, khong sua tay. */
 #include "lvgl.h"
 
 static const uint8_t img_logo_map[] = {

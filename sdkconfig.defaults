@@ -1,4 +1,4 @@
-# Fdict - cau hinh chung (commit vao git). sdkconfig sinh ra tu file nay, KHONG commit sdkconfig.
+# FDict One - cau hinh chung (commit vao git). sdkconfig sinh ra tu file nay, KHONG commit sdkconfig.
 # Sau khi sua file nay: xoa sdkconfig (hoac idf.py fullclean + xoa sdkconfig) roi build lai.
 
 CONFIG_IDF_TARGET="esp32s3"

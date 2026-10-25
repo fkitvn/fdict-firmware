@@ -1,4 +1,4 @@
-# Fdict - bang phan vung 16MB (xem README.md, muc Bang phan vung)
+# FDict One - bang phan vung 16MB (xem README.md, muc Bang phan vung)
 # Bootloader @0x0, partition table @0x8000 (mac dinh)
 # Name,     Type, SubType,  Offset,   Size,     Flags
 nvs,        data, nvs,      0x9000,   0x10000,

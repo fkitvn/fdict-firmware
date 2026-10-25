@@ -1,4 +1,4 @@
-menu "Fdict"
+menu "FDict One"
 
     config FD_TZ
         string "Mui gio (POSIX TZ)"

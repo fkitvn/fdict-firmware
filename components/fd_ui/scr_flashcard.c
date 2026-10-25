@@ -3,7 +3,7 @@
  *          cac lua chon trong vung cuon, nut [Bat dau] 46 px ghim day man. Nho trong NVS fd/fc_cfg.
  *   CARD : the hai mat (cham de lat, < Truoc / Sau >, bo dem); thu tu ngau nhien them nut Tron.
  * Quay lai (vuot mep / giu B1): CARD -> SETUP -> Home (on_back). (Bo man danh sach: Ngau nhien da nam trong cai dat.)
- * Du lieu (25/10, FDICT-1.1.6): the tu server (fd_flashcard: POST /api/study/cards, Bearer token, cache /data) - cung mau
+ * Du lieu (25/10, FDict One - 1.1.6): the tu server (fd_flashcard: POST /api/study/cards, Bearer token, cache /data) - cung mau
  *   Hoc tap (fd_study). Vao man -> tai nen; bam Bat dau -> chup danh sach the hien co. Chua ghep/offline/chua co cache ->
  *   10 tu mau co dinh ben duoi (ITEMS). */
 #include "esp_heap_caps.h"

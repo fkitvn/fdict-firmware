@@ -1,4 +1,4 @@
-/* Man chao: logo Fdict giua man hinh nen trang trong 1 s, moi lan man hinh bat (boot + thuc tu tat man).
+/* Man chao: logo FDict One giua man hinh nen trang trong 1 s, moi lan man hinh bat (boot + thuc tu tat man).
  * Logo 88x73 + dong chu "FDict One" (Noto 18). Lop phu tren lv_layer_sys() nen man dang mo phia duoi giu nguyen va hien lai sau khi het 1 s.
  * Trong luc hien: cham bi ui_nav.c chuyen thanh "nha" (touch_read_wrap), nut bi nuot (on_fd_event). */
 #include "esp_log.h"

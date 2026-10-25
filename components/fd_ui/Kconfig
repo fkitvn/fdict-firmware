@@ -1,4 +1,4 @@
-menu "Fdict UI"
+menu "FDict One UI"
 
     config FD_SLEEP_BTN
         bool "Nut Ngu (deep sleep) trong bang cai dat nhanh"

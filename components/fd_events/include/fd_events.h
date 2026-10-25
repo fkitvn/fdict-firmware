@@ -1,5 +1,5 @@
 #pragma once
-/* Event bus cua Fdict: dung default event loop cua ESP-IDF, base FD_EVENT. */
+/* Event bus cua FDict One: dung default event loop cua ESP-IDF, base FD_EVENT. */
 #include <stdbool.h>
 #include "esp_event.h"
 

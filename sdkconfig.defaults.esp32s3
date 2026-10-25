@@ -1,4 +1,4 @@
-# Fdict - cau hinh rieng ESP32-S3 N16R8 (16MB flash QSPI, 8MB PSRAM octal)
+# FDict One - cau hinh rieng ESP32-S3 N16R8 (16MB flash QSPI, 8MB PSRAM octal)
 
 # --- Flash ---
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y

@@ -2,7 +2,7 @@
 
 | Thành phần | Vị trí | Nguồn | Giấy phép |
 |---|---|---|---|
-| SVOX Pico TTS (engine + en-US lingware `en-US_ta.bin`, `en-US_lh0_sg.bin`) | `components/fd_tts/pico/` | https://github.com/naggety/picotts (từ AOSP `external/svox`), © 2008-2009 SVOX AG | Apache License 2.0 – `components/fd_tts/pico/lib/NOTICE`; thay đổi của Fdict: `components/fd_tts/NOTICE-PICO.txt` |
+| SVOX Pico TTS (engine + en-US lingware `en-US_ta.bin`, `en-US_lh0_sg.bin`) | `components/fd_tts/pico/` | https://github.com/naggety/picotts (từ AOSP `external/svox`), © 2008-2009 SVOX AG | Apache License 2.0 – `components/fd_tts/pico/lib/NOTICE`; thay đổi của FDict One: `components/fd_tts/NOTICE-PICO.txt` |
 | Ooura FFT (trong `picofftsg.c`) | `components/fd_tts/pico/lib/` | http://www.kurims.kyoto-u.ac.jp/~ooura/fft.html, © Takuya Ooura | Giấy phép tự do của tác giả (cho phép dùng/sửa/phân phối, giữ ghi chú) |
 | Noto Sans (font LVGL sinh ra) | `assets/fonts/NotoSans-Regular.ttf`, `components/fd_fonts/` | https://github.com/notofonts | SIL Open Font License 1.1 – `assets/fonts/OFL.txt` |
 | Montserrat (font tích hợp LVGL, nếu bật trong sdkconfig) | LVGL | https://github.com/JulietaUla/Montserrat | SIL Open Font License 1.1 |
@@ -17,4 +17,4 @@
 | lv_font_conv (công cụ, không nằm trong firmware) | `tools/gen_fonts.sh` | https://github.com/lvgl/lv_font_conv | MIT |
 
 Khi phân phối bản nhị phân có Pico TTS: kèm theo bản Apache-2.0 và file NOTICE của Pico.
-**Thương hiệu:** tên Fdict / fkit.vn và logo (`assets/images/fdict-logo-full.svg`, ảnh dẫn xuất như `components/fd_ui/img_logo.c`) thuộc sở hữu của fkit.vn, không cấp phép theo Apache-2.0.
+**Thương hiệu:** tên FDict (thiết bị: FDict One) / fkit.vn và logo (`assets/images/fdict-logo-full.svg`, ảnh dẫn xuất như `components/fd_ui/img_logo.c`) thuộc sở hữu của fkit.vn, không cấp phép theo Apache-2.0.

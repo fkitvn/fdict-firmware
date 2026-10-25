@@ -1,7 +1,7 @@
 #include <stdio.h>
 /*
- * Fdict firmware - diem vao.
- * Che do chon trong menuconfig: Fdict -> Che do firmware (Ung dung / Kiem thu phan cung).
+ * FDict One firmware - diem vao.
+ * Che do chon trong menuconfig: FDict One -> Che do firmware (Ung dung / Kiem thu phan cung).
  */
 #include "esp_log.h"
 #include "esp_app_desc.h"
