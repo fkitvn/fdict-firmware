@@ -1,7 +1,11 @@
 # Changelog
 
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
-Build ID (màn *Thông tin*) = `10` + 4 hex đầu SHA256 của ELF.
+Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
+
+## [1.2.0] - 2026-10-25
+
+- Màn hình chào: dòng chữ “FDict One - Máy học từ vựng” dưới logo hiển thị trên một dòng, không còn bị xuống dòng.
 
 ## [1.1.9] - 2026-10-25
 
