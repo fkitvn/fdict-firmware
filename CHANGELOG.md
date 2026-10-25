@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = `10` + 4 hex đầu SHA256 của ELF.
 
+## [1.1.9] - 2026-10-25
+
+- Màn hình chào hiển thị logo và dòng “FDict One - Máy học từ vựng”.
+- Thống nhất tên gọi: thiết bị là FDict One, phần mềm máy tính là FDict (menu cấu hình, tài liệu, thông báo).
+
 ## [1.1.8] - 2026-10-25
 
 - Đổi tên hiển thị của máy thành FDict One; phần mềm máy tính tên là FDict.
