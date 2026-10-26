@@ -38,6 +38,7 @@ static const int NOPT[3] = {10, 20, 0};   /* 0 = Vo tan */
 static uint8_t s_reps = 0;       /* tu dong phat: 0 Tat, 1/2 lan; NVS fd/pron_cfg bit 8..15, bit 24..31 = PRON_VER */
 #define PRON_VER 2u               /* 23/10: cfg cu (khong co ver) -> Tat 1 lan, lua chon sau do giu nguyen */
 static uint32_t s_pron_keep;     /* cac bit cu cua pron_cfg (nguon/tai nen, bo khong dung) giu nguyen khi ghi */
+static int s_said_pos = -1;   /* 1.3.1: cau da tu dong phat (chong phat lai khi dung lai cung cau) */
 static int s_pos, s_score, s_done;   /* s_pos: chi so cau toan bai (noi nhieu phien); s_done: so cau da tra loi */
 static bool s_wait;                  /* V_LOAD giua bai: cho nap phien tiep */
 static bool s_answered;
@@ -466,6 +467,7 @@ static void poll_cb(lv_timer_t *t)
     }
     if (st.state == FD_STUDY_READY) {
         s_pos = s_score = s_done = 0;
+        s_said_pos = -1;
         show_quiz();
     } else if (st.state == FD_STUDY_ERROR) show_msg(&st);
 }
@@ -523,6 +525,9 @@ static void show_quiz(void)
     s_view = V_QUIZ;
     body_reset();
     s_answered = false;
+    /* 1.3.1: Anh-Viet + Tu dong phat 1/2 lan -> doc tu cua MOI cau moi (dau bai, cau tiep, sau khi cho phien); 1 lan/cau.
+     * fd_pron khong co API huy: yeu cau xep hang sau am dung/sai cua cau truoc. Viet-Anh: van doc sau khi tra loi (khong lo dap an). */
+    if (s_dir == 0 && s_said_pos != s_pos) { s_said_pos = s_pos; quiz_say(q->prompt, false); }
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 4, 0);
 

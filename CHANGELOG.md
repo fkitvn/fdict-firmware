@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.3.1] - 2026-10-26
+
+- Học tập (Anh-Việt): khi bật Tự động phát (1 lần / 2 lần), máy tự đọc từ vựng mỗi khi chuyển sang câu hỏi mới, kể cả câu đầu tiên và câu sau khi tải thêm; mỗi câu chỉ đọc một lượt.
+
 ## [1.3.0] - 2026-10-26
 
 - Giao diện song ngữ Tiếng Việt / English (lv_i18n): Trang chủ, Cài đặt, Thông tin, Wi-Fi, Học tập, Flash card và các màn cài đặt con.
