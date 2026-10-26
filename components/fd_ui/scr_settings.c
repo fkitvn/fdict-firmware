@@ -62,10 +62,7 @@ static void pair_icon_fill(void)
 {
     lv_obj_clean(s_pair_ico);
     bool paired = fd_ota_is_paired();
-    /* 1.3.3: chua ghep -> noi bat (nen amber nhat, vien + chu cam, icon canh bao); da ghep -> binh thuong */
-    lv_obj_set_style_bg_color(s_pair_card, paired ? lv_color_white() : lv_color_hex(FD_COLOR_PRIMARY_TINT), 0);
-    lv_obj_set_style_border_width(s_pair_card, paired ? 0 : 2, 0);
-    lv_obj_set_style_border_color(s_pair_card, lv_color_hex(FD_COLOR_ALERT), 0);
+    /* 1.3.4: chua ghep -> chi chu trang thai mau cam + cham cam nho goc tren-phai icon; hang giu nhu cac hang khac */
     lv_obj_set_style_text_color(s_pair_sub, paired ? lv_palette_darken(LV_PALETTE_GREY, 1) : lv_color_hex(FD_COLOR_ALERT), 0);
     char nm[64];
     if (paired && fd_ota_get_user_name(nm, sizeof(nm))) {
@@ -76,9 +73,18 @@ static void pair_icon_fill(void)
     } else {
         lv_obj_t *i = lv_label_create(s_pair_ico);
         lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
-        lv_label_set_text(i, paired ? LV_SYMBOL_SHUFFLE : LV_SYMBOL_WARNING);
-        if (!paired) lv_obj_set_style_text_color(i, lv_color_hex(FD_COLOR_ALERT), 0);
+        lv_label_set_text(i, LV_SYMBOL_SHUFFLE);
         lv_obj_center(i);
+        if (!paired) {   /* cham thong bao 8 px (xoa cung lv_obj_clean khi da ghep) */
+            lv_obj_t *dot = lv_obj_create(s_pair_ico);
+            lv_obj_remove_style_all(dot);
+            lv_obj_set_size(dot, 8, 8);
+            lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_color(dot, lv_color_hex(FD_COLOR_ALERT), 0);
+            lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
+            lv_obj_set_clickable(dot, false);
+            lv_obj_align(dot, LV_ALIGN_TOP_RIGHT, -4, 6);
+        }
         lv_label_set_text(s_pair_title, _("PAIR_DEVICE"));
         lv_label_set_text(s_pair_sub, paired ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
     }
