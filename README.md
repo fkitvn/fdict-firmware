@@ -90,48 +90,50 @@ idf.py -p <PORT> flash monitor   # nạp bootloader, bảng phân vùng, ứng d
 
 Trên Windows có thể dùng `tools\flash-monitor.ps1 [-Port COM6] [-NoFlash]` để nạp và ghi log monitor vào `logs\`.
 
-Build ID (màn _Thông tin phiên bản_) = `10` + 4 ký tự hex đầu của SHA256 file ELF.
+Build ID (màn _Thông tin phiên bản_) = 10 ký tự hex đầu (chữ thường) của SHA256 file ELF.
 
 ### Nạp lần đầu (ảnh đầy đủ)
 
 Máy mới, hoặc máy đang chạy bảng phân vùng cũ (trước 1.0.0, chưa có `voice`), phải nạp **một lần qua USB** bằng ảnh đầy đủ `fdict-firmware-v<ver>-<build>-full.bin` tại offset `0x0`. Ảnh này gồm bootloader, bảng phân vùng, otadata, ứng dụng và `voice`:
 
 ```sh
-esptool.py --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>-<build>-full.bin
+esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>-<build>-full.bin
 ```
 
-Hoặc dùng web flasher (Chrome/Edge, ví dụ <https://espressif.github.io/esptool-js/>): chọn cổng, thêm file `-full.bin` ở địa chỉ `0x0`, bấm Program.
+Cách dễ nhất: mở <https://fkit.vn/firmware?product=fdictone> bằng Chrome/Edge và bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)). Hoặc dùng <https://espressif.github.io/esptool-js/>: chọn cổng, thêm file `-full.bin` ở địa chỉ `0x0`, bấm Program.
 
 Khi đổi bảng phân vùng, phân vùng `/data` (LittleFS) bị định dạng lại: mất cache bài học và kết quả chưa gửi. NVS giữ nguyên, không cần ghép lại.
 
 Ảnh đầy đủ được tạo bằng `esptool merge-bin` theo `build/flash_args`:
 
 ```sh
-esptool.py --chip esp32s3 merge_bin -o full.bin --flash_mode dio --flash_freq 80m --flash_size 16MB \
+esptool --chip esp32s3 merge_bin -o full.bin --flash_mode dio --flash_freq 80m --flash_size 16MB \
   0x0 bootloader/bootloader.bin 0x8000 partition_table/partition-table.bin 0x19000 ota_data_initial.bin \
   0x20000 fdict-firmware.bin 0xe30000 voice.bin
 ```
 
+`--flash_mode dio` lấy đúng theo `build/flash_args` (header ảnh ghi DIO); chip vẫn chạy QIO theo `CONFIG_ESPTOOLPY_FLASHMODE_QIO` trong `sdkconfig.defaults.esp32s3`.
+
 ### Dữ liệu giọng đọc
 
-- Cập nhật riêng: `esptool.py --chip esp32s3 -p <PORT> write_flash 0xE30000 fdict-voice-v<ver>.bin`.
-- Tạo bằng `python tools/mk_voice.py <ta.bin> <sg.bin> voice.bin` (tự chạy khi build).
+- Đã nằm sẵn trong `-full.bin` (offset `0xE30000`); GitHub Release không đính kèm file giọng riêng.
+- Muốn nạp riêng: tự build để có `build/voice.bin` (tạo bằng `python tools/mk_voice.py <ta.bin> <sg.bin> voice.bin`, tự chạy khi build), rồi `esptool --chip esp32s3 -p <PORT> write_flash 0xE30000 build/voice.bin`.
 - Thiếu hoặc hỏng dữ liệu giọng: máy vẫn chạy, Pico TTS tắt, nút loa báo "Thiếu dữ liệu giọng đọc".
 
 Chỉ cập nhật ứng dụng qua USB (máy đã có bảng phân vùng mới):
 
 ```sh
-esptool.py --chip esp32s3 -p <PORT> write_flash 0x20000 fdict-firmware-v<ver>-<build>.bin
+esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x20000 fdict-firmware-v<ver>-<build>-app.bin
 ```
 
 ## app.bin và full.bin
 
 | | app.bin | full.bin |
 |---|---|---|
-| Tên file | `fdict-firmware-vX.Y.Z-<build_id>.bin` | `fdict-firmware-vX.Y.Z-<build_id>-full.bin` |
+| Tên file | `fdict-firmware-vX.Y.Z-<build_id>-app.bin` | `fdict-firmware-vX.Y.Z-<build_id>-full.bin` |
 | Kích thước | ~1,5 MB (phải < 4 MB) | ~16,3 MB (≤ 16 MiB) |
 | Nội dung | chỉ chương trình FDict One | ảnh gộp toàn bộ flash |
-| Nạp bằng | OTA | USB, từ offset `0x0` (ESP Web Tools / `esptool.py write_flash 0x0 ...`) |
+| Nạp bằng | OTA | USB, từ offset `0x0` (fkit.vn/firmware / `esptool write_flash 0x0 ...`) |
 
 - **app.bin**: chỉ chương trình FDict One, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 4 MB) nên phải < 4 MB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
 - **full.bin**: ảnh gộp (merged image) nạp từ `0x0` qua USB, gồm:
@@ -166,7 +168,7 @@ Cài đặt > Ngôn ngữ / Language. Font tiêu đề `fd_font_noto_32_title` l
 
 ## Cập nhật OTA
 
-OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>.bin`, không dùng `-full.bin`). Bảng phân vùng và dữ liệu giọng không đổi qua OTA.
+OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>-app.bin`, không dùng `-full.bin`). Bảng phân vùng và dữ liệu giọng không đổi qua OTA.
 
 1. Thiết bị đã ghép, có Wi-Fi và đã đồng bộ giờ sẽ định kỳ gọi `GET {base}/api/ota/check` với các tham số `hw`, `channel`, `fw_version`, `build_id`, `device_id`, `battery`, `rssi`.
 2. Máy chủ trả JSON. Nếu `update` là `false`, thiết bị coi là bản mới nhất (`check_again_s` là chu kỳ kiểm tra lại, tuỳ chọn). Nếu `update` là `true`, cần các trường `release_id`, `fw_version`, `sha256`, `size`, `url` (HTTPS). Các trường tuỳ chọn: `build_id`, `notes_vi`, `mandatory`, `min_battery`.
@@ -177,7 +179,7 @@ Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `
 
 ### Nạp firmware qua USB từ trình duyệt
 
-Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/update?product=fkit> bằng Chrome hoặc Edge, bấm *Kết nối*, chọn cổng của máy rồi làm theo hướng dẫn để nạp bản mới nhất. Không cần cài ESP-IDF.
+Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/firmware?product=fdictone> bằng Chrome hoặc Edge, bấm *Nạp firmware*, chọn cổng của máy rồi làm theo hướng dẫn để nạp bản mới nhất. Không cần cài ESP-IDF.
 
 ## Phát hành OTA qua GitHub Actions
 
@@ -282,5 +284,5 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 - **Configure:** server URLs are Kconfig options (`menuconfig`), placeholders by default; `sdkconfig` is git-ignored.
 - **First-time flashing:** write `fdict-firmware-v<ver>-<build>-full.bin` at `0x0` over USB (esptool or a web flasher).
 - **app.bin vs full.bin:** app.bin (~1.5 MB, < 4 MB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
-- **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
+- **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>-app.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
 - **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The FDict (device: FDict One) / fkit.vn names and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.

@@ -331,8 +331,8 @@ jobs:
             echo ""
             echo "### Cách nạp"
             echo ""
-            echo "- Máy mới / máy lỗi: nạp \`${BASE}-full.bin\` tại 0x0 qua USB bằng trình nạp web (Chrome/Edge), hoặc:"
-            echo "  \`esptool --chip esp32s3 write_flash 0x0 ${BASE}-full.bin\`"
+            echo "- Máy mới / máy lỗi: mở https://fkit.vn/firmware?product=fdictone bằng Chrome/Edge và bấm Nạp firmware (không cần tải file), hoặc nạp \`${BASE}-full.bin\` tại 0x0:"
+            echo "  \`esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 ${BASE}-full.bin\`"
             echo "- \`${BASE}-app.bin\` chỉ dùng cho OTA (máy đang chạy tự cập nhật). **Không** nạp app.bin ở 0x0."
           } > "$BODY"
 
