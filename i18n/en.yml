@@ -1,0 +1,153 @@
+en:
+  ABOUT: About
+  ALL: All
+  AUTO_PLAY: Auto play
+  BACK: Back
+  BUILD_DATE: Build date
+  CANCEL: Cancel
+  CARDS: Cards
+  CHANGE_PASSWORD: Change password
+  CHECKING: Checking…
+  CHECK_FOR_UPDATES: Check for updates
+  CHECK_WIFI_RETRY: Check Wi-Fi and try again.
+  CHIP_INFO: '%s v%u.%u, %u cores, N%uR%u'
+  CLOSE: Close
+  COMING_SOON: Coming soon
+  CONNECT: Connect
+  CONNECTED: Connected
+  CONNECTING: Connecting
+  CONNECTING_TO_WIFI: Connecting to WiFi
+  CONNECTIVITY: Connectivity
+  CONTINUE: Continue
+  DATA: Data
+  DEVELOPER_MODE: Developer mode
+  DEVICE: Device
+  DEVICE_ID: Device ID
+  DEVICE_PAIRED: Device paired
+  DEVMODE_UNPAIR_WARN: >-
+    The device will be unpaired from your account; you will need to sign in
+    again
+  DIRECTION: Direction
+  DISPLAY: Display
+  DISPLAY_INFO: '%dx%d, rotated %d°'
+  ENDLESS: Endless
+  EN_VI: EN-VI
+  ERROR_FMT: 'Error: %s'
+  FLASH_CARD: Flash card
+  FLASH_MEMORY: Flash memory
+  FORGET: Forget
+  FORGET_THIS_NETWORK: Forget this network
+  FRONT_SIDE: Front side
+  HOME: Home
+  INTERNAL_RAM: Internal RAM
+  INVALID_QUESTION_DATA: Invalid question data
+  IN_ORDER: In order
+  LATER: Later
+  LOADING_QUESTIONS: Loading questions…
+  MEANING: Meaning
+  MEMORY: Memory
+  MISSING: Missing
+  NEVER: Never
+  NEXT: Next >
+  NONE: None
+  NOT_CONNECTED: Not connected
+  NOT_PAIRED: Not paired
+  NOT_SET: Not set
+  NO_NETWORKS_FOUND: No networks found
+  NO_OFFLINE_DATA_YET: No offline data yet
+  NO_UPDATE_AVAILABLE: No update available
+  N_MIN: '%d min'
+  N_SEC: '%d sec'
+  'OFF': 'Off'
+  OFFLINE_CONNECT_HINT: Connect Wi-Fi to download questions automatically.
+  OFFLINE_DATA_READY: Offline data ready
+  OFFLINE_NO_WIFI: 'No Wi-Fi, studying offline'
+  'ON': 'On'
+  OPEN: Open
+  OPEN_WIFI: Open Wi-Fi
+  ORDER: Order
+  OTA_DOWNLOADING: Downloading %d%%
+  OTA_ERR_BAD_IMAGE: invalid image
+  OTA_ERR_BATT_LOW: low battery
+  OTA_ERR_HTTP: server (%s)
+  OTA_ERR_NET: network
+  OTA_ERR_NO_TIME: clock not synced
+  OTA_ERR_NO_WIFI: WiFi not connected
+  OTA_ERR_TOO_LARGE: image too large
+  OTA_ERR_VERIFY: checksum mismatch
+  OTA_NEED_WIFI: Wi-Fi needed to check for updates
+  OTA_NEW_VERSION: New version %s (%u.%02u MB)
+  OTA_RESTARTING: Restarting to update…
+  OTA_UPDATE_ASK: New version %s/%s (%u.%02u MB). Update now?
+  PAIR_DEVICE: Pair device
+  PAIR_HINT: Pair the device with your account on your phone.
+  PAIR_TO_STUDY: Pair the device to study
+  PASSWORD: Password
+  PIN_CODE: PIN code
+  PREV: < Prev
+  QUESTIONS: Questions
+  QUIT: Quit
+  QUIT_THIS_QUIZ: Quit this quiz?
+  QUIZ_CORRECT_PCT: correct · %d%%
+  QUIZ_QUESTION_N: Q %d
+  QUIZ_QUESTION_N_OF: Q %d/%d
+  QUIZ_SCORE: Score %d
+  RANDOM: Random
+  RECONNECT: Reconnect
+  REPEAT_1: 1 time
+  REPEAT_2: 2 times
+  RESTART_NOW: Restart now
+  RESULT: Result
+  RETRY: Retry
+  SAVED: Saved
+  SCANNING: Scanning…
+  SCREEN_BRIGHTNESS: Screen brightness
+  SCREEN_ROTATION: Screen rotation
+  SCREEN_TIMEOUT: Screen timeout
+  SECURED: Secured
+  SERVER: Server
+  SERVER_ERROR_CODE: Server error (%d)
+  SERVER_UNREACHABLE: Cannot reach the server
+  SET: Set
+  SETTINGS: Settings
+  SHUFFLE: Shuffle
+  SIZE: Size
+  SOFTWARE: Software
+  START: Start
+  STATISTICS: Statistics
+  STUDY: Study
+  STUDY_NEEDS_WIFI: Study needs Wi-Fi to download questions.
+  SWIPE_BACK_HINT: Swipe from the left/right edge to go back
+  SYNC: Sync
+  SYNC_PENDING_N: '%d waiting to sync'
+  TAP_TO_FLIP: Tap to flip the card
+  TAP_TO_SETUP_WIFI: Tap to set up Wi-Fi
+  TIMEOUT_WAKE_HINT: Touch the screen or press a button to wake
+  TURN_OFF_DEVELOPER_MODE: Turn off developer mode?
+  TURN_ON_DEVELOPER_MODE: Turn on developer mode?
+  UNPAIRED_LAB: Lab server · unpaired
+  UNPAIRED_OFFICIAL: Official server · unpaired
+  UNREADABLE: Unreadable
+  UPDATE: Update
+  UPGRADE: Upgrade
+  VI_EN: VI-EN
+  VOICE: Voice
+  VOLUME: Volume
+  WIFI_AUTH_FAILED: Could not authenticate with router “%s” (code %d). Try again later.
+  WIFI_CONNECTING_TO: Connecting to %s…
+  WIFI_FORGET_ASK: Forget network %s?
+  WIFI_LOST_RETRYING: Connection lost – retrying…
+  WIFI_LOST_TAP_TO_OPEN: WiFi lost - tap to open
+  WIFI_NETWORK_NAME: 'Network: %s'
+  WIFI_NOT_CONNECTED: Wi-Fi not connected
+  WIFI_NOT_FOUND: Network “%s” not found
+  WIFI_NO_SAVED: No saved networks. Choose a network below.
+  WIFI_PASSWORD_SHORT: WPA password needs at least 8 characters
+  WIFI_SAVED_CONNECTED: Saved · Connected to this network
+  WIFI_SAVED_CONNECTING: Saved · Connecting…
+  WIFI_SAVED_NOT_CONNECTED: Saved · Not connected
+  WIFI_SECTION_AVAILABLE: AVAILABLE NETWORKS
+  WIFI_SECTION_SAVED: SAVED
+  WIFI_WRONG_PASSWORD: Wrong password for “%s”. Select the network to re-enter it.
+  WILL_RESTART_WHEN_IDLE: Will restart when idle
+  WORD: Word

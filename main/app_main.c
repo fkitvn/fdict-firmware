@@ -10,6 +10,7 @@
 #include "esp_ota_ops.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "fd_i18n.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
 
@@ -90,6 +91,7 @@ void app_main(void)
         ESP_LOGI(TAG, "efuse optional_unique_id: %s, %s, %s", esp_err_to_name(ue), nz ? "da ghi" : "chua ghi (toan 0)", hx);
     }
     nvs_init();
+    fd_i18n_init();   /* ngon ngu giao dien (NVS fd/lang, mac dinh vi) truoc khi UI chay */
     sys_info_print();
 
     run_app();

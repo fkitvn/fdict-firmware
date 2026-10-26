@@ -57,7 +57,7 @@ static void build(lv_obj_t *scr)
     lv_obj_t *t = lv_label_create(body);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);   /* doc: tieu de xuong dong, khong tran */
-    lv_label_set_text(t, "Độ sáng màn hình");
+    lv_label_set_text(t, _("SCREEN_BRIGHTNESS"));
 
     lv_obj_t *row = lv_obj_create(body);
     lv_obj_remove_style_all(row);

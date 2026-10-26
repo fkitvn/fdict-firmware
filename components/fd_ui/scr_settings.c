@@ -15,6 +15,7 @@ static lv_obj_t *s_bri_sub;
 static lv_obj_t *s_vol_sub;
 static lv_obj_t *s_to_sub;
 static lv_obj_t *s_pin_sub;
+static lv_obj_t *s_lang_sub;   /* 1.3.0: Ngon ngu / Language */
 static lv_obj_t *s_pair_card, *s_pair_sub;
 
 static void go_cb(lv_event_t *e)
@@ -65,14 +66,14 @@ static void pair_icon_fill(void)
         lv_obj_t *av = ui_avatar_initials(s_pair_ico, nm, 36, 0x2563EB);
         lv_obj_center(av);
         lv_label_set_text(s_pair_title, nm);
-        lv_label_set_text(s_pair_sub, "Đã ghép thiết bị");
+        lv_label_set_text(s_pair_sub, _("DEVICE_PAIRED"));
     } else {
         lv_obj_t *i = lv_label_create(s_pair_ico);
         lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
         lv_label_set_text(i, LV_SYMBOL_SHUFFLE);
         lv_obj_center(i);
-        lv_label_set_text(s_pair_title, "Ghép thiết bị");
-        lv_label_set_text(s_pair_sub, fd_ota_is_paired() ? "Đã ghép thiết bị" : "Chưa ghép");
+        lv_label_set_text(s_pair_title, _("PAIR_DEVICE"));
+        lv_label_set_text(s_pair_sub, fd_ota_is_paired() ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
     }
 }
 
@@ -129,8 +130,9 @@ static void dlg_close(bool confirm)
         ui_devmode_set(s_dlg_on);
         fd_study_cancel();             /* bo ket qua hoc dang tai tu server cu */
         fd_ota_set_server(s_dlg_on);
-        if (s_pair_card) pair_icon_fill();
-        fd_ui_toast(s_dlg_on ? "Server Lab · đã huỷ ghép" : "Server chính thức · đã huỷ ghép");
+        lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
+    if (s_pair_card) pair_icon_fill();
+        fd_ui_toast(s_dlg_on ? _("UNPAIRED_LAB") : _("UNPAIRED_OFFICIAL"));
     }
     else if (s_dev_sw) lv_obj_set_state(s_dev_sw, LV_STATE_CHECKED, !s_dlg_on);   /* Huy -> tra cong tac ve cu */
 }
@@ -178,20 +180,20 @@ static void dlg_open(void)
     lv_obj_t *t = lv_label_create(box);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(t, s_dlg_on ? "Bật chế độ nhà phát triển?" : "Tắt chế độ nhà phát triển?");
+    lv_label_set_text(t, s_dlg_on ? _("TURN_ON_DEVELOPER_MODE") : _("TURN_OFF_DEVELOPER_MODE"));
     lv_obj_t *w = lv_label_create(box);
     lv_obj_set_width(w, lv_pct(100));
     lv_label_set_long_mode(w, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(w, lv_color_hex(0x6B7280), 0);
-    lv_label_set_text(w, "Thiết bị sẽ huỷ ghép nối với tài khoản, bạn sẽ cần đăng nhập lại");
+    lv_label_set_text(w, _("DEVMODE_UNPAIR_WARN"));
     lv_obj_t *row = lv_obj_create(box);
     lv_obj_remove_style_all(row);
     lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(row, 10, 0);
     lv_obj_set_style_pad_top(row, 4, 0);
-    dlg_btn(row, "Hủy", false);
-    dlg_btn(row, s_dlg_on ? "Bật" : "Tắt", true);
+    dlg_btn(row, _("CANCEL"), false);
+    dlg_btn(row, s_dlg_on ? _("ON") : _("OFF"), true);
 }
 
 static void dev_cb(lv_event_t *e)
@@ -227,7 +229,7 @@ static void dev_row(lv_obj_t *parent)
     lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
     lv_label_set_text(i, LV_SYMBOL_WARNING);
     lv_obj_t *l = lv_label_create(r);
-    lv_label_set_text(l, "Chế độ nhà phát triển");
+    lv_label_set_text(l, _("DEVELOPER_MODE"));
     lv_obj_set_flex_grow(l, 1);
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);   /* ngang: chu dai khong tran hang */
     lv_obj_t *sw = s_dev_sw = lv_switch_create(r);
@@ -240,14 +242,15 @@ static void refresh(void)
 {
     char ssid[33];
     fd_net_ssid(ssid, sizeof(ssid));
-    lv_label_set_text(s_wifi_sub, fd_net_is_connected() ? ssid : "Chưa kết nối");
+    lv_label_set_text(s_wifi_sub, fd_net_is_connected() ? ssid : _("NOT_CONNECTED"));
     lv_label_set_text_fmt(s_bri_sub, "%d%%", fd_display_get_brightness());
     lv_label_set_text_fmt(s_vol_sub, "%d%%", fd_audio_get_volume());
     int to = ui_sleep_get_timeout();
-    if (to == 0) lv_label_set_text(s_to_sub, "Không tắt");
-    else if (to % 60 == 0) lv_label_set_text_fmt(s_to_sub, "%d phút", to / 60);
-    else lv_label_set_text_fmt(s_to_sub, "%d giây", to);
-    lv_label_set_text(s_pin_sub, fd_pin_is_set() ? "Đã đặt" : "Chưa đặt");
+    if (to == 0) lv_label_set_text(s_to_sub, _("NEVER"));
+    else if (to % 60 == 0) lv_label_set_text_fmt(s_to_sub, _("N_MIN"), to / 60);
+    else lv_label_set_text_fmt(s_to_sub, _("N_SEC"), to);
+    lv_label_set_text(s_pin_sub, fd_pin_is_set() ? _("SET") : _("NOT_SET"));
+    lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
     if (s_pair_card) pair_icon_fill();
     lv_label_set_text_fmt(s_rot_sub, "%d°", fd_display_rotation_deg(fd_display_get_rotation()));
 }
@@ -259,20 +262,21 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_pad_row(body, 8, 0);
     lv_obj_set_scrollable(body, true);
     /* Tieu de lon can giua (font subset 32 px co dau, chi dung o day) */
-    ui_screen_title(body, "Cài đặt");
+    ui_screen_title(body, _("SETTINGS"));
     pair_card(body);   /* muc lon dau danh sach */
     item(body, LV_SYMBOL_WIFI, "WiFi", go_cb, (void *)(intptr_t)FD_SCR_WIFI, &s_wifi_sub);
-    item(body, LV_SYMBOL_EYE_OPEN, "Độ sáng màn hình", go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
-    item(body, LV_SYMBOL_VOLUME_MAX, "Âm lượng", go_cb, (void *)(intptr_t)FD_SCR_VOLUME, &s_vol_sub);
-    item(body, LV_SYMBOL_POWER, "Thời gian chờ màn hình", go_cb, (void *)(intptr_t)FD_SCR_TIMEOUT, &s_to_sub);
-    item(body, LV_SYMBOL_REFRESH, "Hướng xoay màn hình", go_cb, (void *)(intptr_t)FD_SCR_ROTATION, &s_rot_sub);
-    item(body, LV_SYMBOL_EYE_CLOSE, "Mã PIN", go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
-    item(body, LV_SYMBOL_LIST, "Thông tin phiên bản", go_cb, (void *)(intptr_t)FD_SCR_ABOUT, NULL);
+    item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
+    item(body, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), go_cb, (void *)(intptr_t)FD_SCR_VOLUME, &s_vol_sub);
+    item(body, LV_SYMBOL_POWER, _("SCREEN_TIMEOUT"), go_cb, (void *)(intptr_t)FD_SCR_TIMEOUT, &s_to_sub);
+    item(body, LV_SYMBOL_REFRESH, _("SCREEN_ROTATION"), go_cb, (void *)(intptr_t)FD_SCR_ROTATION, &s_rot_sub);
+    item(body, LV_SYMBOL_EYE_CLOSE, _("PIN_CODE"), go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
+    item(body, LV_SYMBOL_KEYBOARD, "Ngôn ngữ / Language", go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);   /* song ngu co dinh: tim duoc o moi ngon ngu */
+    item(body, LV_SYMBOL_LIST, _("ABOUT"), go_cb, (void *)(intptr_t)FD_SCR_ABOUT, NULL);
     dev_row(body);   /* cong tac che do nha phat trien (bat overlay vung vuot mep) */
     refresh();
 }
 
-static void destroy(void) { s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
+static void destroy(void) { s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
     if (s_dlg) {   /* roi man khi hop thoai mo = Huy */
         lv_obj_delete(s_dlg);
         s_dlg = NULL;

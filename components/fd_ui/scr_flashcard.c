@@ -231,7 +231,7 @@ static void show_card(void)
     face_label(s_front, s_mfront ? &fd_font_noto_18 : &fd_font_mont_32, 0x111827);
     lv_obj_t *h = lv_label_create(s_front);
     lv_obj_set_style_text_color(h, lv_color_hex(0x9CA3AF), 0);
-    lv_label_set_text(h, "Chạm để lật thẻ");
+    lv_label_set_text(h, _("TAP_TO_FLIP"));
 
     s_back = face(card);
     if (s_mfront) {
@@ -249,11 +249,11 @@ static void show_card(void)
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(row, 8, 0);
-    nav_btn(row, "< Trước", step_cb, -1);
+    nav_btn(row, _("PREV"), step_cb, -1);
     s_count = lv_label_create(row);
     lv_obj_set_style_text_color(s_count, lv_color_hex(0x6B7280), 0);
-    if (s_rnd) nav_btn(row, "Trộn", shuffle_cb, 0);
-    nav_btn(row, "Sau >", step_cb, 1);
+    if (s_rnd) nav_btn(row, _("SHUFFLE"), shuffle_cb, 0);
+    nav_btn(row, _("NEXT"), step_cb, 1);
     card_refresh();
     card_say();
 }
@@ -335,7 +335,7 @@ static void opt_row(lv_obj_t *p, const char *name, int grp, const char *const *o
         lv_obj_set_style_text_line_space(l, -3, 0);
     } else lv_obj_set_width(l, por ? 48 : 62);
     for (int i = 0; i < n; i++) {
-        lv_obj_t *b = btn(r, opts[i], i == sel, opt_cb, (grp << 4) | i);
+        lv_obj_t *b = btn(r, _(opts[i]), i == sel, opt_cb, (grp << 4) | i);
         lv_obj_set_height(b, bh);
         lv_obj_set_flex_grow(b, 1);
         lv_obj_set_style_pad_hor(b, 2, 0);
@@ -372,16 +372,16 @@ static void show_setup(void)
     lv_obj_set_flex_align(tr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     label(tr, "Flash card", &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
 
-    static const char *const NS[] = {"10", "20", "Tất cả"};
-    static const char *const ORD[] = {"Theo danh sách", "Ngẫu nhiên"};
-    static const char *const FR[] = {"Từ", "Nghĩa"};
-    static const char *const RP[] = {"Tắt", "1 lần", "2 lần"};
-    opt_row(sc, "Số thẻ", OPT_N, NS, 3, s_ncfg);
-    opt_row(sc, "Thứ tự", OPT_ORD, ORD, 2, s_rnd);
-    opt_row(sc, "Mặt trước", OPT_FRONT, FR, 2, s_mfront);
-    opt_row(sc, "Tự động phát", OPT_REP, RP, 3, s_reps);
+    static const char *const NS[] = {"10", "20", "ALL"};
+    static const char *const ORD[] = {"IN_ORDER", "RANDOM"};
+    static const char *const FR[] = {"WORD", "MEANING"};
+    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    opt_row(sc, _("CARDS"), OPT_N, NS, 3, s_ncfg);
+    opt_row(sc, _("ORDER"), OPT_ORD, ORD, 2, s_rnd);
+    opt_row(sc, _("FRONT_SIDE"), OPT_FRONT, FR, 2, s_mfront);
+    opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 3, s_reps);
 
-    lv_obj_t *b = btn(s_body, "Bắt đầu", true, start_cb, 0);
+    lv_obj_t *b = btn(s_body, _("START"), true, start_cb, 0);
     lv_obj_set_size(b, lv_pct(100), 46);
     lv_obj_set_style_radius(b, 12, 0);
     lv_obj_set_style_shadow_width(b, 6, 0);

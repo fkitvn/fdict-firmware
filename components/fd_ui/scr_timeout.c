@@ -34,7 +34,7 @@ static void build(lv_obj_t *scr)
     lv_obj_t *t = lv_label_create(body);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(t, "Thời gian chờ màn hình");
+    lv_label_set_text(t, _("SCREEN_TIMEOUT"));
 
     lv_obj_t *g = lv_obj_create(body);
     lv_obj_remove_style_all(g);
@@ -51,16 +51,16 @@ static void build(lv_obj_t *scr)
         lv_obj_set_style_border_width(b, 1, 0);
         lv_obj_t *l = lv_label_create(b);
         lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-        if (OPTS[i] == 0) lv_label_set_text(l, "Không tắt");
-        else if (OPTS[i] >= 60) lv_label_set_text_fmt(l, "%d phút", OPTS[i] / 60);
-        else lv_label_set_text_fmt(l, "%d giây", OPTS[i]);
+        if (OPTS[i] == 0) lv_label_set_text(l, _("NEVER"));
+        else if (OPTS[i] >= 60) lv_label_set_text_fmt(l, _("N_MIN"), OPTS[i] / 60);
+        else lv_label_set_text_fmt(l, _("N_SEC"), OPTS[i]);
         lv_obj_center(l);
         lv_obj_add_event_cb(b, opt_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
     }
     lv_obj_t *h = lv_label_create(body);
     lv_obj_set_style_text_color(h, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
     lv_obj_set_width(h, lv_pct(100)); lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(h, "Chạm màn hình hoặc bấm nút để bật lại");
+    lv_label_set_text(h, _("TIMEOUT_WAKE_HINT"));
     mark();
 }
 

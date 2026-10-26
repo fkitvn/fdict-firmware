@@ -38,18 +38,18 @@ static void status_from_state(void)
     fd_net_ip(ip, sizeof(ip));
     switch (fd_net_state()) {
     case FD_NET_CONNECTED:
-        snprintf(buf, sizeof(buf), "Đã kết nối: %s (%d dBm)\nIP %s", ssid, fd_net_rssi(), ip);
+        snprintf(buf, sizeof(buf), "%s: %s (%d dBm)\nIP %s", _("CONNECTED"), ssid, fd_net_rssi(), ip);
         set_status(buf, lv_palette_darken(LV_PALETTE_GREEN, 2));
         break;
     case FD_NET_CONNECTING:
-        snprintf(buf, sizeof(buf), "Đang kết nối %s…", ssid);
+        snprintf(buf, sizeof(buf), _("WIFI_CONNECTING_TO"), ssid);
         set_status(buf, lv_palette_darken(LV_PALETTE_AMBER, 3));
         break;
     case FD_NET_WAIT_RETRY:
-        set_status("Mất kết nối – đang thử lại…", lv_palette_darken(LV_PALETTE_AMBER, 3));
+        set_status(_("WIFI_LOST_RETRYING"), lv_palette_darken(LV_PALETTE_AMBER, 3));
         break;
     default:
-        set_status(fd_net_saved_count() ? "Chưa kết nối" : "Chưa có mạng nào được lưu. Chọn mạng bên dưới.",
+        set_status(fd_net_saved_count() ? _("NOT_CONNECTED") : _("WIFI_NO_SAVED"),
                    lv_palette_darken(LV_PALETTE_GREY, 2));
         break;
     }
@@ -70,10 +70,10 @@ static void do_connect(void)
 {
     const char *pass = s_ta ? lv_textarea_get_text(s_ta) : "";
     if (s_sel_secure && strlen(pass) < 8) {
-        set_status("Mật khẩu WPA cần ít nhất 8 ký tự", lv_palette_main(LV_PALETTE_RED));
+        set_status(_("WIFI_PASSWORD_SHORT"), lv_palette_main(LV_PALETTE_RED));
         return;
     }
-    ESP_LOGD(TAG, "Ket noi \"%s\" (mat khau %u ky tu)", s_sel_ssid, (unsigned)strlen(pass));
+    ESP_LOGD(TAG, "Ket noi “%s” (mat khau %u ky tu)", s_sel_ssid, (unsigned)strlen(pass));
     fd_net_connect(s_sel_ssid, pass);
     panel_close();
     status_from_state();
@@ -141,7 +141,7 @@ static lv_obj_t *panel_base(void)
     lv_obj_t *t = lv_label_create(s_panel);
     lv_obj_set_width(t, lv_pct(100));
     lv_label_set_long_mode(t, LV_LABEL_LONG_DOT);
-    lv_label_set_text_fmt(t, "Mạng: %s", s_sel_ssid);
+    lv_label_set_text_fmt(t, _("WIFI_NETWORK_NAME"), s_sel_ssid);
     return s_panel;
 }
 
@@ -161,7 +161,7 @@ static void open_password_panel(bool saved)
     lv_textarea_set_one_line(s_ta, true);
     lv_textarea_set_password_mode(s_ta, false);   /* mac dinh hien mat khau moi lan mo panel */
     lv_textarea_set_max_length(s_ta, 63);   /* WPA2 passphrase 8..63 */
-    lv_textarea_set_placeholder_text(s_ta, "Mật khẩu");
+    lv_textarea_set_placeholder_text(s_ta, _("PASSWORD"));
     lv_obj_set_flex_grow(s_ta, 1);
     lv_obj_set_height(s_ta, 30);
     lv_obj_set_style_pad_ver(s_ta, 5, 0);
@@ -175,10 +175,10 @@ static void open_password_panel(bool saved)
     lv_obj_center(s_eye_lbl);
     lv_obj_add_event_cb(eye, eye_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t *cb = small_btn(row, "Kết nối", connect_cb, lv_color_hex(FD_COLOR_PRIMARY));
+    lv_obj_t *cb = small_btn(row, _("CONNECT"), connect_cb, lv_color_hex(FD_COLOR_PRIMARY));
     lv_obj_set_style_pad_hor(cb, 14, 0);   /* nut X bo: Ket noi rong hon (huy = vuot mep / giu B1) */
     if (saved) {
-        small_btn(row, "Quên", forget_cb, lv_palette_main(LV_PALETTE_RED));
+        small_btn(row, _("FORGET"), forget_cb, lv_palette_main(LV_PALETTE_RED));
     }
 
     /* Ban phim T9 (phim lon ~59x48) thay lv_keyboard */
@@ -255,15 +255,15 @@ static void forget_ask_cb(lv_event_t *e)
     lv_obj_set_width(t, lv_pct(100));
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
-    lv_label_set_text_fmt(t, "Quên mạng %s?", s_sel_ssid);
+    lv_label_set_text_fmt(t, _("WIFI_FORGET_ASK"), s_sel_ssid);
     lv_obj_t *row = lv_obj_create(box);
     lv_obj_remove_style_all(row);
     lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(row, 10, 0);
     lv_obj_set_style_pad_top(row, 4, 0);
-    fdlg_btn(row, "Hủy", false);
-    fdlg_btn(row, "Quên", true);
+    fdlg_btn(row, _("CANCEL"), false);
+    fdlg_btn(row, _("FORGET"), true);
 }
 
 typedef enum { BTN_PRIMARY, BTN_SECONDARY, BTN_DANGER } btn_kind_t;
@@ -315,17 +315,17 @@ static void open_saved_panel(void)
     lv_obj_t *st = lv_label_create(p);
     lv_obj_set_width(st, lv_pct(100)); lv_label_set_long_mode(st, LV_LABEL_LONG_WRAP);   /* ngang: trang thai dai xuong dong */
     if (same && fd_net_state() == FD_NET_CONNECTED) {
-        lv_label_set_text(st, "Đã lưu · Đang kết nối với mạng này");
+        lv_label_set_text(st, _("WIFI_SAVED_CONNECTED"));
         lv_obj_set_style_text_color(st, lv_palette_darken(LV_PALETTE_GREEN, 2), 0);
     } else if (same && fd_net_state() == FD_NET_CONNECTING) {
-        lv_label_set_text(st, "Đã lưu · Đang kết nối…");
+        lv_label_set_text(st, _("WIFI_SAVED_CONNECTING"));
         lv_obj_set_style_text_color(st, lv_color_hex(FD_COLOR_PRIMARY_TEXT), 0);
     } else {
-        lv_label_set_text(st, "Đã lưu · Chưa kết nối");
+        lv_label_set_text(st, _("WIFI_SAVED_NOT_CONNECTED"));
         lv_obj_set_style_text_color(st, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
     }
 
-    lv_obj_t *b = act_btn(p, LV_SYMBOL_REFRESH, "Kết nối lại", saved_connect_cb, BTN_PRIMARY);
+    lv_obj_t *b = act_btn(p, LV_SYMBOL_REFRESH, _("RECONNECT"), saved_connect_cb, BTN_PRIMARY);
     lv_obj_set_width(b, lv_pct(100));
 
     lv_obj_t *row = lv_obj_create(p);
@@ -333,8 +333,8 @@ static void open_saved_panel(void)
     lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(row, 8, 0);
-    lv_obj_set_flex_grow(act_btn(row, LV_SYMBOL_EDIT, "Đổi mật khẩu", change_pw_cb, BTN_SECONDARY), 1);
-    lv_obj_set_flex_grow(act_btn(row, LV_SYMBOL_CLOSE, "Đóng", cancel_cb, BTN_SECONDARY), 1);
+    lv_obj_set_flex_grow(act_btn(row, LV_SYMBOL_EDIT, _("CHANGE_PASSWORD"), change_pw_cb, BTN_SECONDARY), 1);
+    lv_obj_set_flex_grow(act_btn(row, LV_SYMBOL_CLOSE, _("CLOSE"), cancel_cb, BTN_SECONDARY), 1);
 
     lv_obj_t *gap = lv_obj_create(p);   /* day nut nguy hiem xuong day */
     lv_obj_remove_style_all(gap);
@@ -346,7 +346,7 @@ static void open_saved_panel(void)
     lv_obj_set_style_bg_opa(sep, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(sep, lv_color_hex(FD_COLOR_BORDER), 0);
 
-    b = act_btn(p, LV_SYMBOL_TRASH, "Quên mạng này", forget_ask_cb, BTN_DANGER);
+    b = act_btn(p, LV_SYMBOL_TRASH, _("FORGET_THIS_NETWORK"), forget_ask_cb, BTN_DANGER);
     lv_obj_set_width(b, lv_pct(100));
 }
 /* ---------- danh sach mang ---------- */
@@ -430,16 +430,16 @@ static void populate(void)
         lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
         lv_obj_set_style_pad_top(l, 24, 0);
-        lv_label_set_text(l, fd_net_scanning() ? "Đang quét…" : "Không tìm thấy mạng nào");
+        lv_label_set_text(l, fd_net_scanning() ? _("SCANNING") : _("NO_NETWORKS_FOUND"));
         return;
     }
     bool any_saved = ap_rank(&s_aps[0], cur, connected) > 0, hdr_avail = false;
-    if (any_saved) section("ĐÃ LƯU");
+    if (any_saved) section(_("WIFI_SECTION_SAVED"));
     for (int i = 0; i < s_ap_n; i++) {
         const fd_net_ap_t *a = &s_aps[i];
         int rank = ap_rank(a, cur, connected);
         if (rank == 0 && !hdr_avail) {
-            section("MẠNG KHẢ DỤNG");
+            section(_("WIFI_SECTION_AVAILABLE"));
             hdr_avail = true;
         }
         lv_obj_t *b = lv_button_create(s_list);
@@ -478,7 +478,7 @@ static void populate(void)
         lv_obj_t *sub = lv_label_create(mid);
         lv_obj_set_width(sub, lv_pct(100)); lv_label_set_long_mode(sub, LV_LABEL_LONG_DOT);
         lv_obj_set_style_text_color(sub, lv_color_hex(rank == 2 ? 0x16A34A : FD_COLOR_TEXT_MUTED), 0);
-        lv_label_set_text(sub, rank == 2 ? "Đang kết nối" : rank == 1 ? "Đã lưu" : a->secure ? "Bảo mật" : "Mở");
+        lv_label_set_text(sub, rank == 2 ? _("CONNECTING") : rank == 1 ? _("SAVED") : a->secure ? _("SECURED") : _("OPEN"));
 
         if (a->secure) ui_lock_icon(b, lv_color_hex(FD_COLOR_TEXT_MUTED));
         lv_obj_t *ch = lv_label_create(b);
@@ -566,13 +566,13 @@ static void on_event(int32_t id, void *data)
         const fd_evt_wifi_disc_t *d = data;
         char buf[160];
         if (d->auth_fail) {
-            snprintf(buf, sizeof(buf), "Sai mật khẩu cho \"%s\". Chọn mạng để nhập lại.", d->ssid);
+            snprintf(buf, sizeof(buf), _("WIFI_WRONG_PASSWORD"), d->ssid);
             set_status(buf, lv_palette_main(LV_PALETTE_RED));
         } else if (d->auth_reject) {
-            snprintf(buf, sizeof(buf), "Không xác thực được với router \"%s\" (mã %d). Thử lại sau.", d->ssid, d->reason);
+            snprintf(buf, sizeof(buf), _("WIFI_AUTH_FAILED"), d->ssid, d->reason);
             set_status(buf, lv_palette_main(LV_PALETTE_RED));
         } else if (d->no_ap) {
-            snprintf(buf, sizeof(buf), "Không tìm thấy mạng \"%s\"", d->ssid);
+            snprintf(buf, sizeof(buf), _("WIFI_NOT_FOUND"), d->ssid);
             set_status(buf, lv_palette_main(LV_PALETTE_RED));
         } else {
             status_from_state();

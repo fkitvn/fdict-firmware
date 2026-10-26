@@ -32,6 +32,7 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_STATS] = &g_scr_stats,
     [FD_SCR_PIN] = &g_scr_pin,
     [FD_SCR_PAIR] = &g_scr_pair,
+    [FD_SCR_LANG] = &g_scr_lang,
 };
 
 static fd_scr_t s_cur = FD_SCR_COUNT;
@@ -260,6 +261,14 @@ static void set_rot_async_cb(void *arg)
              (int)lv_display_get_horizontal_resolution(NULL), (int)lv_display_get_vertical_resolution(NULL));
     show_now(s_cur);   /* dung lai man hien tai theo do phan giai moi */
 }
+
+static void refresh_async_cb(void *arg)
+{
+    (void)arg;
+    show_now(s_cur);
+}
+
+void ui_nav_refresh(void) { lv_async_call(refresh_async_cb, NULL); }
 
 void ui_nav_set_rotation(int idx) { lv_async_call(set_rot_async_cb, (void *)(intptr_t)(idx & 3)); }   /* 0..3 = 0/90/180/270 do */
 

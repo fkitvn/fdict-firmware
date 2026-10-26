@@ -33,15 +33,15 @@
 #define LABEL_W 96
 
 enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_COUNT };
-static const char *const LABELS[R_COUNT] = {"Firmware", "Mã thiết bị", "Build", "Ngày build", "K\xC3\xAD" "ch th\xC6\xB0\xE1\xBB\x9B" "c",
-                                            "B\xE1\xBB\x99 nh\xE1\xBB\x9B flash", "D\xE1\xBB\xAF li\xE1\xBB\x87u", "Gi\xE1\xBB\x8Dng \xC4\x91\xE1\xBB\x8D" "c", "ESP-IDF", "MAC",
-                                            "IP", "Chip", "RAM nội bộ", "PSRAM", "Màn hình", "Máy chủ"};
+static const char *const LABELS[R_COUNT] = {"Firmware", "DEVICE_ID", "Build", "BUILD_DATE", "SIZE",
+                                            "FLASH_MEMORY", "DATA", "VOICE", "ESP-IDF", "MAC",
+                                            "IP", "Chip", "INTERNAL_RAM", "PSRAM", "DISPLAY", "SERVER"};
 /* Thu tu hien thi theo nhom (so am = tieu de nhom SECT[-n-1]) */
-static const char *const SECT[] = {"Thi\xE1\xBA\xBFt b\xE1\xBB\x8B", "Ph\xE1\xBA\xA7n m\xE1\xBB\x81m", "B\xE1\xBB\x99 nh\xE1\xBB\x9B", "K\xE1\xBA\xBFt n\xE1\xBB\x91i"};
-static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_MAC, R_LCD,
+static const char *const SECT[] = {"DEVICE", "SOFTWARE", "MEMORY", "CONNECTIVITY"};
+static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_LCD,
                                -2, R_FW, R_BUILD, R_DATE, R_SIZE, R_IDF, R_VOICE,
                                -3, R_FLASH, R_DATA, R_RAM, R_PSRAM,
-                               -4, R_IP, R_OTA};
+                               -4, R_IP, R_MAC, R_OTA};
 static lv_obj_t *s_val[R_COUNT];
 /* "FDict One - x.y.z": dung FD_FW_SEMVER de khong lap tien to */
 static const char *fw_display(void)
@@ -56,14 +56,14 @@ static lv_obj_t *s_ota_btn_lbl;
 
 static const char *ota_err_vi(const char *e, char *buf, size_t n)
 {
-    if (!strcmp(e, "no_wifi")) return "chưa kết nối WiFi";
-    if (!strcmp(e, "no_time")) return "chưa đồng bộ giờ";
-    if (!strcmp(e, "batt_low")) return "pin yếu";
-    if (!strcmp(e, "too_large")) return "bản quá lớn";
-    if (!strcmp(e, "net")) return "mạng";
-    if (!strcmp(e, "verify_failed")) return "sai mã kiểm tra";
-    if (!strcmp(e, "bad_image")) return "ảnh không hợp lệ";
-    if (!strncmp(e, "http_", 5)) { snprintf(buf, n, "máy chủ (%s)", e + 5); return buf; }
+    if (!strcmp(e, "no_wifi")) return _("OTA_ERR_NO_WIFI");
+    if (!strcmp(e, "no_time")) return _("OTA_ERR_NO_TIME");
+    if (!strcmp(e, "batt_low")) return _("OTA_ERR_BATT_LOW");
+    if (!strcmp(e, "too_large")) return _("OTA_ERR_TOO_LARGE");
+    if (!strcmp(e, "net")) return _("OTA_ERR_NET");
+    if (!strcmp(e, "verify_failed")) return _("OTA_ERR_VERIFY");
+    if (!strcmp(e, "bad_image")) return _("OTA_ERR_BAD_IMAGE");
+    if (!strncmp(e, "http_", 5)) { snprintf(buf, n, _("OTA_ERR_HTTP"), e + 5); return buf; }
     return e;
 }
 
@@ -88,12 +88,12 @@ static void ota_show(void)
     char b[96], eb[40];
     bool spin = false;
     uint32_t col = 0x6B7280;
-    const char *btn = "Kiểm tra cập nhật";
+    const char *btn = _("CHECK_FOR_UPDATES");
     bool busy = st.state == FD_OTA_ST_CHECKING || st.state == FD_OTA_ST_DOWNLOADING || st.state == FD_OTA_ST_REBOOT_PENDING;
     if (!busy && !fd_net_is_connected()) {
         lv_obj_set_hidden(s_ota_msg, false);
         lv_obj_set_hidden(s_ota_spin, true);
-        if (strcmp(lv_label_get_text(s_ota_msg), "Cần Wi-Fi để kiểm tra cập nhật")) lv_label_set_text(s_ota_msg, "Cần Wi-Fi để kiểm tra cập nhật");
+        if (strcmp(lv_label_get_text(s_ota_msg), _("OTA_NEED_WIFI"))) lv_label_set_text(s_ota_msg, _("OTA_NEED_WIFI"));
         lv_obj_set_style_text_color(s_ota_msg, lv_color_hex(0xDC2626), 0);
         wifi_link(true);   /* cham -> man WiFi */
         if (strcmp(lv_label_get_text(s_ota_btn_lbl), btn)) lv_label_set_text(s_ota_btn_lbl, btn);
@@ -106,18 +106,18 @@ static void ota_show(void)
         lv_obj_set_hidden(s_ota_spin, true);
         lv_label_set_text(s_ota_btn_lbl, btn);
         return;
-    case FD_OTA_ST_CHECKING: spin = true; snprintf(b, sizeof(b), "Đang kiểm tra…"); break;
-    case FD_OTA_ST_UP_TO_DATE: col = 0x16A34A; snprintf(b, sizeof(b), "Kh\xC3\xB4ng c\xC3\xB3 b\xE1\xBA\xA3n n\xC3\xA2ng c\xE1\xBA\xA5p"); break;
+    case FD_OTA_ST_CHECKING: spin = true; snprintf(b, sizeof(b), _("CHECKING")); break;
+    case FD_OTA_ST_UP_TO_DATE: col = 0x16A34A; snprintf(b, sizeof(b), _("NO_UPDATE_AVAILABLE")); break;
     case FD_OTA_ST_AVAILABLE: {
         unsigned c = (unsigned)(((uint64_t)st.size * 100 + 524288) / 1048576);   /* MB x100, lam tron */
         col = 0x2563EB;
-        snprintf(b, sizeof(b), "Có bản mới %s (%u.%02u MB)", st.version, c / 100, c % 100);
-        btn = "Cập nhật";
+        snprintf(b, sizeof(b), _("OTA_NEW_VERSION"), st.version, c / 100, c % 100);
+        btn = _("UPDATE");
         break;
     }
-    case FD_OTA_ST_DOWNLOADING: spin = true; snprintf(b, sizeof(b), "Đang tải %d%%", st.pct); break;
-    case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), "Sẽ khởi động lại khi rảnh"); btn = "Khởi động lại ngay"; break;
-    default: col = 0xDC2626; snprintf(b, sizeof(b), "Lỗi: %s", ota_err_vi(st.err, eb, sizeof(eb))); break;
+    case FD_OTA_ST_DOWNLOADING: spin = true; snprintf(b, sizeof(b), _("OTA_DOWNLOADING"), st.pct); break;
+    case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), _("WILL_RESTART_WHEN_IDLE")); btn = _("RESTART_NOW"); break;
+    default: col = 0xDC2626; snprintf(b, sizeof(b), _("ERROR_FMT"), ota_err_vi(st.err, eb, sizeof(eb))); break;
     }
     wifi_link(false);
     lv_obj_set_hidden(s_ota_msg, false);
@@ -193,7 +193,7 @@ static void dlg_open(const fd_ota_status_t *st)
     lv_obj_set_width(t, lv_pct(100));
     lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
-    lv_label_set_text_fmt(t, "Có phiên bản mới %s/%s (%u.%02u MB). Nâng cấp ngay?", st->version, st->build, c / 100, c % 100);
+    lv_label_set_text_fmt(t, _("OTA_UPDATE_ASK"), st->version, st->build, c / 100, c % 100);
     if (st->notes[0]) {
         lv_obj_t *n = lv_label_create(box);
         lv_obj_set_width(n, lv_pct(100));
@@ -207,8 +207,8 @@ static void dlg_open(const fd_ota_status_t *st)
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(row, 10, 0);
     lv_obj_set_style_pad_top(row, 4, 0);
-    dlg_btn(row, "Để sau", false);
-    dlg_btn(row, "Nâng cấp", true);
+    dlg_btn(row, _("LATER"), false);
+    dlg_btn(row, _("UPGRADE"), true);
 }
 
 static void auto_check(void)   /* khi mo man / khi WiFi vua co */
@@ -280,15 +280,15 @@ static void mem_rows(void)
         fmt_sz(a, sizeof(a), used, 1);
         fmt_sz(b, sizeof(b), tot, 1);
         snprintf(o, sizeof(o), "%s / %s (%u,%u%%)", a, b, p10 / 10, p10 % 10);
-    } else snprintf(o, sizeof(o), "Kh\xC3\xB4ng \xC4\x91\xE1\xBB\x8D" "c \xC4\x91\xC6\xB0\xE1\xBB\xA3" "c");
+    } else snprintf(o, sizeof(o), _("UNREADABLE"));
     lv_label_set_text(s_val[R_DATA], o);
     char vo[48];
     const esp_partition_t *vp = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "voice");
     uint32_t h[8] = {0};   /* header voice.bin (tools/mk_voice.py): magic[8], ver, ta_off, ta_len, sg_off, sg_len, crc */
     if (vp && fd_tts_voice_ok() && esp_partition_read(vp, 0, h, sizeof(h)) == ESP_OK) {
         fmt_sz(a, sizeof(a), (uint64_t)h[5] + h[6], 2);
-        snprintf(vo, sizeof(vo), "%s \xE2\x80\x93 OK", a);
-    } else snprintf(vo, sizeof(vo), "Thi\xE1\xBA\xBFu");
+        snprintf(vo, sizeof(vo), "%s (SVOX Pico)", a);
+    } else snprintf(vo, sizeof(vo), _("MISSING"));
     lv_label_set_text(s_val[R_VOICE], vo);
     ESP_LOGD("scr_about", "bo nho: flash %u MB | data %u/%u B -> %s | giong %s | RAM noi bo free %u B, PSRAM %u B (free %u B)",
              (unsigned)(fl >> 20), (unsigned)used, (unsigned)tot, o, vo, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
@@ -344,7 +344,7 @@ static void refresh(void)
         esp_flash_get_size(NULL, &fl);
         unsigned ps = esp_psram_is_initialized() ? (unsigned)(esp_psram_get_size() >> 20) : 0;
         char cb[48];
-        snprintf(cb, sizeof(cb), "%s v%u.%u, %u nh\u00e2n, N%uR%u", ci.model == CHIP_ESP32S3 ? "ESP32-S3" : "ESP32",
+        snprintf(cb, sizeof(cb), _("CHIP_INFO"), ci.model == CHIP_ESP32S3 ? "ESP32-S3" : "ESP32",
                  ci.revision / 100, ci.revision % 100, ci.cores, (unsigned)(fl >> 20), ps);
         lv_label_set_text(s_val[R_CHIP], cb);
     }
@@ -353,20 +353,23 @@ static void refresh(void)
     lv_label_set_text_fmt(s_val[R_MAC], "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
     char ip[16] = "";
     fd_net_ip(ip, sizeof(ip));
-    lv_label_set_text(s_val[R_IP], (fd_net_is_connected() && ip[0]) ? ip : "Chưa kết nối");
-    {   /* RAM: da dung / tong. Noi bo = 512 KB SRAM ESP32-S3; PSRAM = tong heap SPIRAM */
-        char u[16], t[16];
-        const size_t in_tot = 512 * 1024;
+    lv_label_set_text(s_val[R_IP], (fd_net_is_connected() && ip[0]) ? ip : _("NOT_CONNECTED"));
+    {   /* RAM: cung format dong Kich thuoc (fw_size_text): "<da dung> (<x,y>% / <tong>)", % lam tron 1 so le */
+        char u[16];
+        const size_t in_tot = 512 * 1024;   /* SRAM ESP32-S3 */
         size_t in_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-        fmt_sz(u, sizeof(u), in_free < in_tot ? in_tot - in_free : 0, 1);
-        fmt_sz(t, sizeof(t), in_tot, 0);
-        lv_label_set_text_fmt(s_val[R_RAM], "%s / %s", u, t);
-        size_t ps_tot = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
-        if (ps_tot) {
-            fmt_sz(u, sizeof(u), ps_tot - heap_caps_get_free_size(MALLOC_CAP_SPIRAM), 1);
-            fmt_sz(t, sizeof(t), ps_tot, 1);
-            lv_label_set_text_fmt(s_val[R_PSRAM], "%s / %s", u, t);
-        } else lv_label_set_text(s_val[R_PSRAM], "Không có");
+        size_t in_used = in_free < in_tot ? in_tot - in_free : 0;
+        unsigned p10 = (unsigned)(((uint64_t)in_used * 1000 + in_tot / 2) / in_tot);
+        fmt_sz(u, sizeof(u), in_used, 2);
+        lv_label_set_text_fmt(s_val[R_RAM], "%s (%u,%u%% / %u KB)", u, p10 / 10, p10 % 10, (unsigned)(in_tot >> 10));
+        size_t ps_tot = esp_psram_is_initialized() ? esp_psram_get_size() : 0;
+        size_t ps_heap = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+        if (ps_tot && ps_heap) {
+            size_t ps_used = ps_tot - heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+            p10 = (unsigned)(((uint64_t)ps_used * 1000 + ps_tot / 2) / ps_tot);
+            fmt_sz(u, sizeof(u), ps_used, 2);
+            lv_label_set_text_fmt(s_val[R_PSRAM], "%s (%u,%u%% / %u MB)", u, p10 / 10, p10 % 10, (unsigned)(ps_tot >> 20));
+        } else lv_label_set_text(s_val[R_PSRAM], _("NONE"));
     }
     {
         char base[64];
@@ -374,7 +377,7 @@ static void refresh(void)
         fd_ota_get_base(base, sizeof(base), &lab);
         lv_label_set_text_fmt(s_val[R_OTA], "%s%s", base, lab ? " (Lab)" : "");
     }
-    lv_label_set_text_fmt(s_val[R_LCD], "%dx%d, xoay %d°", (int)lv_display_get_horizontal_resolution(NULL),
+    lv_label_set_text_fmt(s_val[R_LCD], _("DISPLAY_INFO"), (int)lv_display_get_horizontal_resolution(NULL),
                           (int)lv_display_get_vertical_resolution(NULL),
                           fd_display_rotation_deg(fd_display_get_rotation()));
 }
@@ -416,7 +419,7 @@ static void build(lv_obj_t *scr)
     lv_obj_t *ol = lv_label_create(ob);
     lv_obj_set_style_text_color(ol, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
     lv_obj_set_width(ol, lv_pct(100)); lv_label_set_long_mode(ol, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(ol, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(ol, "Kiểm tra cập nhật");
+    lv_label_set_text(ol, _("CHECK_FOR_UPDATES"));
     lv_obj_center(ol);
     s_ota_btn_lbl = ol;
     lv_obj_add_event_cb(ob, ota_cb, LV_EVENT_CLICKED, NULL);
@@ -454,7 +457,7 @@ static void build(lv_obj_t *scr)
             lv_obj_set_style_text_font(h, &fd_font_noto_14, 0);
             lv_obj_set_style_text_color(h, lv_color_hex(0x9CA3AF), 0);
             lv_obj_set_style_pad_top(h, k ? 8 : 2, 0);
-            lv_label_set_text(h, SECT[-i - 1]);
+            lv_label_set_text(h, _(SECT[-i - 1]));
             continue;
         }
         lv_obj_t *row = lv_obj_create(col);
@@ -472,7 +475,7 @@ static void build(lv_obj_t *scr)
         lv_obj_t *l = lv_label_create(row);
         lv_obj_set_width(l, LABEL_W);
         lv_obj_set_style_text_color(l, lv_color_hex(0x6B7280), 0);
-        lv_label_set_text(l, LABELS[i]);
+        lv_label_set_text(l, _(LABELS[i]));
         s_val[i] = lv_label_create(row);
         lv_obj_set_flex_grow(s_val[i], 1);
         lv_label_set_long_mode(s_val[i], LV_LABEL_LONG_WRAP);

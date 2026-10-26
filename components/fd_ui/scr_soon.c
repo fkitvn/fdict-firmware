@@ -16,14 +16,14 @@ static void build_soon(lv_obj_t *scr, const char *icon, const char *title)
     lv_label_set_text(t, title);
     lv_obj_t *s = lv_label_create(body);
     lv_obj_set_width(s, lv_pct(100)); lv_label_set_long_mode(s, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(s, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(s, "Sắp có");
+    lv_label_set_text(s, _("COMING_SOON"));
     lv_obj_t *h = lv_label_create(body);
     lv_obj_set_style_text_color(h, lv_palette_main(LV_PALETTE_GREY), 0);
     lv_obj_set_width(h, lv_pct(100)); lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(h, "Vuốt từ mép trái/phải để quay lại");
+    lv_label_set_text(h, _("SWIPE_BACK_HINT"));
 }
 
-static void build_sync(lv_obj_t *scr) { build_soon(scr, LV_SYMBOL_REFRESH, "Đồng bộ"); }
-static void build_stats(lv_obj_t *scr) { build_soon(scr, LV_SYMBOL_IMAGE, "Thống kê"); }
+static void build_sync(lv_obj_t *scr) { build_soon(scr, LV_SYMBOL_REFRESH, _("SYNC")); }
+static void build_stats(lv_obj_t *scr) { build_soon(scr, LV_SYMBOL_IMAGE, _("STATISTICS")); }
 const ui_screen_t g_scr_sync = {.name = "sync", .parent = FD_SCR_HOME, .build = build_sync};
 const ui_screen_t g_scr_stats = {.name = "stats", .parent = FD_SCR_HOME, .build = build_stats};

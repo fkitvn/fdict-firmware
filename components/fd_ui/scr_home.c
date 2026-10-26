@@ -38,11 +38,11 @@ static const struct {
     const char *label;
     fd_scr_t target;
 } TILES[] = {
-    {&img_tile_flashcard, "Flash card", FD_SCR_FLASHCARD},
-    {&img_tile_study, "Học tập", FD_SCR_STUDY},
-    {&img_tile_sync, "Đồng bộ", FD_SCR_SYNC},
-    {&img_tile_stats, "Thống kê", FD_SCR_STATS},
-    {&img_tile_settings, "Cài đặt", FD_SCR_SETTINGS},
+    {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
+    {&img_tile_study, "STUDY", FD_SCR_STUDY},
+    {&img_tile_sync, "SYNC", FD_SCR_SYNC},
+    {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
+    {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},
 };
 
 static void go_cb(lv_event_t *e)
@@ -63,22 +63,22 @@ static void refresh(void)
     fd_deck_status_t dk;
     fd_deck_get(&dk);   /* chi doc trang thai co san, khong goi mang */
     char syn[48];
-    if (dk.outbox > 0) snprintf(syn, sizeof(syn), "Ch\xE1\xBB\x9D \xC4\x91\xE1\xBB\x93ng b\xE1\xBB\x99 %d", dk.outbox);
-    else snprintf(syn, sizeof(syn), "%s", dk.have ? "C\xC3\xB3 d\xE1\xBB\xAF li\xE1\xBB\x87u offline" : "Ch\xC6\xB0" "a c\xC3\xB3 d\xE1\xBB\xAF li\xE1\xBB\x87u offline");
+    if (dk.outbox > 0) snprintf(syn, sizeof(syn), _("SYNC_PENDING_N"), dk.outbox);
+    else snprintf(syn, sizeof(syn), "%s", dk.have ? _("OFFLINE_DATA_READY") : _("NO_OFFLINE_DATA_YET"));
     static char buf[96];
     if (fd_net_is_connected()) {
         bool paired = fd_ota_is_paired();
-        snprintf(buf, sizeof(buf), "%s \xC2\xB7 %s",
-                 paired ? "\xC4\x90\xC3\xA3 k\xE1\xBA\xBFt n\xE1\xBB\x91i" : "Ch\xC6\xB0" "a gh\xC3\xA9p", syn);
+        snprintf(buf, sizeof(buf), "%s · %s",
+                 paired ? _("CONNECTED") : _("NOT_PAIRED"), syn);
         txt = buf;
         if (paired) col = lv_palette_darken(LV_PALETTE_GREEN, 2);
         tap = false;
         ready = paired && dk.outbox == 0;
     } else {
-        const char *w = fd_net_state() == FD_NET_CONNECTING ? "\xC4\x90" "ang k\xE1\xBA\xBFt n\xE1\xBB\x91i WiFi"
-                      : !fd_net_saved_count() ? "Ch\xE1\xBA\xA1m \xC4\x91\xE1\xBB\x83 c\xC3\xA0i Wi-Fi"
-                      : "M\xE1\xBA\xA5t WiFi - ch\xE1\xBA\xA1m \xC4\x91\xE1\xBB\x83 m\xE1\xBB\x9F";
-        if (dk.outbox > 0) { snprintf(buf, sizeof(buf), "%s \xC2\xB7 %s", w, syn); txt = buf; }
+        const char *w = fd_net_state() == FD_NET_CONNECTING ? _("CONNECTING_TO_WIFI")
+                      : !fd_net_saved_count() ? _("TAP_TO_SETUP_WIFI")
+                      : _("WIFI_LOST_TAP_TO_OPEN");
+        if (dk.outbox > 0) { snprintf(buf, sizeof(buf), "%s · %s", w, syn); txt = buf; }
         else txt = w;
     }
     if (strcmp(lv_label_get_text(s_hint), txt) != 0) { lv_label_set_text(s_hint, txt); ESP_LOGD("scr_home", "trang thai: %s", txt); }
@@ -122,7 +122,7 @@ static void tile(lv_obj_t *grid, int i, int32_t tile_w)
     lv_obj_set_style_text_color(l, lv_color_hex(0x111827), 0);
     lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, por ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);   /* doc: ten mo-dun xuong dong o khoang trang (o cao 2 dong); ngang: 1 dong DOT */
     if (por) lv_obj_set_style_text_line_space(l, -4, 0);   /* doc: 2 dong ten sat hon */
-    lv_label_set_text(l, TILES[i].label);
+    lv_label_set_text(l, _(TILES[i].label));
     lv_obj_add_event_cb(b, go_cb, LV_EVENT_CLICKED, (void *)(intptr_t)TILES[i].target);
 }
 

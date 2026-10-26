@@ -1,0 +1,151 @@
+vi:
+  ABOUT: Thông tin phiên bản
+  ALL: Tất cả
+  AUTO_PLAY: Tự động phát
+  BACK: Trở lại
+  BUILD_DATE: Ngày build
+  CANCEL: Hủy
+  CARDS: Số thẻ
+  CHANGE_PASSWORD: Đổi mật khẩu
+  CHECKING: Đang kiểm tra…
+  CHECK_FOR_UPDATES: Kiểm tra cập nhật
+  CHECK_WIFI_RETRY: Kiểm tra Wi-Fi rồi thử lại.
+  CHIP_INFO: '%s v%u.%u, %u nhân, N%uR%u'
+  CLOSE: Đóng
+  COMING_SOON: Sắp có
+  CONNECT: Kết nối
+  CONNECTED: Đã kết nối
+  CONNECTING: Đang kết nối
+  CONNECTING_TO_WIFI: Đang kết nối WiFi
+  CONNECTIVITY: Kết nối
+  CONTINUE: Học tiếp
+  DATA: Dữ liệu
+  DEVELOPER_MODE: Chế độ nhà phát triển
+  DEVICE: Thiết bị
+  DEVICE_ID: Mã thiết bị
+  DEVICE_PAIRED: Đã ghép thiết bị
+  DEVMODE_UNPAIR_WARN: 'Thiết bị sẽ huỷ ghép nối với tài khoản, bạn sẽ cần đăng nhập lại'
+  DIRECTION: Chiều
+  DISPLAY: Màn hình
+  DISPLAY_INFO: '%dx%d, xoay %d°'
+  ENDLESS: Vô tận
+  EN_VI: Anh-Việt
+  ERROR_FMT: 'Lỗi: %s'
+  FLASH_CARD: Flash card
+  FLASH_MEMORY: Bộ nhớ flash
+  FORGET: Quên
+  FORGET_THIS_NETWORK: Quên mạng này
+  FRONT_SIDE: Mặt trước
+  HOME: Về Home
+  INTERNAL_RAM: RAM nội bộ
+  INVALID_QUESTION_DATA: Dữ liệu câu hỏi không hợp lệ
+  IN_ORDER: Theo danh sách
+  LATER: Để sau
+  LOADING_QUESTIONS: Đang tải câu hỏi…
+  MEANING: Nghĩa
+  MEMORY: Bộ nhớ
+  MISSING: Thiếu
+  NEVER: Không tắt
+  NEXT: Sau >
+  NONE: Không có
+  NOT_CONNECTED: Chưa kết nối
+  NOT_PAIRED: Chưa ghép
+  NOT_SET: Chưa đặt
+  NO_NETWORKS_FOUND: Không tìm thấy mạng nào
+  NO_OFFLINE_DATA_YET: Chưa có dữ liệu offline
+  NO_UPDATE_AVAILABLE: Không có bản nâng cấp
+  N_MIN: '%d phút'
+  N_SEC: '%d giây'
+  'OFF': Tắt
+  OFFLINE_CONNECT_HINT: Kết nối Wi-Fi để tự tải câu hỏi.
+  OFFLINE_DATA_READY: Có dữ liệu offline
+  OFFLINE_NO_WIFI: 'Không có Wifi, học offline'
+  'ON': Bật
+  OPEN: Mở
+  OPEN_WIFI: Mở Wi-Fi
+  ORDER: Thứ tự
+  OTA_DOWNLOADING: Đang tải %d%%
+  OTA_ERR_BAD_IMAGE: ảnh không hợp lệ
+  OTA_ERR_BATT_LOW: pin yếu
+  OTA_ERR_HTTP: máy chủ (%s)
+  OTA_ERR_NET: mạng
+  OTA_ERR_NO_TIME: chưa đồng bộ giờ
+  OTA_ERR_NO_WIFI: chưa kết nối WiFi
+  OTA_ERR_TOO_LARGE: bản quá lớn
+  OTA_ERR_VERIFY: sai mã kiểm tra
+  OTA_NEED_WIFI: Cần Wi-Fi để kiểm tra cập nhật
+  OTA_NEW_VERSION: Có bản mới %s (%u.%02u MB)
+  OTA_RESTARTING: Đang khởi động lại để cập nhật…
+  OTA_UPDATE_ASK: Có phiên bản mới %s/%s (%u.%02u MB). Nâng cấp ngay?
+  PAIR_DEVICE: Ghép thiết bị
+  PAIR_HINT: Ghép máy với tài khoản trên điện thoại.
+  PAIR_TO_STUDY: Cần ghép thiết bị để học
+  PASSWORD: Mật khẩu
+  PIN_CODE: Mã PIN
+  PREV: < Trước
+  QUESTIONS: Số câu
+  QUIT: Thoát
+  QUIT_THIS_QUIZ: Thoát bài làm?
+  QUIZ_CORRECT_PCT: đúng · %d%%
+  QUIZ_QUESTION_N: Câu %d
+  QUIZ_QUESTION_N_OF: Câu %d/%d
+  QUIZ_SCORE: Điểm %d
+  RANDOM: Ngẫu nhiên
+  RECONNECT: Kết nối lại
+  REPEAT_1: 1 lần
+  REPEAT_2: 2 lần
+  RESTART_NOW: Khởi động lại ngay
+  RESULT: Kết quả
+  RETRY: Thử lại
+  SAVED: Đã lưu
+  SCANNING: Đang quét…
+  SCREEN_BRIGHTNESS: Độ sáng màn hình
+  SCREEN_ROTATION: Hướng xoay màn hình
+  SCREEN_TIMEOUT: Thời gian chờ màn hình
+  SECURED: Bảo mật
+  SERVER: Máy chủ
+  SERVER_ERROR_CODE: Máy chủ báo lỗi (%d)
+  SERVER_UNREACHABLE: Không kết nối được máy chủ
+  SET: Đã đặt
+  SETTINGS: Cài đặt
+  SHUFFLE: Trộn
+  SIZE: Kích thước
+  SOFTWARE: Phần mềm
+  START: Bắt đầu
+  STATISTICS: Thống kê
+  STUDY: Học tập
+  STUDY_NEEDS_WIFI: Học tập cần Wi-Fi để tải câu hỏi.
+  SWIPE_BACK_HINT: Vuốt từ mép trái/phải để quay lại
+  SYNC: Đồng bộ
+  SYNC_PENDING_N: Chờ đồng bộ %d
+  TAP_TO_FLIP: Chạm để lật thẻ
+  TAP_TO_SETUP_WIFI: Chạm để cài Wi-Fi
+  TIMEOUT_WAKE_HINT: Chạm màn hình hoặc bấm nút để bật lại
+  TURN_OFF_DEVELOPER_MODE: Tắt chế độ nhà phát triển?
+  TURN_ON_DEVELOPER_MODE: Bật chế độ nhà phát triển?
+  UNPAIRED_LAB: Server Lab · đã huỷ ghép
+  UNPAIRED_OFFICIAL: Server chính thức · đã huỷ ghép
+  UNREADABLE: Không đọc được
+  UPDATE: Cập nhật
+  UPGRADE: Nâng cấp
+  VI_EN: Việt-Anh
+  VOICE: Giọng đọc
+  VOLUME: Âm lượng
+  WIFI_AUTH_FAILED: Không xác thực được với router “%s” (mã %d). Thử lại sau.
+  WIFI_CONNECTING_TO: Đang kết nối %s…
+  WIFI_FORGET_ASK: Quên mạng %s?
+  WIFI_LOST_RETRYING: Mất kết nối – đang thử lại…
+  WIFI_LOST_TAP_TO_OPEN: Mất WiFi - chạm để mở
+  WIFI_NETWORK_NAME: 'Mạng: %s'
+  WIFI_NOT_CONNECTED: Chưa kết nối Wi-Fi
+  WIFI_NOT_FOUND: Không tìm thấy mạng “%s”
+  WIFI_NO_SAVED: Chưa có mạng nào được lưu. Chọn mạng bên dưới.
+  WIFI_PASSWORD_SHORT: Mật khẩu WPA cần ít nhất 8 ký tự
+  WIFI_SAVED_CONNECTED: Đã lưu · Đang kết nối với mạng này
+  WIFI_SAVED_CONNECTING: Đã lưu · Đang kết nối…
+  WIFI_SAVED_NOT_CONNECTED: Đã lưu · Chưa kết nối
+  WIFI_SECTION_AVAILABLE: MẠNG KHẢ DỤNG
+  WIFI_SECTION_SAVED: ĐÃ LƯU
+  WIFI_WRONG_PASSWORD: Sai mật khẩu cho “%s”. Chọn mạng để nhập lại.
+  WILL_RESTART_WHEN_IDLE: Sẽ khởi động lại khi rảnh
+  WORD: Từ

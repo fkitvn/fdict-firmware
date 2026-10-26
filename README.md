@@ -146,6 +146,24 @@ esptool.py --chip esp32s3 -p <PORT> write_flash 0x20000 fdict-firmware-v<ver>-<b
 
 **Khi nào dùng cái nào:** máy mới hoặc máy lỗi → nạp full.bin qua USB; máy đang chạy → cập nhật app.bin qua OTA. CI tạo cả hai từ **cùng một bản build** và đẩy lên máy chủ (`/api/admin/releases` cho app.bin, `/api/admin/releases/full` cho full.bin). File được lưu trên object storage (S3/MinIO) của máy chủ.
 
+## Ngôn ngữ giao diện (vi/en)
+
+Chuỗi giao diện dùng [lv_i18n](https://github.com/lvgl/lv_i18n): trong code viết `_("SETTINGS")` – khoá là tiếng Anh VIẾT_HOA_GẠCH_DƯỚI (chỉ A-Z, 0-9, `_`;
+chuỗi có `%s`/`%d` dùng khoá mô tả, vd `WIFI_CONNECTING_TO`). Mỗi khoá phải có giá trị đầy đủ ở cả `i18n/vi.yml` và `i18n/en.yml`. `components/fd_i18n/lv_i18n.c/.h` là file **sinh ra** nhưng được commit,
+nên build ESP-IDF không cần Node.js. Sau khi thêm/sửa chuỗi, chạy từ thư mục gốc (cần Node.js):
+
+```sh
+npx lv_i18n@0.2.1 extract -s 'components/fd_ui/*.c' -t 'i18n/*.yml'   # thêm khoá mới (giá trị ~) vào cả hai file
+# điền giá trị tiếng Anh (en.yml) và tiếng Việt (vi.yml) cho mọi khoá mới, rồi:
+npx lv_i18n@0.2.1 compile -t 'i18n/*.yml' -o components/fd_i18n -l en
+```
+
+Chuỗi trong mảng tĩnh (ô Trang chủ, nhãn màn Thông tin, lựa chọn Học tập/Flash card) được dịch ở chỗ dùng `_(arr[i])`,
+nên `extract` báo chúng là "orphaned" – đó là bình thường, không xoá. Locale gốc khi biên dịch là `en` (dự phòng khi thiếu bản dịch); giao diện mặc định vẫn là tiếng Việt
+vì NVS `fd/lang` mặc định `vi`. Chuỗi kỹ thuật không có trong yml (Firmware, Build, MAC, IP…) được `_()` trả nguyên văn. Ngôn ngữ lưu NVS `fd/lang` (`vi`|`en`), đổi ở
+Cài đặt > Ngôn ngữ / Language. Font tiêu đề `fd_font_noto_32_title` là tập con: ASCII + dấu tiếng Việt của các tiêu đề
+(xem `tools/gen_fonts.sh`); tiêu đề tiếng Việt mới cần thêm ký tự vào `--symbols`.
+
 ## Cập nhật OTA
 
 OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>.bin`, không dùng `-full.bin`). Bảng phân vùng và dữ liệu giọng không đổi qua OTA.

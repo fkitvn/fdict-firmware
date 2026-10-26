@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.3.0] - 2026-10-26
+
+- Giao diện song ngữ Tiếng Việt / English (lv_i18n): Trang chủ, Cài đặt, Thông tin, Wi-Fi, Học tập, Flash card và các màn cài đặt con.
+- Cài đặt: thêm mục “Ngôn ngữ / Language” để chọn ngôn ngữ, lưu lại sau khi khởi động lại (mặc định Tiếng Việt).
+- Màn Thông tin: RAM hiển thị dạng đã dùng (% / tổng), MAC chuyển sang nhóm Kết nối, giọng đọc ghi “(SVOX Pico)”, bỏ chữ OK.
+
 ## [1.2.7] - 2026-10-26
 
 - Màn hình Thông tin phiên bản: tách RAM thành hai dòng RAM nội bộ và PSRAM, hiển thị đã dùng / tổng.

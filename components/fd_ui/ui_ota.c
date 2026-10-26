@@ -33,7 +33,7 @@ static void before_reboot_cb(void)
     lv_obj_set_style_text_color(l, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(l, "Đang khởi động lại để cập nhật…");
+    lv_label_set_text(l, _("OTA_RESTARTING"));
     lv_obj_center(l);
     fd_display_unlock();
 }

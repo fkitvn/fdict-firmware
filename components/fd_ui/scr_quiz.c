@@ -277,7 +277,7 @@ static void opt_row(lv_obj_t *p, const char *name, int grp, const char *const *o
         lv_obj_set_style_text_line_space(l, -3, 0);
     } else lv_obj_set_width(l, por ? 48 : 62);   /* doc: nhuong cho 3 nut lua chon */
     for (int i = 0; i < n; i++) {
-        lv_obj_t *b = btn(r, opts[i], i == sel, opt_cb, (grp << 4) | i);
+        lv_obj_t *b = btn(r, _(opts[i]), i == sel, opt_cb, (grp << 4) | i);
         lv_obj_set_height(b, bh);
         lv_obj_set_flex_grow(b, 1);
         lv_obj_set_style_pad_hor(b, 2, 0);   /* doc: "Offline"/"Bo the" vua nut */
@@ -302,7 +302,7 @@ static void show_load(const char *txt, view_t v)
     s_poll_t = lv_timer_create(poll_cb, 200, NULL);
 }
 
-#define OFFLINE_MSG "Kh\xC3\xB4ng c\xC3\xB3 Wifi, h\xE1\xBB\x8D" "c offline"   /* 23/10: toast khi hoc offline VA thuc su khong co WiFi */
+#define OFFLINE_MSG _("OFFLINE_NO_WIFI")   /* 23/10: toast khi hoc offline VA thuc su khong co WiFi */
 static const char *const SRC_API[3] = {"mockup", "deck", "offline"};
 
 static void start_cb(lv_event_t *e)
@@ -316,7 +316,7 @@ static void start_cb(lv_event_t *e)
     if (!fd_study_start(dir_str(), NOPT[s_ncfg], SRC_API[nowifi ? 2 : 1])) return;
     if (nowifi && fd_deck_ready()) fd_ui_toast(OFFLINE_MSG);
     s_wait = false;
-    show_load("Đang tải câu hỏi…", V_LOAD);
+    show_load(_("LOADING_QUESTIONS"), V_LOAD);
 }
 
 /* ---------- Phat am Hoc tap: CHI Pico (khong file bo tu / cache, khong tai nen); lap x1/x2 chinh tren man cau hoi ---------- */
@@ -346,15 +346,15 @@ static void show_setup(void)
     lv_obj_set_scrollbar_mode(sc, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_t *tr = hrow(sc, 26);
     lv_obj_set_flex_align(tr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    label(tr, "Học tập", &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    label(tr, _("STUDY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
 
-    static const char *const DIR[] = {"Anh-Việt", "Việt-Anh"};
-    static const char *const NS[] = {"10", "20", "V\xC3\xB4 t\xE1\xBA\xADn"};
-    opt_row(sc, "Chiều", OPT_DIR, DIR, 2, s_dir);
-    static const char *const RP[] = {"T\xE1\xBA\xAFt", "1 l\xE1\xBA\xA7n", "2 l\xE1\xBA\xA7n"};
-    opt_row(sc, "Số câu", OPT_N, NS, 3, s_ncfg);
-    opt_row(sc, "T\xE1\xBB\xB1 \xC4\x91\xE1\xBB\x99ng ph\xC3\xA1t", OPT_REP, RP, 3, s_reps);
-    lv_obj_t *b = btn(s_body, "B\xE1\xBA\xAFt \xC4\x91\xE1\xBA\xA7u", true, start_cb, 0);
+    static const char *const DIR[] = {"EN_VI", "VI_EN"};
+    static const char *const NS[] = {"10", "20", "ENDLESS"};
+    opt_row(sc, _("DIRECTION"), OPT_DIR, DIR, 2, s_dir);
+    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    opt_row(sc, _("QUESTIONS"), OPT_N, NS, 3, s_ncfg);
+    opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 3, s_reps);
+    lv_obj_t *b = btn(s_body, _("START"), true, start_cb, 0);
     lv_obj_set_size(b, lv_pct(100), 46);
     lv_obj_set_style_radius(b, 12, 0);
     lv_obj_set_style_shadow_width(b, 6, 0);
@@ -380,43 +380,43 @@ static void show_msg(const fd_study_status_t *st)
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 8, 0);
-    const char *t, *sub = "", *bt = "Thử lại";
+    const char *t, *sub = "", *bt = _("RETRY");
     lv_event_cb_t cb = retry_start_cb;
     char tmp[64];
     switch (st->err) {
     case FD_STUDY_ERR_UNPAIRED:
-        t = "Cần ghép thiết bị để học";
-        sub = "Ghép máy với tài khoản trên điện thoại.";
-        bt = "Ghép thiết bị";
+        t = _("PAIR_TO_STUDY");
+        sub = _("PAIR_HINT");
+        bt = _("PAIR_DEVICE");
         cb = open_pair_cb;
         break;
     case FD_STUDY_ERR_NO_WIFI:
-        t = "Chưa kết nối Wi-Fi";
-        sub = "Học tập cần Wi-Fi để tải câu hỏi.";
-        bt = "Mở Wi-Fi";
+        t = _("WIFI_NOT_CONNECTED");
+        sub = _("STUDY_NEEDS_WIFI");
+        bt = _("OPEN_WIFI");
         cb = open_wifi_cb;
         break;
     case FD_STUDY_ERR_NET:
-        t = "Không kết nối được máy chủ";
-        sub = "Kiểm tra Wi-Fi rồi thử lại.";
+        t = _("SERVER_UNREACHABLE");
+        sub = _("CHECK_WIFI_RETRY");
         break;
     case FD_STUDY_ERR_NO_DECK:
-        t = "Ch\xC6\xB0" "a c\xC3\xB3 d\xE1\xBB\xAF li\xE1\xBB\x87u offline";
-        sub = "K\xE1\xBA\xBFt n\xE1\xBB\x91i Wi-Fi \xC4\x91\xE1\xBB\x83 t\xE1\xBB\xB1 t\xE1\xBA\xA3i c\xC3\xA2u h\xE1\xBB\x8Fi.";
+        t = _("NO_OFFLINE_DATA_YET");
+        sub = _("OFFLINE_CONNECT_HINT");
         bt = "OK";
         cb = back_setup_cb;
         break;
     case FD_STUDY_ERR_FORMAT:
-        t = "Dữ liệu câu hỏi không hợp lệ";
+        t = _("INVALID_QUESTION_DATA");
         break;
     default:
-        snprintf(tmp, sizeof(tmp), "Máy chủ báo lỗi (%d)", st->http);
+        snprintf(tmp, sizeof(tmp), _("SERVER_ERROR_CODE"), st->http);
         t = tmp;
         break;
     }
     center_label(s_body, t, &fd_font_noto_18, st->err == FD_STUDY_ERR_UNPAIRED ? FD_COLOR_TEXT : C_BAD);
     if (sub[0]) center_label(s_body, sub, NULL, FD_COLOR_TEXT_MUTED);
-    btn_pair_row("Trở lại", back_setup_cb, bt, cb);
+    btn_pair_row(_("BACK"), back_setup_cb, bt, cb);
 }
 
 /* ---------- RESULT ---------- */
@@ -430,7 +430,7 @@ static void show_result(void)
     lv_obj_set_style_pad_row(s_body, 6, 0);
     int c = s_score, n = s_done;   /* cham tai may; ket qua tung phien da vao outbox */
     int sc = n ? c * 100 / n : 0;
-    center_label(s_body, "Kết quả", &fd_font_noto_18, FD_COLOR_TEXT_MUTED);
+    center_label(s_body, _("RESULT"), &fd_font_noto_18, FD_COLOR_TEXT_MUTED);
     lv_obj_t *r = lv_obj_create(s_body);
     lv_obj_remove_style_all(r);
     lv_obj_set_size(r, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -440,8 +440,8 @@ static void show_result(void)
     lv_obj_t *a = label(r, "", &fd_font_mont_32, FD_COLOR_PRIMARY_TEXT);
     lv_label_set_text_fmt(a, "%d/%d", c, n);
     lv_obj_t *p = label(r, "", &fd_font_noto_18, sc >= 50 ? C_OK : C_BAD);
-    lv_label_set_text_fmt(p, "đúng · %d%%", sc);
-    btn_pair_row("Về Home", home_cb, "Học tiếp", again_cb);
+    lv_label_set_text_fmt(p, _("QUIZ_CORRECT_PCT"), sc);
+    btn_pair_row(_("HOME"), home_cb, _("CONTINUE"), again_cb);
 }
 
 /* Ket thuc bai -> tong ket. complete: phien lam do dang cung gui; !complete (thoat Vo tan): giu tien do .part */
@@ -480,7 +480,7 @@ static void next_cb(lv_timer_t *t)
     if (++s_pos >= len && len) end_quiz(true);
     else if (fd_study_q(s_pos)) show_quiz();
     else if (fd_study_exhausted()) end_quiz(true);   /* Vo tan: het nguon */
-    else { show_load("Đang tải câu hỏi…", V_LOAD); s_wait = true; }
+    else { show_load(_("LOADING_QUESTIONS"), V_LOAD); s_wait = true; }
 }
 
 static void answer(int i)
@@ -530,10 +530,10 @@ static void show_quiz(void)
     lv_obj_set_flex_align(top, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *pg = label(top, "", NULL, FD_COLOR_TEXT_MUTED);
     int len = fd_study_len();
-    if (len) lv_label_set_text_fmt(pg, "Câu %d/%d", s_pos + 1, len);
-    else lv_label_set_text_fmt(pg, "Câu %d", s_pos + 1);   /* Vo tan */
+    if (len) lv_label_set_text_fmt(pg, _("QUIZ_QUESTION_N_OF"), s_pos + 1, len);
+    else lv_label_set_text_fmt(pg, _("QUIZ_QUESTION_N"), s_pos + 1);   /* Vo tan */
     lv_obj_t *sc = label(top, "", NULL, FD_COLOR_PRIMARY_TEXT);
-    lv_label_set_text_fmt(sc, "Điểm %d", s_score);
+    lv_label_set_text_fmt(sc, _("QUIZ_SCORE"), s_score);
 
     /* de bai */
     lv_obj_t *pr = lv_obj_create(s_body);
@@ -665,12 +665,12 @@ static void dlg_open(void)
     lv_obj_set_style_text_color(box, lv_color_hex(FD_COLOR_TEXT), 0);
     lv_obj_set_scrollable(box, false);
     lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
-    label(box, "Thoát bài làm?", &fd_font_noto_18, FD_COLOR_TEXT);
+    label(box, _("QUIT_THIS_QUIZ"), &fd_font_noto_18, FD_COLOR_TEXT);
     lv_obj_t *row = hrow(box, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_column(row, 10, 0);
     lv_obj_set_style_pad_top(row, 4, 0);
-    dlg_btn(row, "Hủy", false);
-    dlg_btn(row, "Thoát", true);
+    dlg_btn(row, _("CANCEL"), false);
+    dlg_btn(row, _("QUIT"), true);
 }
 
 static void build(lv_obj_t *scr)

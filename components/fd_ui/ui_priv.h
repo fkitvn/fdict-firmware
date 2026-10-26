@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include "fd_events.h"
 #include "fd_ui.h"
+#include "fd_i18n.h"   /* _("...") = chuoi giao dien theo ngon ngu (lv_i18n) */
 #include "fd_voice.h"
 #include "lvgl.h"
 #include "ui_theme.h"
@@ -21,7 +22,7 @@ typedef struct {
 } ui_screen_t;
 
 extern const ui_screen_t g_scr_home, g_scr_settings, g_scr_wifi,
-    g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_study, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair;
+    g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_study, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang;
 
 /* Ma thiet bi: <MAC 12 hex>-<build_id> (scr_pair.c) */
 void ui_device_ident(char *out, size_t n);
@@ -37,6 +38,8 @@ void ui_nav_back(void);
 void ui_nav_home(void);
 /* Xoay sang idx 0..3 (luu NVS) roi dung lai man hien tai. Goi trong task LVGL. */
 void ui_nav_set_rotation(int idx);
+/* Dung lai man hien tai (vd sau khi doi ngon ngu). Goi trong task LVGL. */
+void ui_nav_refresh(void);
 /* Bat/tat che do nha phat trien (luu NVS fd/devmode, log "devmode: on/off"). */
 void ui_devmode_set(bool on);
 
