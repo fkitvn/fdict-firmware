@@ -61,8 +61,14 @@ static lv_obj_t *s_pair_ico, *s_pair_title;
 static void pair_icon_fill(void)
 {
     lv_obj_clean(s_pair_ico);
+    bool paired = fd_ota_is_paired();
+    /* 1.3.3: chua ghep -> noi bat (nen amber nhat, vien + chu cam, icon canh bao); da ghep -> binh thuong */
+    lv_obj_set_style_bg_color(s_pair_card, paired ? lv_color_white() : lv_color_hex(FD_COLOR_PRIMARY_TINT), 0);
+    lv_obj_set_style_border_width(s_pair_card, paired ? 0 : 2, 0);
+    lv_obj_set_style_border_color(s_pair_card, lv_color_hex(FD_COLOR_ALERT), 0);
+    lv_obj_set_style_text_color(s_pair_sub, paired ? lv_palette_darken(LV_PALETTE_GREY, 1) : lv_color_hex(FD_COLOR_ALERT), 0);
     char nm[64];
-    if (fd_ota_is_paired() && fd_ota_get_user_name(nm, sizeof(nm))) {
+    if (paired && fd_ota_get_user_name(nm, sizeof(nm))) {
         lv_obj_t *av = ui_avatar_initials(s_pair_ico, nm, 36, 0x2563EB);
         lv_obj_center(av);
         lv_label_set_text(s_pair_title, nm);
@@ -70,10 +76,11 @@ static void pair_icon_fill(void)
     } else {
         lv_obj_t *i = lv_label_create(s_pair_ico);
         lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
-        lv_label_set_text(i, LV_SYMBOL_SHUFFLE);
+        lv_label_set_text(i, paired ? LV_SYMBOL_SHUFFLE : LV_SYMBOL_WARNING);
+        if (!paired) lv_obj_set_style_text_color(i, lv_color_hex(FD_COLOR_ALERT), 0);
         lv_obj_center(i);
         lv_label_set_text(s_pair_title, _("PAIR_DEVICE"));
-        lv_label_set_text(s_pair_sub, fd_ota_is_paired() ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
+        lv_label_set_text(s_pair_sub, paired ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
     }
 }
 

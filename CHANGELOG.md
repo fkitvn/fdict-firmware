@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.3.3] - 2026-10-26
+
+- Thông tin: dòng Chip chỉ hiện tên rút gọn (vd "ESP32-S3").
+- Cài đặt: khi chưa ghép thiết bị, mục Ghép thiết bị được làm nổi bật (nền vàng nhạt, viền và chữ cam, biểu tượng cảnh báo).
+
 ## [1.3.2] - 2026-10-26
 
 - Cài đặt: mục Ngôn ngữ nằm ngay dưới Wi-Fi, nhãn chỉ hiện theo ngôn ngữ hiện tại; chọn ngôn ngữ xong tự quay về Cài đặt.

@@ -337,16 +337,10 @@ static void refresh(void)
         lv_label_set_text(s_val[R_SIZE], fs);
     }
     lv_label_set_text(s_val[R_IDF], esp_get_idf_version());
-    {   /* Chip: model, revision, so nhan, "N<flash MB>R<PSRAM MB>" tinh tu kich thuoc thuc (luc chay) */
+    {   /* Chip: chi ten model rut gon (vd "ESP32-S3") */
         esp_chip_info_t ci;
         esp_chip_info(&ci);
-        uint32_t fl = 0;
-        esp_flash_get_size(NULL, &fl);
-        unsigned ps = esp_psram_is_initialized() ? (unsigned)(esp_psram_get_size() >> 20) : 0;
-        char cb[48];
-        snprintf(cb, sizeof(cb), _("CHIP_INFO"), ci.model == CHIP_ESP32S3 ? "ESP32-S3" : "ESP32",
-                 ci.revision / 100, ci.revision % 100, ci.cores, (unsigned)(fl >> 20), ps);
-        lv_label_set_text(s_val[R_CHIP], cb);
+        lv_label_set_text(s_val[R_CHIP], ci.model == CHIP_ESP32S3 ? "ESP32-S3" : "ESP32");
     }
     uint8_t m[6];
     esp_efuse_mac_get_default(m);
