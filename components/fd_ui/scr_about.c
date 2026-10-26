@@ -32,15 +32,15 @@
 #define ROW_H   24
 #define LABEL_W 96
 
-enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_LCD, R_OTA, R_COUNT };
+enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_COUNT };
 static const char *const LABELS[R_COUNT] = {"Firmware", "Mã thiết bị", "Build", "Ngày build", "K\xC3\xAD" "ch th\xC6\xB0\xE1\xBB\x9B" "c",
                                             "B\xE1\xBB\x99 nh\xE1\xBB\x9B flash", "D\xE1\xBB\xAF li\xE1\xBB\x87u", "Gi\xE1\xBB\x8Dng \xC4\x91\xE1\xBB\x8D" "c", "ESP-IDF", "MAC",
-                                            "IP", "Chip", "RAM trống", "Màn hình", "Máy chủ"};
+                                            "IP", "Chip", "RAM nội bộ", "PSRAM", "Màn hình", "Máy chủ"};
 /* Thu tu hien thi theo nhom (so am = tieu de nhom SECT[-n-1]) */
 static const char *const SECT[] = {"Thi\xE1\xBA\xBFt b\xE1\xBB\x8B", "Ph\xE1\xBA\xA7n m\xE1\xBB\x81m", "B\xE1\xBB\x99 nh\xE1\xBB\x9B", "K\xE1\xBA\xBFt n\xE1\xBB\x91i"};
 static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_MAC, R_LCD,
                                -2, R_FW, R_BUILD, R_DATE, R_SIZE, R_IDF, R_VOICE,
-                               -3, R_FLASH, R_DATA, R_RAM,
+                               -3, R_FLASH, R_DATA, R_RAM, R_PSRAM,
                                -4, R_IP, R_OTA};
 static lv_obj_t *s_val[R_COUNT];
 /* "FDict One - x.y.z": dung FD_FW_SEMVER de khong lap tien to */
@@ -354,13 +354,19 @@ static void refresh(void)
     char ip[16] = "";
     fd_net_ip(ip, sizeof(ip));
     lv_label_set_text(s_val[R_IP], (fd_net_is_connected() && ip[0]) ? ip : "Chưa kết nối");
-    {   /* RAM trong: noi bo + PSRAM (chi khi co) */
-        char ri[16], rp[16];
-        fmt_sz(ri, sizeof(ri), heap_caps_get_free_size(MALLOC_CAP_INTERNAL), 1);
-        if (heap_caps_get_total_size(MALLOC_CAP_SPIRAM)) {
-            fmt_sz(rp, sizeof(rp), heap_caps_get_free_size(MALLOC_CAP_SPIRAM), 1);
-            lv_label_set_text_fmt(s_val[R_RAM], "N\xE1\xBB\x99i b\xE1\xBB\x99 %s \xC2\xB7 PSRAM %s", ri, rp);
-        } else lv_label_set_text_fmt(s_val[R_RAM], "N\xE1\xBB\x99i b\xE1\xBB\x99 %s", ri);
+    {   /* RAM: da dung / tong. Noi bo = 512 KB SRAM ESP32-S3; PSRAM = tong heap SPIRAM */
+        char u[16], t[16];
+        const size_t in_tot = 512 * 1024;
+        size_t in_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+        fmt_sz(u, sizeof(u), in_free < in_tot ? in_tot - in_free : 0, 1);
+        fmt_sz(t, sizeof(t), in_tot, 0);
+        lv_label_set_text_fmt(s_val[R_RAM], "%s / %s", u, t);
+        size_t ps_tot = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+        if (ps_tot) {
+            fmt_sz(u, sizeof(u), ps_tot - heap_caps_get_free_size(MALLOC_CAP_SPIRAM), 1);
+            fmt_sz(t, sizeof(t), ps_tot, 1);
+            lv_label_set_text_fmt(s_val[R_PSRAM], "%s / %s", u, t);
+        } else lv_label_set_text(s_val[R_PSRAM], "Không có");
     }
     {
         char base[64];

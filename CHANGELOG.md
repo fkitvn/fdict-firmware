@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.2.7] - 2026-10-26
+
+- Màn hình Thông tin phiên bản: tách RAM thành hai dòng RAM nội bộ và PSRAM, hiển thị đã dùng / tổng.
+
 ## [1.2.6] - 2026-10-26
 
 - Màn hình Thông tin phiên bản: bỏ chữ "Chính thức" sau địa chỉ máy chủ.
