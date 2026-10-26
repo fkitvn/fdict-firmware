@@ -1,8 +1,10 @@
 vi:
   ABOUT: Thông tin phiên bản
   ALL: Tất cả
+  ALREADY_ON_HOME: Bạn đã ở màn hình Home
   AUTO_PLAY: Tự động phát
   BACK: Trở lại
+  BRIGHTNESS: Độ sáng
   BUILD_DATE: Ngày build
   CANCEL: Hủy
   CARDS: Số thẻ
@@ -36,10 +38,13 @@ vi:
   FORGET: Quên
   FORGET_THIS_NETWORK: Quên mạng này
   FRONT_SIDE: Mặt trước
+  HELLO: Xin chào!
+  HELLO_NAME: 'Xin chào, %s!'
   HOME: Về Home
   INTERNAL_RAM: RAM nội bộ
   INVALID_QUESTION_DATA: Dữ liệu câu hỏi không hợp lệ
   IN_ORDER: Theo danh sách
+  LANGUAGE: Ngôn ngữ
   LATER: Để sau
   LOADING_QUESTIONS: Đang tải câu hỏi…
   MEANING: Nghĩa
@@ -47,6 +52,7 @@ vi:
   MISSING: Thiếu
   NEVER: Không tắt
   NEXT: Sau >
+  'NO': Không
   NONE: Không có
   NOT_CONNECTED: Chưa kết nối
   NOT_PAIRED: Chưa ghép
@@ -54,6 +60,7 @@ vi:
   NO_NETWORKS_FOUND: Không tìm thấy mạng nào
   NO_OFFLINE_DATA_YET: Chưa có dữ liệu offline
   NO_UPDATE_AVAILABLE: Không có bản nâng cấp
+  NO_WIFI: chưa có Wi-Fi
   N_MIN: '%d phút'
   N_SEC: '%d giây'
   'OFF': Tắt
@@ -77,11 +84,30 @@ vi:
   OTA_NEW_VERSION: Có bản mới %s (%u.%02u MB)
   OTA_RESTARTING: Đang khởi động lại để cập nhật…
   OTA_UPDATE_ASK: Có phiên bản mới %s/%s (%u.%02u MB). Nâng cấp ngay?
+  PAIRED_WITH_ACCOUNT: Đã ghép với tài khoản
+  PAIR_CONNECT_WIFI: Kết nối Wi-Fi để ghép
   PAIR_DEVICE: Ghép thiết bị
+  PAIR_GETTING_CODE: Đang lấy mã…
+  PAIR_GET_CODE: Lấy mã
+  PAIR_GET_NEW_CODE: Lấy mã mới
   PAIR_HINT: Ghép máy với tài khoản trên điện thoại.
+  PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
   PAIR_TO_STUDY: Cần ghép thiết bị để học
   PASSWORD: Mật khẩu
   PIN_CODE: Mã PIN
+  PIN_ENTER_CURRENT: Nhập mã PIN hiện tại
+  PIN_ENTER_NEW: Nhập mã PIN mới
+  PIN_ENTER_TO_UNLOCK: Nhập để mở khóa
+  PIN_LOCKED_RETRY_IN: 'Đã khóa, thử lại sau %d giây'
+  PIN_MISMATCH: Không khớp. Nhập mã PIN mới
+  PIN_REENTER_NEW: Nhập lại mã PIN mới
+  PIN_REMOVE: Xoá mã PIN
+  PIN_REMOVED: Đã xoá mã PIN
+  PIN_REMOVE_ERROR: Lỗi xoá mã PIN
+  PIN_SAVED: Đã lưu mã PIN
+  PIN_SAVE_ERROR: Lỗi lưu mã PIN
+  PIN_WRONG_LEFT: 'Sai mã PIN, còn %d lần'
+  PRESS_ANY_BUTTON_TO_WAKE: Bấm nút bất kỳ để bật lại
   PREV: < Trước
   QUESTIONS: Số câu
   QUIT: Thoát
@@ -110,7 +136,10 @@ vi:
   SETTINGS: Cài đặt
   SHUFFLE: Trộn
   SIZE: Kích thước
+  SLEEP: Ngủ
+  SLEEP_CONFIRM: Ngủ?
   SOFTWARE: Phần mềm
+  SPLASH_TAGLINE: FDict One - Máy học từ vựng
   START: Bắt đầu
   STATISTICS: Thống kê
   STUDY: Học tập
@@ -123,13 +152,18 @@ vi:
   TIMEOUT_WAKE_HINT: Chạm màn hình hoặc bấm nút để bật lại
   TURN_OFF_DEVELOPER_MODE: Tắt chế độ nhà phát triển?
   TURN_ON_DEVELOPER_MODE: Bật chế độ nhà phát triển?
+  UNPAIR: Huỷ ghép
   UNPAIRED_LAB: Server Lab · đã huỷ ghép
   UNPAIRED_OFFICIAL: Server chính thức · đã huỷ ghép
+  UNPAIR_CONFIRM: Huỷ ghép đôi?
+  UNPAIR_DEVICE: Huỷ ghép đôi
+  UNPAIR_MSG: Máy sẽ ngắt khỏi tài khoản này.
   UNREADABLE: Không đọc được
   UPDATE: Cập nhật
   UPGRADE: Nâng cấp
   VI_EN: Việt-Anh
   VOICE: Giọng đọc
+  VOICE_DATA_MISSING: Thiếu dữ liệu giọng đọc
   VOLUME: Âm lượng
   WIFI_AUTH_FAILED: Không xác thực được với router “%s” (mã %d). Thử lại sau.
   WIFI_CONNECTING_TO: Đang kết nối %s…

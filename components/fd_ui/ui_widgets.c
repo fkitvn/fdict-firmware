@@ -66,7 +66,7 @@ void ui_pron_say_cfg(const char *word, const fd_pron_cfg_t *cfg)
 {
     esp_err_t r = fd_pron_say_cfg(word, cfg);
     if (r != ESP_OK && r != ESP_ERR_INVALID_STATE) {
-        if (!fd_tts_voice_ok()) fd_ui_toast("Thi\xE1\xBA\xBFu d\xE1\xBB\xAF li\xE1\xBB\x87u gi\xE1\xBB\x8Dng \xC4\x91\xE1\xBB\x8D\x63");   /* 23/10: thieu phan vung voice */
+        if (!fd_tts_voice_ok()) fd_ui_toast(_("VOICE_DATA_MISSING"));   /* 23/10: thieu phan vung voice */
         else ui_vol_beep();
     }
 }

@@ -98,7 +98,7 @@ void fd_ui_toast(const char *text)
 }
 
 /* (thoi gian cho: xem ben duoi) */
-#define HOME_TOAST "Bạn đã ở màn hình Home"
+#define HOME_TOAST _("ALREADY_ON_HOME")
 
 /* Theme: default voi mau chu dao amber; chu tren nut = toi (FD_COLOR_ON_PRIMARY) cho du tuong phan */
 static lv_style_t s_btn_text;

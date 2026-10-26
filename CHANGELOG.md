@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.3.2] - 2026-10-26
+
+- Cài đặt: mục Ngôn ngữ nằm ngay dưới Wi-Fi, nhãn chỉ hiện theo ngôn ngữ hiện tại; chọn ngôn ngữ xong tự quay về Cài đặt.
+- Dịch Việt/Anh: Ghép thiết bị, Mã PIN, hộp thoại Ngủ, bảng nhanh, màn chào, thông báo.
+- Thông tin: RAM nội bộ và PSRAM hiển thị dạng "đã dùng / tổng (%)" như dòng Dữ liệu.
+
 ## [1.3.1] - 2026-10-26
 
 - Học tập (Anh-Việt): khi bật Tự động phát (1 lần / 2 lần), máy tự đọc từ vựng mỗi khi chuyển sang câu hỏi mới, kể cả câu đầu tiên và câu sau khi tải thêm; mỗi câu chỉ đọc một lượt.

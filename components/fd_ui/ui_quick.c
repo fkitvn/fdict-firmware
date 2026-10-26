@@ -192,19 +192,19 @@ static void sleep_cb(lv_event_t *e)
     lv_obj_t *t = lv_label_create(box);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(t, "Ngủ?");
+    lv_label_set_text(t, _("SLEEP_CONFIRM"));
     lv_obj_t *h = lv_label_create(box);
     lv_obj_set_style_text_color(h, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
     lv_obj_set_width(h, lv_pct(100)); lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(h, "Bấm nút bất kỳ để bật lại");
+    lv_label_set_text(h, _("PRESS_ANY_BUTTON_TO_WAKE"));
     lv_obj_t *row = lv_obj_create(box);
     lv_obj_remove_style_all(row);
     lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(row, 10, 0);
     lv_obj_set_style_pad_top(row, 4, 0);
-    pdlg_btn(row, "Hủy", false);
-    pdlg_btn(row, "Ngủ", true);
+    pdlg_btn(row, _("CANCEL"), false);
+    pdlg_btn(row, _("SLEEP"), true);
 }
 #endif
 
@@ -352,9 +352,9 @@ void ui_quick_open(void)
     lv_obj_set_style_bg_opa(hsep, LV_OPA_COVER, 0);
     lv_obj_set_style_bg_color(hsep, lv_color_hex(FD_COLOR_BORDER), 0);
 
-    slider_row(s_panel, NULL, "Độ sáng", 10, fd_display_get_brightness(), bri_cb, NULL, &s_bri_val);
+    slider_row(s_panel, NULL, _("BRIGHTNESS"), 10, fd_display_get_brightness(), bri_cb, NULL, &s_bri_val);
     int v = fd_audio_get_volume();
-    s_vol_sl = slider_row(s_panel, LV_SYMBOL_VOLUME_MAX, "Âm lượng", 0, v, vol_cb, &s_vol_icon, &s_vol_val);
+    s_vol_sl = slider_row(s_panel, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), 0, v, vol_cb, &s_vol_icon, &s_vol_val);
     vol_show(v);
 
     lv_obj_t *sep = lv_obj_create(s_panel);

@@ -1,4 +1,4 @@
-/* Cai dat > Ngon ngu / Language: Tieng Viet | English (luu NVS fd/lang, dung lai man de cap nhat chu). */
+/* Cai dat > Ngon ngu / Language: Tieng Viet | English (luu NVS fd/lang, chon xong tu ve man truoc). */
 #include "fd_fonts.h"
 #include "ui_priv.h"
 
@@ -18,10 +18,11 @@ static void mark(void)
 static void opt_cb(lv_event_t *e)
 {
     fd_lang_t l = (fd_lang_t)(intptr_t)lv_event_get_user_data(e);
-    if (l == fd_i18n_get_lang()) return;
-    fd_i18n_set_lang(l);
-    mark();
-    ui_nav_refresh();   /* dung lai man hien tai; cac man khac tu dung lai khi mo */
+    if (l != fd_i18n_get_lang()) {
+        fd_i18n_set_lang(l);
+        mark();
+    }
+    ui_nav_back();   /* chon xong -> ve man truoc (Cai dat), man do dung lai theo ngon ngu moi */
 }
 
 static void build(lv_obj_t *scr)

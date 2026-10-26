@@ -126,8 +126,8 @@ static void show(void)
         if (s_av) { lv_obj_delete(s_av); s_av = NULL; }
         if (done) {   /* avatar_url chua tai anh: dung chu cai dau ten (khong ten -> "?") */
             s_av = ui_avatar_initials(s_av_box, has_name ? name : "", 72, 0x2563EB);
-            if (has_name) lv_label_set_text_fmt(s_hello, "Xin chào, %s!", name);
-            else lv_label_set_text(s_hello, "Xin chào!");
+            if (has_name) lv_label_set_text_fmt(s_hello, _("HELLO_NAME"), name);
+            else lv_label_set_text(s_hello, _("HELLO"));
         }
     }
     lv_obj_set_hidden(s_av_box, !done);
@@ -157,25 +157,25 @@ static void show(void)
     }
     char b[48];
     uint32_t col = 0x6B7280;
-    const char *help = "", *bt = "Lấy mã mới";
+    const char *help = "", *bt = _("PAIR_GET_NEW_CODE");
     if (s_nowifi) {
         col = 0xDC2626;
-        snprintf(b, sizeof(b), "Chưa kết nối Wi-Fi");
-        help = "Kết nối Wi-Fi để ghép";
-        bt = "Mở Wi-Fi";
+        snprintf(b, sizeof(b), _("WIFI_NOT_CONNECTED"));
+        help = _("PAIR_CONNECT_WIFI");
+        bt = _("OPEN_WIFI");
     } else switch (p.state) {
-    case FD_PAIR_REQUESTING: snprintf(b, sizeof(b), "Đang lấy mã…"); break;
+    case FD_PAIR_REQUESTING: snprintf(b, sizeof(b), _("PAIR_GETTING_CODE")); break;
     case FD_PAIR_CODE:
-        snprintf(b, sizeof(b), "Quét bằng điện thoại · %d:%02d", p.expires_s / 60, p.expires_s % 60);   /* 1 dong: huong dan + dem nguoc */
+        snprintf(b, sizeof(b), _("PAIR_SCAN_WITH_PHONE"), p.expires_s / 60, p.expires_s % 60);   /* 1 dong: huong dan + dem nguoc */
         break;
     case FD_PAIR_ERROR:
         col = 0xDC2626;
-        snprintf(b, sizeof(b), "Lỗi: %s", !strcmp(p.err, "no_wifi") ? "chưa có Wi-Fi" : p.err);
-        bt = "Thử lại";
+        snprintf(b, sizeof(b), _("ERROR_FMT"), !strcmp(p.err, "no_wifi") ? _("NO_WIFI") : p.err);
+        bt = _("RETRY");
         break;
     default:
-        snprintf(b, sizeof(b), "Chưa ghép");
-        bt = "Lấy mã";
+        snprintf(b, sizeof(b), _("NOT_PAIRED"));
+        bt = _("PAIR_GET_CODE");
         break;
     }
     bool qr = !s_nowifi && p.state == FD_PAIR_CODE;
@@ -259,21 +259,21 @@ static void unpair_cb(lv_event_t *e)
     lv_obj_t *t = lv_label_create(box);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
-    lv_label_set_text(t, "Huỷ ghép đôi?");
+    lv_label_set_text(t, _("UNPAIR_CONFIRM"));
     lv_obj_t *m = lv_label_create(box);
     lv_obj_set_width(m, lv_pct(100));
     lv_obj_set_style_text_align(m, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(m, lv_color_hex(0x6B7280), 0);
     lv_label_set_long_mode(m, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(m, "Máy sẽ ngắt khỏi tài khoản này.");
+    lv_label_set_text(m, _("UNPAIR_MSG"));
     lv_obj_t *row = lv_obj_create(box);
     lv_obj_remove_style_all(row);
     lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(row, 10, 0);
     lv_obj_set_style_pad_top(row, 4, 0);
-    dlg_btn(row, "Không", false);
-    dlg_btn(row, "Huỷ ghép", true);
+    dlg_btn(row, _("NO"), false);
+    dlg_btn(row, _("UNPAIR"), true);
 }
 
 /* Vuot quay lai khi hop thoai dang mo = Khong */
@@ -329,7 +329,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_scrollable(col, false);
     lv_obj_t *t = center_lbl(col, &fd_font_noto_18, 0x111827);
     lv_obj_set_hidden(t, low);
-    lv_label_set_text(t, "Ghép thiết bị");
+    lv_label_set_text(t, _("PAIR_DEVICE"));
     /* da ghep */
     s_av_box = lv_obj_create(col);   /* giu cho avatar (tao lai khi doi ten) */
     lv_obj_remove_style_all(s_av_box);
@@ -338,7 +338,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_clickable(s_av_box, false);
     s_hello = center_lbl(col, &fd_font_noto_18, 0x111827);
     s_sub = center_lbl(col, NULL, 0x16A34A);
-    lv_label_set_text(s_sub, "Đã ghép với tài khoản");
+    lv_label_set_text(s_sub, _("PAIRED_WITH_ACCOUNT"));
     /* chua ghep */
     s_qr_wrap = lv_obj_create(col);   /* nen trang + vien = quiet zone */
     lv_obj_remove_style_all(s_qr_wrap);
@@ -371,10 +371,10 @@ static void build(lv_obj_t *scr)
     lv_obj_t *bl;
     lv_obj_t *bb = btn(row, 0xE5E7EB, &bl, back_cb);
     lv_obj_set_style_text_color(bl, lv_color_hex(0x111827), 0);
-    lv_label_set_text(bl, "Trở lại");
+    lv_label_set_text(bl, _("BACK"));
     s_btn = btn(row, FD_COLOR_PRIMARY, &s_btn_lbl, pair_cb);
     s_un_btn = btn(row, 0xDC2626, &s_un_lbl, unpair_cb);
-    lv_label_set_text(s_un_lbl, "Huỷ ghép đôi");
+    lv_label_set_text(s_un_lbl, _("UNPAIR_DEVICE"));
     lv_obj_t *bs[3] = {bb, s_btn, s_un_btn};
     for (int i = 0; i < 3; i++) { lv_obj_set_width(bs[i], 0); lv_obj_set_flex_grow(bs[i], 1); }
     s_shown_name[0] = 1; s_shown_name[1] = 0;

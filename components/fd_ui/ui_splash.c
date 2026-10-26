@@ -55,7 +55,7 @@ void ui_splash_show(void)
     /* 1 dong: Noto 14 rong ~187 px (le >= 10% ca man ngang 320 va man doc 240) */
     lv_obj_set_style_text_font(lbl, &fd_font_noto_14, 0);
     lv_obj_set_style_text_color(lbl, lv_color_hex(0x1E293B), 0);   /* slate dam tren nen trang */
-    lv_label_set_text(lbl, "FDict One - Máy học từ vựng");
+    lv_label_set_text(lbl, _("SPLASH_TAGLINE"));
     lv_obj_set_width(lbl, LV_SIZE_CONTENT);   /* khong xuong dong */
     lv_label_set_long_mode(lbl, LV_LABEL_LONG_CLIP);
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);

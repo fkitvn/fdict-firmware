@@ -107,16 +107,16 @@ static void prompt(const char *t, bool err)
 
 static void stage_prompt(void)
 {
-    if (s_st == ST_VERIFY) prompt(s_wake ? "Nhập để mở khóa" : "Nhập mã PIN hiện tại", false);
-    else if (s_st == ST_NEW1) prompt("Nhập mã PIN mới", false);
-    else if (s_st == ST_NEW2) prompt("Nhập lại mã PIN mới", false);
+    if (s_st == ST_VERIFY) prompt(s_wake ? _("PIN_ENTER_TO_UNLOCK") : _("PIN_ENTER_CURRENT"), false);
+    else if (s_st == ST_NEW1) prompt(_("PIN_ENTER_NEW"), false);
+    else if (s_st == ST_NEW2) prompt(_("PIN_REENTER_NEW"), false);
     if (s_clear) lv_obj_set_hidden(s_clear, !(s_st == ST_NEW1 && fd_pin_is_set() && !s_wake));
 }
 
 static void lock_prompt(int left)
 {
     char t[48];
-    snprintf(t, sizeof(t), "Đã khóa, thử lại sau %d giây", left);
+    snprintf(t, sizeof(t), _("PIN_LOCKED_RETRY_IN"), left);
     prompt(t, true);
     s_lock_shown = true;
     if (s_bar) {
@@ -196,7 +196,7 @@ static void submit(void)
                 lock_prompt(left);
             } else {
                 char t[48];
-                snprintf(t, sizeof(t), "Sai mã PIN, còn %d lần", fd_pin_fails_left());
+                snprintf(t, sizeof(t), _("PIN_WRONG_LEFT"), fd_pin_fails_left());
                 prompt(t, true);
             }
         }
@@ -209,11 +209,11 @@ static void submit(void)
     } else if (s_st == ST_NEW2) {
         if (memcmp(s_first, d, 4) == 0) {
             bool ok = fd_pin_set(d);
-            if (ok) success_then("Đã lưu mã PIN");
-            else { prompt("Lỗi lưu mã PIN", true); dots_error(); s_st = ST_NEW1; }
+            if (ok) success_then(_("PIN_SAVED"));
+            else { prompt(_("PIN_SAVE_ERROR"), true); dots_error(); s_st = ST_NEW1; }
         } else {
             s_st = ST_NEW1;
-            prompt("Không khớp. Nhập mã PIN mới", true);
+            prompt(_("PIN_MISMATCH"), true);
             dots_error();
         }
     }
@@ -251,8 +251,8 @@ static void clear_cb(lv_event_t *e)
     (void)e;
     if (s_busy) return;
     bool ok = fd_pin_clear();
-    if (ok) success_then("Đã xoá mã PIN");
-    else prompt("Lỗi xoá mã PIN", true);
+    if (ok) success_then(_("PIN_REMOVED"));
+    else prompt(_("PIN_REMOVE_ERROR"), true);
 }
 
 /* ---------- dung man ---------- */
@@ -271,7 +271,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_flex_flow(info, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(info, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(info, portrait ? 6 : 10, 0);
-    ui_screen_title(info, "Mã PIN");
+    ui_screen_title(info, _("PIN_CODE"));
 
     s_prompt = lv_label_create(info);
     lv_obj_set_width(s_prompt, lv_pct(100));
@@ -311,7 +311,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_border_color(s_clear, lv_color_hex(C_ERR), 0);
     lv_obj_set_style_text_color(s_clear, lv_color_hex(C_ERR), 0);
     lv_obj_t *cl = lv_label_create(s_clear);
-    lv_label_set_text(cl, "Xoá mã PIN");
+    lv_label_set_text(cl, _("PIN_REMOVE"));
     lv_obj_center(cl);
     lv_obj_add_event_cb(s_clear, clear_cb, LV_EVENT_CLICKED, NULL);
 
