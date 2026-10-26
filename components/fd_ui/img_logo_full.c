@@ -1,5 +1,5 @@
 /* Logo FDict One day du cho man chao (splash)
- * Raster truc tiep tu assets/images/fdict-logo-full.svg dung kich thuoc hien thi (cairosvg, khong resample/zoom) - 88x73.
+ * Raster truc tiep tu assets/images/fdict-logo.svg dung kich thuoc hien thi (cairosvg, khong resample/zoom) - 88x73.
  * RGB565A8 (man 16 bit: hien thi nhu ARGB8888, it hon 1/4 dung luong). Logo/ten FDict la thuong hieu cua fkit.vn (xem NOTICE). Sinh tu dong, khong sua tay. */
 #include "lvgl.h"
 

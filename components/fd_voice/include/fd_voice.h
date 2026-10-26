@@ -1,6 +1,6 @@
 #pragma once
 /* Giong doc chat luong cao (lai voi Pico): cache /data/voice/<word>.pcm (16-bit LE mono 16 kHz, <= 64 KB).
- * Tai tu GET {base}/api/v1/audio/{word}?fmt=pcm16k (Bearer, xem docs/tts/CONTRACT-firmware.md) trong task "fd_voice"
+ * Tai tu GET {base}/api/v1/audio/{word}?fmt=pcm16k (Bearer, xem .cursor/docs/tts/CONTRACT-firmware.md) trong task "fd_voice"
  * uu tien thap (khong chan LVGL / am thanh). 404 -> nho 6 h; loi mang/5xx -> thu lai sau 60 s; 401 -> fd_ota ve Chua ghep.
  * Cache toi da 2 MB: vuot -> xoa file cu nhat (mtime). */
 #include <stdbool.h>

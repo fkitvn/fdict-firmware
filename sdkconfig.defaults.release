@@ -1,5 +1,0 @@
-# Dung: idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.esp32s3;sdkconfig.defaults.release" build
-CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y
-CONFIG_LOG_DEFAULT_LEVEL_WARN=y
-CONFIG_LV_USE_PERF_MONITOR=n
-CONFIG_LV_USE_SYSMON=n

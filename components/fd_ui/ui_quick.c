@@ -330,7 +330,7 @@ void ui_quick_open(void)
     lv_obj_set_flex_flow(hd, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(hd, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(hd, 8, 0);
-    lv_obj_t *logo = lv_image_create(hd);   /* mark 'FD' 28x28 (ve 28x23 can giua) RGB565A8 tu fdict-logo-full.svg (19/10) */
+    lv_obj_t *logo = lv_image_create(hd);   /* mark 'FD' 28x28 (ve 28x23 can giua) RGB565A8 tu fdict-logo.svg (19/10) */
     lv_image_set_src(logo, &img_logo);
     lv_obj_t *pn = lv_label_create(hd);
     lv_obj_set_style_text_font(pn, &fd_font_noto_18, 0);

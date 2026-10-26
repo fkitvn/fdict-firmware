@@ -1,5 +1,5 @@
 #pragma once
-/* Flash card tu API (chi DOC), cung mau voi fd_study (docs/study/CONTRACT-firmware.md):
+/* Flash card tu API (chi DOC), cung mau voi fd_study (.cursor/docs/study/CONTRACT-firmware.md):
  * POST {base}/api/study/cards {device_id, offset, limit} + Authorization: Bearer <device_token> (khong log)
  * -> {source:"deck"|"mockup", total, offset, cards:[{id, word, ipa, meaning}]}.
  * Mang chay trong task rieng "fd_fc"; phan hoi 200 luu /data/fc_cache.json (tmp+rename) -> offline/chua ghep dung cache;

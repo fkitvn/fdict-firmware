@@ -1,5 +1,5 @@
 #pragma once
-/* Bo tu offline cho Hoc tap (hop dong: docs/decks/CONTRACT-firmware.md).
+/* Bo tu offline cho Hoc tap (hop dong: .cursor/docs/decks/CONTRACT-firmware.md).
  * Tai tu server khi online (task "fd_deck", uu tien thap): GET /api/v1/decks -> chon bo; words.tsv (ETag/304) +
  * audio.pak (Range noi tiep, If-Range). Luu /data/decks/<id>/ (thu muc .new roi rename = nguyen tu), 1 bo/luc,
  * quota FD_DECK_QUOTA. Hoc offline: tao phien tu bo da luu, cham diem tai may, ket qua xep /data/outbox

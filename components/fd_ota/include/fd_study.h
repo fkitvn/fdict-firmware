@@ -1,5 +1,5 @@
 #pragma once
-/* Hoc tap tu API (hop dong: docs/study/CONTRACT-firmware.md).
+/* Hoc tap tu API (hop dong: .cursor/docs/study/CONTRACT-firmware.md).
  * POST {base}/api/study/start -> bo cau hoi; POST {base}/api/study/result (1 lan, du moi cau, bo qua = "").
  * Header Authorization: Bearer <device_token> (khong log). Moi viec mang chay trong task rieng "fd_study". */
 #include <stdbool.h>

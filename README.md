@@ -77,7 +77,7 @@ Firmware không chứa địa chỉ máy chủ thật. Đặt URL trong `idf.py 
 
 Giá trị mặc định là placeholder `https://your-server.example`. _Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) dùng `CONFIG_FD_OTA_LAB_BASE_URL` (HTTP trong mạng LAN, chỉ dùng khi phát triển).
 
-Không commit token, mật khẩu Wi-Fi hay `sdkconfig` chứa thông tin riêng. Hợp đồng API phía thiết bị: `docs/study`, `docs/decks`, `docs/tts`.
+Không commit token, mật khẩu Wi-Fi hay `sdkconfig` chứa thông tin riêng. Hợp đồng API phía thiết bị: `.cursor/docs/study`, `.cursor/docs/decks`, `.cursor/docs/tts`.
 
 ## Build và nạp
 
@@ -87,8 +87,6 @@ idf.py set-target esp32s3        # lần đầu
 idf.py build
 idf.py -p <PORT> flash monitor   # nạp bootloader, bảng phân vùng, ứng dụng và phân vùng voice
 ```
-
-Bản phát hành: `idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.release" build`.
 
 Trên Windows có thể dùng `tools\flash-monitor.ps1 [-Port COM6] [-NoFlash]` để nạp và ghi log monitor vào `logs\`.
 
@@ -232,7 +230,7 @@ components/
   fd_fonts/           font sinh bằng lv_font_conv
   fd_events/          sự kiện nội bộ
 assets/               font, logo gốc
-docs/                 hợp đồng API phía thiết bị
+.cursor/docs/{study,decks,tts}  hợp đồng API phía thiết bị
 scripts/              build CI cho OTA (ci-ota-build.sh)
 .github/workflows/    GitHub Actions (ota-prod.yml)
 tools/                script tạo voice.bin, font, nạp và monitor
@@ -252,7 +250,7 @@ partitions.csv        bảng phân vùng 16 MB
 Mã nguồn phát hành theo **Apache License 2.0**, xem [LICENSE](LICENSE) và [NOTICE](NOTICE).
 Copyright 2026 fkit.vn / Đinh Thanh Thịnh.
 
-Tên **FDict** (thiết bị: **FDict One**), **fkit.vn** và logo FDict/fkit.vn (`assets/images/fdict-logo-full.svg` và các ảnh dẫn xuất) là thương hiệu thuộc sở hữu của **fkit.vn**, **không** thuộc phạm vi giấy phép Apache-2.0. Muốn sử dụng cần được fkit.vn cho phép.
+Tên **FDict** (thiết bị: **FDict One**), **fkit.vn** và logo FDict/fkit.vn (`assets/images/fdict-logo.svg` và các ảnh dẫn xuất) là thương hiệu thuộc sở hữu của **fkit.vn**, **không** thuộc phạm vi giấy phép Apache-2.0. Muốn sử dụng cần được fkit.vn cho phép.
 
 Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, biểu tượng…): xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

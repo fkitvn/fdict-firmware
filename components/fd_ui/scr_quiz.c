@@ -1,4 +1,4 @@
-/* Hoc tap = Trac nghiem tu API may chu (docs/study/CONTRACT-firmware.md). KHONG con dung bo tu tren may.
+/* Hoc tap = Trac nghiem tu API may chu (.cursor/docs/study/CONTRACT-firmware.md). KHONG con dung bo tu tren may.
  *   SETUP  : chieu, so cau (10/20/Vo tan), nguon (Bo the / Offline; 23/10 bo Mockup), nut [Bat dau] ghim day man (cai dat cuon phia tren; 23/10 bo nut tai bo tu offline). Nho trong NVS fd/quiz_cfg.
  *   LOAD   : POST /api/study/start trong task fd_study (khong chan LVGL); man nay doc trang thai bang lv_timer.
  *   MSG    : chua ghep (-> Ghép thiết bị) / chua Wi-Fi (-> Mở Wi-Fi) / loi mang (Thử lại).

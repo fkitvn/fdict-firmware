@@ -17,4 +17,4 @@
 | lv_font_conv (công cụ, không nằm trong firmware) | `tools/gen_fonts.sh` | https://github.com/lvgl/lv_font_conv | MIT |
 
 Khi phân phối bản nhị phân có Pico TTS: kèm theo bản Apache-2.0 và file NOTICE của Pico.
-**Thương hiệu:** tên FDict (thiết bị: FDict One) / fkit.vn và logo (`assets/images/fdict-logo-full.svg`, ảnh dẫn xuất như `components/fd_ui/img_logo.c`) thuộc sở hữu của fkit.vn, không cấp phép theo Apache-2.0.
+**Thương hiệu:** tên FDict (thiết bị: FDict One) / fkit.vn và logo (`assets/images/fdict-logo.svg`, ảnh dẫn xuất như `components/fd_ui/img_logo.c`) thuộc sở hữu của fkit.vn, không cấp phép theo Apache-2.0.
