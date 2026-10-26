@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.2.5] - 2026-10-26
+
+- Bản thử cập nhật OTA, không đổi tính năng.
+
 ## [1.2.4] - 2026-10-25
 
 - Màn Thông tin: khi chưa kết nối Wi-Fi, bấm dòng “Cần Wi-Fi để kiểm tra cập nhật” (gạch chân) để mở nhanh màn cài đặt Wi-Fi.
