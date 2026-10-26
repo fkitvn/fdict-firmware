@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Ten firmware = app version (esp_app_desc.version, char[32]): "FDict One - x.y.z" (dinh dang duy nhat).
 # Build ID = 10 ky tu hex dau (chu thuong) cua SHA256 file ELF (vd 3fa9c01b7e).
-set(PROJECT_VER "FDict One - 1.2.5")
+set(PROJECT_VER "FDict One - 1.2.6")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # FD_FW_NAME = PROJECT_VER (QR, log khoi dong, OTA); FD_FW_SEMVER = phan x.y.z.
@@ -22,7 +22,7 @@ idf_build_set_property(COMPILE_OPTIONS "SHELL:-include ${FD_FW_NAME_H}" APPEND)
 
 project(fdict-firmware)
 
-# 23/10: du lieu giong Pico (fd_tts) -> build/voice.bin -> phan vung 'voice'; `idf.py flash` nap ca phan vung nay.
+# Du lieu giong Pico (fd_tts) -> build/voice.bin -> phan vung voice; idf.py flash nap luon.
 set(FD_LANG "${CMAKE_CURRENT_LIST_DIR}/components/fd_tts/pico/lang")
 set(FD_VOICE_BIN "${CMAKE_BINARY_DIR}/voice.bin")
 idf_build_get_property(fd_python PYTHON)

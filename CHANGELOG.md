@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.2.6] - 2026-10-26
+
+- Màn hình Thông tin phiên bản: bỏ chữ "Chính thức" sau địa chỉ máy chủ.
+
 ## [1.2.5] - 2026-10-26
 
 - Bản thử cập nhật OTA, không đổi tính năng.

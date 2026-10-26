@@ -366,7 +366,7 @@ static void refresh(void)
         char base[64];
         bool lab = false;
         fd_ota_get_base(base, sizeof(base), &lab);
-        lv_label_set_text_fmt(s_val[R_OTA], "%s%s", base, lab ? " (Lab)" : " (Chính thức)");
+        lv_label_set_text_fmt(s_val[R_OTA], "%s%s", base, lab ? " (Lab)" : "");
     }
     lv_label_set_text_fmt(s_val[R_LCD], "%dx%d, xoay %d°", (int)lv_display_get_horizontal_resolution(NULL),
                           (int)lv_display_get_vertical_resolution(NULL),
