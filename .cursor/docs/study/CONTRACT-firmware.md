@@ -1,7 +1,7 @@
 # Học tập qua API — hợp đồng phía firmware
 
 Firmware: FDict One - 1.0.3 (fnk0104b). Màn Học tập không còn dùng bộ từ trên máy; câu hỏi lấy từ server.
-Base URL giống OTA/ghép: Lab `http://192.168.1.100:8001`, production `https://your-server.example` (TLS, certificate bundle, không bao giờ tắt kiểm tra chứng chỉ).
+Base URL giống OTA/ghép: Lab `https://fdict-dev.joinnow.vn`, production `https://dict.fkit.vn` (TLS, certificate bundle, không bao giờ tắt kiểm tra chứng chỉ).
 
 ## Xác thực
 - Mọi request gửi `Authorization: Bearer <device_token>` (NVS `fdict/device_token`, lưu khi ghép) và `Content-Type: application/json`.

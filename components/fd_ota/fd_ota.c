@@ -32,7 +32,7 @@
 
 static const char *TAG = "fd_ota";
 
-/* Server chon luc chay theo che do nha phat trien (NVS fd/devmode): bat = Lab (http LAN), tat = chinh thuc (https + cert bundle).
+/* Server chon luc chay theo che do nha phat trien (NVS fd/devmode): bat = Lab (CONFIG_FD_OTA_LAB_BASE_URL, mac dinh https + cert bundle), tat = chinh thuc (https + cert bundle).
  * Moi request doc lai qua fd_ota_base_url() -> doi server ap dung ngay request ke tiep. */
 static volatile bool s_lab;
 static volatile bool s_abort;            /* doi server: huy tai OTA dang chay */
@@ -266,7 +266,7 @@ static bool str_get(const char *key, char *out, size_t len)
 static bool url_allowed(const char *u)
 {
     if (!strncmp(u, "https://", 8)) return true;
-    if (s_lab && !strncmp(u, "http://", 7)) return true;   /* chi server Lab (che do nha phat trien) */
+    if (s_lab && !strncmp(u, "http://", 7)) return true;   /* Lab van cho http LAN neu URL Lab la http; Lab https dung cung cert bundle */
     return false;
 }
 

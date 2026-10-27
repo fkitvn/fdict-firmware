@@ -5,7 +5,7 @@
 
 `GET {base}/api/v1/audio/{word}?fmt=pcm16k`
 
-- `base`: Lab `http://192.168.1.100:8001` (chỉ chế độ nhà phát triển), chính thức `https://your-server.example` (TLS, cert bundle, luôn kiểm tra chứng chỉ).
+- `base`: Lab `https://fdict-dev.joinnow.vn` (chỉ chế độ nhà phát triển), chính thức `https://your-server.example` (TLS, cert bundle, luôn kiểm tra chứng chỉ).
 - `word`: `[a-z]{1,31}` (firmware chuyển chữ thường; từ khác không gửi).
 - Header: `Authorization: Bearer <device_token>` (NVS `fdict/device_token`). Firmware không log token/header.
 

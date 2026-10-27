@@ -1,15 +1,15 @@
 menu "FDict One OTA"
 
     config FD_OTA_LAB
-        bool "LAB: may chu dict trong LAN qua HTTP (chi build thu, KHONG phat hanh)"
+        bool "LAB: may chu dict Lab/dev (chi build thu, KHONG phat hanh)"
         default n
         help
             Khong con chon server (giu cho tuong thich sdkconfig). Server chon luc chay theo Che do nha phat trien:
-            bat = FD_OTA_LAB_BASE_URL (http LAN), tat = FD_OTA_BASE_URL (https + cert bundle, khong tat kiem cert).
+            bat = FD_OTA_LAB_BASE_URL (Lab/dev, mac dinh https + cert bundle), tat = FD_OTA_BASE_URL (https + cert bundle, khong tat kiem cert). Van cho phep http:// khi Lab neu URL Lab la http.
 
     config FD_OTA_LAB_BASE_URL
-        string "LAB base URL (http://IP:port, khong co /api)"
-        default "http://192.168.1.100:8001"
+        string "LAB base URL (https uu tien, khong co /api; van chap nhan http LAN)"
+        default "https://fdict-dev.joinnow.vn"
 
     config FD_OTA_BASE_URL
         string "Production base URL (https, khong co /api)"
@@ -18,8 +18,8 @@ menu "FDict One OTA"
             Endpoint: {base}/api/ota/check, {base}/api/ota/report, {base}/api/devices/pair/start|poll.
 
     config FD_PAIR_LAB_WEB_URL
-        string "LAB: trang ghep tren web (QR, them ?code=<ma>)"
-        default "http://192.168.1.100:8001/pairing-device"
+        string "LAB: trang ghep tren web (QR, them ?id=&hw=&fw=&b=)"
+        default "https://fdict-dev.joinnow.vn/pairing-device"
 
     config FD_PAIR_WEB_URL
         string "Production: trang ghep tren web (QR, them ?code=<ma>)"

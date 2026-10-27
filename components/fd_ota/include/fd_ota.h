@@ -50,7 +50,7 @@ void fd_ota_update_now(void);   /* nut [Cap nhat]: tai ngay (khong cho ranh); kh
 
 /* Kenh OTA: luon "stable". */
 void fd_ota_get_channel(char *out, size_t len);
-/* Base dang dung (khong co /api); *lab = true neu dang dung server Lab (che do nha phat trien, http LAN). */
+/* Base dang dung (khong co /api); *lab = true neu dang dung server Lab (che do nha phat trien). */
 void fd_ota_get_base(char *out, size_t len, bool *lab);
 /* Server chon luc chay (NVS fd/devmode doc luc fd_ota_start): Lab = CONFIG_FD_OTA_LAB_BASE_URL / CONFIG_FD_PAIR_LAB_WEB_URL,
  * chinh thuc = CONFIG_FD_OTA_BASE_URL / CONFIG_FD_PAIR_WEB_URL (https + cert bundle). Moi request doc lai -> doi ngay. */

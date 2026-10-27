@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.3.6] - 2026-10-27
+
+- Lab/dev: doi base URL sang `https://fdict-dev.joinnow.vn` (QR `/pairing-device`); HTTPS dung chung certificate bundle nhu production, khong tat kiem tra chung chi. Van cho phep `http://` Lab neu cau hinh lai thanh HTTP LAN.
+- Che do nha phat trien bat van chon Lab qua `fd_ota_base_url()` / `fd_ota_pair_web_url()`; tat van dung `https://dict.fkit.vn`.
+
 ## [1.3.5] - 2026-10-26
 
 - Cập nhật firmware: hạ ngưỡng pin tối thiểu để bắt đầu cập nhật từ 30% xuống 10%.

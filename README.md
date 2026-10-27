@@ -75,7 +75,7 @@ Firmware không chứa địa chỉ máy chủ thật. Đặt URL trong `idf.py 
 - `FDict One OTA → Production: trang ghep tren web` (`CONFIG_FD_PAIR_WEB_URL`)
 - `CONFIG_FD_API_BASE_URL` (API thiết bị)
 
-Giá trị mặc định là placeholder `https://your-server.example`. _Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) dùng `CONFIG_FD_OTA_LAB_BASE_URL` (HTTP trong mạng LAN, chỉ dùng khi phát triển).
+Giá trị mặc định là placeholder `https://your-server.example`. _Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) dùng `CONFIG_FD_OTA_LAB_BASE_URL` (mặc định `https://fdict-dev.joinnow.vn`, HTTPS + certificate bundle như production).
 
 Không commit token, mật khẩu Wi-Fi hay `sdkconfig` chứa thông tin riêng. Hợp đồng API phía thiết bị: `.cursor/docs/study`, `.cursor/docs/decks`, `.cursor/docs/tts`.
 
