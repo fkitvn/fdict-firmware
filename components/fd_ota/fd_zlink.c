@@ -22,7 +22,46 @@ static volatile int s_linked = FD_ZL_UNKNOWN;
 static volatile uint32_t s_gen, s_srv_gen;
 static fd_zlink_code_t s_code;
 static int64_t s_code_deadline_us;
-static volatile uint32_t s_code_seq;   /* tang khi start/stop -> vong poll cu tu dung */
+static volatile uint32_t s_code_seq;
+static volatile int s_warr = -1;
+static char s_warr_exp[32];
+
+/* ngay dan su <-> so ngay (Howard Hinnant) */
+static long days_from_civil(int y, int m, int d)
+{
+    y -= m <= 2;
+    long era = (y >= 0 ? y : y - 399) / 400;
+    long yoe = y - era * 400;
+    long doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+    return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
+}
+static void civil_from_days(long z, int *y, int *m, int *d)
+{
+    z += 719468;
+    long era = (z >= 0 ? z : z - 146096) / 146097;
+    long doe = z - era * 146097;
+    long yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    long doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    long mp = (5 * doy + 2) / 153;
+    *d = (int)(doy - (153 * mp + 2) / 5 + 1);
+    *m = (int)(mp < 10 ? mp + 3 : mp - 9);
+    *y = (int)(yoe + era * 400 + (*m <= 2));
+}
+
+static void set_warranty(int v, const char *resp)
+{
+    char ex[32] = "";
+    const char *p = resp ? strstr(resp, "\"warranty_expires_at\":\"") : NULL;
+    int y, mo, d, h;
+    if (p && sscanf(p + 23, "%4d-%2d-%2dT%2d", &y, &mo, &d, &h) == 4) {
+        long z = days_from_civil(y, mo, d) + (h + 7 >= 24 ? 1 : 0);   /* UTC -> gio VN (UTC+7) */
+        civil_from_days(z, &y, &mo, &d);
+        snprintf(ex, sizeof(ex), "%02d/%02d/%04d", d, mo, y);
+    }
+    taskENTER_CRITICAL(&s_mux);
+    if (s_warr != v || strcmp(s_warr_exp, ex)) { s_warr = v; memcpy(s_warr_exp, ex, sizeof(ex)); s_gen++; }
+    taskEXIT_CRITICAL(&s_mux);
+}   /* tang khi start/stop -> vong poll cu tu dung */
 
 static void set_linked(int v)
 {
@@ -93,8 +132,8 @@ static void do_status(void)
     char *resp = malloc(RESP_CAP);
     if (!resp) return;
     int code = call("/api/devices/zalo-link/status", resp);
-    if (code == 200) set_linked(json_true(resp, "zalo_linked") ? FD_ZL_YES : FD_ZL_NO);
-    else if (code == 401) set_linked(FD_ZL_UNKNOWN);
+    if (code == 200) { set_linked(json_true(resp, "zalo_linked") ? FD_ZL_YES : FD_ZL_NO); set_warranty(json_true(resp, "warranty_activated") ? 1 : 0, resp); }
+    else if (code == 401) { set_linked(FD_ZL_UNKNOWN); set_warranty(-1, NULL); }
     ESP_LOGI(TAG, "status -> %d", code);
     free(resp);
 }
@@ -178,6 +217,16 @@ fd_zlink_linked_t fd_zlink_linked(void)
 }
 
 uint32_t fd_zlink_gen(void) { return s_gen; }
+
+int fd_zlink_warranty(char *out, size_t n)
+{
+    if (!fd_ota_is_paired() || s_srv_gen != fd_ota_server_gen()) return -1;
+    taskENTER_CRITICAL(&s_mux);
+    int v = s_warr;
+    if (out && n) { strncpy(out, s_warr_exp, n - 1); out[n - 1] = 0; }
+    taskEXIT_CRITICAL(&s_mux);
+    return v;
+}
 
 void fd_zlink_code_start(void)
 {

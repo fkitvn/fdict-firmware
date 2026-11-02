@@ -5,6 +5,7 @@
  * Moi viec mang chay trong task "fd_zlink" (khong chan UI). */
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +27,8 @@ uint32_t fd_zlink_gen(void);               /* tang moi khi trang thai doi (UI ve
 void fd_zlink_code_start(void);            /* xin ma moi (huy ma cu) + poll */
 void fd_zlink_code_stop(void);             /* dong hop ma: dung poll, xoa ma */
 void fd_zlink_code_get(fd_zlink_code_t *out);
+/* Buoc 3 (bao hanh, chi doc): -1 chua biet, 0 chua kich hoat, 1 da kich hoat (out = "dd/mm/yyyy" gio VN, co the NULL) */
+int fd_zlink_warranty(char *out, size_t n);
 
 #ifdef __cplusplus
 }

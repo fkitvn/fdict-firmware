@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.0] - 2026-11-02
+
+- Màn *Ghép thiết bị*: Bước 3 *Kích hoạt bảo hành*. Khi đã liên kết Zalo mà chưa kích hoạt: "Bước 3: Kích hoạt bảo hành" + "Kích hoạt trong Zalo Mini App Fdict" (tự hỏi lại mỗi 10 s). Đã kích hoạt: "Đã kích hoạt bảo hành" + ngày hết hạn (dd/mm/yyyy, giờ VN).
+- Trạng thái bảo hành đọc từ `POST /api/devices/zalo-link/status` (`warranty_activated`, `warranty_expires_at`). Không có thao tác kích hoạt trên máy (chỉ trong Zalo Mini App).
+- Cài đặt: hàng Ghép thiết bị báo "Chưa kích hoạt bảo hành" (màu cảnh báo); *Thông tin* thêm hàng *Bảo hành*.
+
 ## [2.0.1] - 2026-11-02
 
 - Home: thêm ô *Shadowing* (🎬) mở trình phát video toàn màn hình (ngang 320x240; máy đang dọc thì tạm xoay ngang, thoát trả lại hướng cũ, không lưu NVS).

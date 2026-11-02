@@ -23,6 +23,7 @@
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_zlink.h"
 #include "ui_priv.h"
 
 #ifndef FD_FW_NAME
@@ -32,13 +33,13 @@
 #define ROW_H   24
 #define LABEL_W 96
 
-enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_COUNT };
+enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_WARR, R_COUNT };
 static const char *const LABELS[R_COUNT] = {"Firmware", "DEVICE_ID", "Build", "BUILD_DATE", "SIZE",
                                             "FLASH_MEMORY", "DATA", "VOICE", "ESP-IDF", "MAC",
-                                            "IP", "Chip", "INTERNAL_RAM", "PSRAM", "DISPLAY", "SERVER"};
+                                            "IP", "Chip", "INTERNAL_RAM", "PSRAM", "DISPLAY", "SERVER", "WARRANTY"};
 /* Thu tu hien thi theo nhom (so am = tieu de nhom SECT[-n-1]) */
 static const char *const SECT[] = {"DEVICE", "SOFTWARE", "MEMORY", "CONNECTIVITY"};
-static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_LCD,
+static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_LCD, R_WARR,
                                -2, R_FW, R_BUILD, R_DATE, R_SIZE, R_IDF, R_VOICE,
                                -3, R_FLASH, R_DATA, R_RAM, R_PSRAM,
                                -4, R_IP, R_MAC, R_OTA};
@@ -227,9 +228,21 @@ static void auto_check(void)   /* khi mo man / khi WiFi vua co */
     fd_ota_check_now();   /* duong kiem tra thu cong co san */
 }
 
+static uint32_t s_warr_gen = UINT32_MAX;
+static void warr_fill(void)
+{
+    if (!s_val[R_WARR] || s_warr_gen == fd_zlink_gen()) return;
+    s_warr_gen = fd_zlink_gen();
+    char ex[16];
+    int w = fd_zlink_warranty(ex, sizeof(ex));
+    if (w == 1) lv_label_set_text_fmt(s_val[R_WARR], _("WARRANTY_UNTIL"), ex[0] ? ex : "-");
+    else lv_label_set_text(s_val[R_WARR], w == 0 ? _("WARRANTY_NEEDED") : "-");
+}
+
 static void ota_timer_cb(lv_timer_t *t)
 {
     (void)t;
+    warr_fill();
     if (s_auto_wait && fd_net_is_connected()) auto_check();
     ota_show();
     if (!s_popup_pending) return;
@@ -479,6 +492,9 @@ static void build(lv_obj_t *scr)
 
     refresh();
     mem_rows();
+    s_warr_gen = UINT32_MAX;
+    warr_fill();
+    fd_zlink_refresh();
 }
 
 static void destroy(void)
