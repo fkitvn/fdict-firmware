@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.0.0] - 2026-11-02
+
+- Màn *Ghép thiết bị* thành 2 bước: thanh bước (1) Định danh → (2) Liên kết Zalo. Bước 1 giữ nguyên QR + web (Gmail/OTP) + poll.
+- Định danh xong tự chuyển thẳng Bước 2: mã 6 số (5 phút, đếm ngược, "Lấy mã mới", "Để sau"), nhập trong Mini App FDict trên Zalo. Mở lại khi đã ghép nhưng chưa liên kết Zalo -> vào thẳng Bước 2. Đã liên kết -> 2 bước đều ✓ + tài khoản / Hủy ghép đôi như cũ.
+- Cài đặt: bỏ hàng "Bước 2: Liên kết Zalo" của 1.3.7; thẻ ghép mở màn Ghép thiết bị, hiện "Chờ liên kết Zalo" khi đã ghép mà chưa liên kết.
+
 ## [1.3.7] - 2026-11-02
 
 - Cài đặt: thêm hàng "Bước 2: Liên kết Zalo" dưới thẻ định danh (Bước 1). Chưa định danh thì mờ; chưa liên kết hiện "Chờ liên kết Zalo", đã liên kết hiện "Đã liên kết Zalo".

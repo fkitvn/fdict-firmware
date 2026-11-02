@@ -1,4 +1,7 @@
 en:
+  'NO': 'No'
+  'OFF': 'Off'
+  'ON': 'On'
   ABOUT: About
   ALL: All
   ALREADY_ON_HOME: You are already on Home
@@ -27,8 +30,6 @@ en:
   DEVICE_ID: Device ID
   DEVICE_PAIRED: Device paired
   DEVMODE_UNPAIR_WARN: >-
-    The device will be unpaired from your account; you will need to sign in
-    again
   DIRECTION: Direction
   DISPLAY: Display
   DISPLAY_INFO: '%dx%d, rotated %d°'
@@ -54,7 +55,6 @@ en:
   MISSING: Missing
   NEVER: Never
   NEXT: Next >
-  'NO': 'No'
   NONE: None
   NOT_CONNECTED: Not connected
   NOT_PAIRED: Not paired
@@ -65,11 +65,9 @@ en:
   NO_WIFI: no Wi-Fi
   N_MIN: '%d min'
   N_SEC: '%d sec'
-  'OFF': 'Off'
   OFFLINE_CONNECT_HINT: Connect Wi-Fi to download questions automatically.
   OFFLINE_DATA_READY: Offline data ready
   OFFLINE_NO_WIFI: 'No Wi-Fi, studying offline'
-  'ON': 'On'
   OPEN: Open
   OPEN_WIFI: Open Wi-Fi
   ORDER: Order
@@ -94,6 +92,8 @@ en:
   PAIR_GET_NEW_CODE: Get new code
   PAIR_HINT: Pair the device with your account on your phone.
   PAIR_SCAN_WITH_PHONE: 'Scan with your phone · %d:%02d'
+  PAIR_STEP_ID: Identify
+  PAIR_STEP_ZALO: Link Zalo
   PAIR_TO_STUDY: Pair the device to study
   PASSWORD: Password
   PIN_CODE: PIN code
@@ -154,6 +154,7 @@ en:
   TIMEOUT_WAKE_HINT: Touch the screen or press a button to wake
   TURN_OFF_DEVELOPER_MODE: Turn off developer mode?
   TURN_ON_DEVELOPER_MODE: Turn on developer mode?
+    The device will be unpaired from your account; you will need to sign in
   UNPAIR: Unpair
   UNPAIRED_LAB: Lab server · unpaired
   UNPAIRED_OFFICIAL: Official server · unpaired
@@ -191,7 +192,6 @@ en:
   ZALO_CODE_HINT: Open FDict Mini App on Zalo and enter this code
   ZALO_GETTING_CODE: Getting code...
   ZALO_LINKED: Zalo linked
-  ZALO_NEED_STEP1: Pair the device first
   ZALO_NEW_CODE: New code
-  ZALO_STEP2: 'Step 2: Link Zalo'
   ZALO_WAITING: Waiting for Zalo link
+    again

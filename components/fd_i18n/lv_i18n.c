@@ -208,10 +208,10 @@ static lv_i18n_phrase_t en_singulars[] = {
     {"ZALO_CODE_HINT", "Open FDict Mini App on Zalo and enter this code"},
     {"ZALO_GETTING_CODE", "Getting code..."},
     {"ZALO_LINKED", "Zalo linked"},
-    {"ZALO_NEED_STEP1", "Pair the device first"},
     {"ZALO_NEW_CODE", "New code"},
-    {"ZALO_STEP2", "Step 2: Link Zalo"},
     {"ZALO_WAITING", "Waiting for Zalo link"},
+    {"PAIR_STEP_ID", "Identify"},
+    {"PAIR_STEP_ZALO", "Link Zalo"},
     {NULL, NULL} // End mark
 };
 
@@ -425,10 +425,10 @@ static lv_i18n_phrase_t vi_singulars[] = {
     {"ZALO_CODE_HINT", "Mở Mini App FDict trên Zalo và nhập mã này"},
     {"ZALO_GETTING_CODE", "Đang lấy mã..."},
     {"ZALO_LINKED", "Đã liên kết Zalo"},
-    {"ZALO_NEED_STEP1", "Cần định danh (Bước 1) trước"},
     {"ZALO_NEW_CODE", "Lấy mã mới"},
-    {"ZALO_STEP2", "Bước 2: Liên kết Zalo"},
     {"ZALO_WAITING", "Chờ liên kết Zalo"},
+    {"PAIR_STEP_ID", "Định danh"},
+    {"PAIR_STEP_ZALO", "Liên kết Zalo"},
     {NULL, NULL} // End mark
 };
 

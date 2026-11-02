@@ -63,14 +63,15 @@ static void pair_icon_fill(void)
 {
     lv_obj_clean(s_pair_ico);
     bool paired = fd_ota_is_paired();
+    bool zl_wait = paired && fd_zlink_linked() == FD_ZL_NO;   /* 2.0.0: Buoc 1 xong, Buoc 2 (Zalo) chua */
     /* 1.3.4: chua ghep -> chi chu trang thai mau cam + cham cam nho goc tren-phai icon; hang giu nhu cac hang khac */
-    lv_obj_set_style_text_color(s_pair_sub, paired ? lv_palette_darken(LV_PALETTE_GREY, 1) : lv_color_hex(FD_COLOR_ALERT), 0);
+    lv_obj_set_style_text_color(s_pair_sub, paired && !zl_wait ? lv_palette_darken(LV_PALETTE_GREY, 1) : lv_color_hex(FD_COLOR_ALERT), 0);
     char nm[64];
     if (paired && fd_ota_get_user_name(nm, sizeof(nm))) {
         lv_obj_t *av = ui_avatar_initials(s_pair_ico, nm, 36, 0x2563EB);
         lv_obj_center(av);
         lv_label_set_text(s_pair_title, nm);
-        lv_label_set_text(s_pair_sub, _("DEVICE_PAIRED"));
+        lv_label_set_text(s_pair_sub, zl_wait ? _("ZALO_WAITING") : _("DEVICE_PAIRED"));
     } else {
         lv_obj_t *i = lv_label_create(s_pair_ico);
         lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
@@ -87,8 +88,16 @@ static void pair_icon_fill(void)
             lv_obj_align(dot, LV_ALIGN_TOP_RIGHT, -4, 6);
         }
         lv_label_set_text(s_pair_title, _("PAIR_DEVICE"));
-        lv_label_set_text(s_pair_sub, paired ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
+        lv_label_set_text(s_pair_sub, paired ? (zl_wait ? _("ZALO_WAITING") : _("DEVICE_PAIRED")) : _("NOT_PAIRED"));
     }
+}
+
+static lv_timer_t *s_zl_tm;
+static uint32_t s_zl_gen;
+static void zl_tm_cb(lv_timer_t *t)   /* trang thai Zalo tra ve bat dong bo -> ve lai the ghep */
+{
+    (void)t;
+    if (s_zl_gen != fd_zlink_gen()) { s_zl_gen = fd_zlink_gen(); if (s_pair_card) pair_icon_fill(); }
 }
 
 static void pair_card(lv_obj_t *parent)
@@ -130,172 +139,6 @@ static void pair_card(lv_obj_t *parent)
     lv_obj_add_event_cb(b, go_cb, LV_EVENT_CLICKED, (void *)(intptr_t)FD_SCR_PAIR);
 }
 
-/* ---------- Buoc 2: Lien ket Zalo (hang thu 2 duoi the ghep; hop ma tren lv_layer_top) ---------- */
-static lv_obj_t *s_zl_row, *s_zl_sub, *s_zl_dlg, *s_zl_code, *s_zl_info, *s_zl_btn_lbl;
-static lv_timer_t *s_zl_timer;
-static uint32_t s_zl_gen;
-
-static void zl_row_fill(void)
-{
-    if (!s_zl_row) return;
-    bool paired = fd_ota_is_paired();
-    fd_zlink_linked_t z = fd_zlink_linked();
-    lv_obj_set_state(s_zl_row, LV_STATE_DISABLED, !paired);
-    lv_obj_set_style_text_color(s_zl_row, lv_color_hex(paired ? 0x202020 : 0x9CA3AF), 0);
-    if (!paired) {
-        lv_label_set_text(s_zl_sub, _("ZALO_NEED_STEP1"));
-        lv_obj_set_style_text_color(s_zl_sub, lv_palette_darken(LV_PALETTE_GREY, 1), 0);
-    } else if (z == FD_ZL_YES) {
-        lv_label_set_text(s_zl_sub, _("ZALO_LINKED"));
-        lv_obj_set_style_text_color(s_zl_sub, lv_palette_darken(LV_PALETTE_GREEN, 2), 0);
-    } else {
-        lv_label_set_text(s_zl_sub, z == FD_ZL_NO ? _("ZALO_WAITING") : "...");
-        lv_obj_set_style_text_color(s_zl_sub, lv_color_hex(FD_COLOR_ALERT), 0);
-    }
-}
-
-static void zl_dlg_close(void)
-{
-    if (!s_zl_dlg) return;
-    fd_zlink_code_stop();
-    lv_obj_delete(s_zl_dlg);
-    s_zl_dlg = s_zl_code = s_zl_info = s_zl_btn_lbl = NULL;
-}
-
-static void zl_dlg_fill(void)
-{
-    if (!s_zl_dlg) return;
-    fd_zlink_code_t c;
-    fd_zlink_code_get(&c);
-    switch (c.state) {
-    case FD_ZLC_CODE:
-        lv_label_set_text_fmt(s_zl_code, "%.3s %.3s", c.code, c.code + 3);
-        lv_label_set_text_fmt(s_zl_info, _("ZALO_CODE_EXPIRES"), c.expires_s / 60, c.expires_s % 60);
-        lv_label_set_text(s_zl_btn_lbl, _("ZALO_NEW_CODE"));
-        break;
-    case FD_ZLC_DONE:
-        lv_label_set_text(s_zl_code, "");
-        lv_label_set_text(s_zl_info, _("ZALO_LINKED"));
-        lv_label_set_text(s_zl_btn_lbl, _("CLOSE"));
-        break;
-    case FD_ZLC_EXPIRED:
-        lv_label_set_text(s_zl_code, "--- ---");
-        lv_label_set_text(s_zl_info, _("ZALO_CODE_EXPIRED"));
-        lv_label_set_text(s_zl_btn_lbl, _("ZALO_NEW_CODE"));
-        break;
-    case FD_ZLC_ERROR:
-        lv_label_set_text(s_zl_code, "--- ---");
-        lv_label_set_text_fmt(s_zl_info, "%s (%s)", _("ZALO_CODE_ERROR"), c.err);
-        lv_label_set_text(s_zl_btn_lbl, _("ZALO_NEW_CODE"));
-        break;
-    default:
-        lv_label_set_text(s_zl_code, "--- ---");
-        lv_label_set_text(s_zl_info, _("ZALO_GETTING_CODE"));
-        lv_label_set_text(s_zl_btn_lbl, _("ZALO_NEW_CODE"));
-        break;
-    }
-}
-
-static void zl_btn_cb(lv_event_t *e)
-{
-    bool primary = (bool)(intptr_t)lv_event_get_user_data(e);
-    fd_zlink_code_t c;
-    fd_zlink_code_get(&c);
-    if (!primary || c.state == FD_ZLC_DONE) { zl_dlg_close(); return; }   /* "De sau" / Dong */
-    fd_zlink_code_start();
-    zl_dlg_fill();
-}
-
-static lv_obj_t *zl_btn(lv_obj_t *row, const char *txt, bool primary)
-{
-    lv_obj_t *b = lv_button_create(row);
-    lv_obj_set_height(b, 40);
-    lv_obj_set_flex_grow(b, 1);
-    lv_obj_set_style_radius(b, 10, 0);
-    lv_obj_set_style_shadow_width(b, 0, 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(primary ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
-    lv_obj_t *l = lv_label_create(b);
-    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
-    lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(l, txt);
-    lv_obj_center(l);
-    lv_obj_add_event_cb(b, zl_btn_cb, LV_EVENT_CLICKED, (void *)(intptr_t)primary);
-    if (primary) s_zl_btn_lbl = l;
-    return b;
-}
-
-static void zl_dlg_open(void)
-{
-    s_zl_dlg = lv_obj_create(lv_layer_top());
-    lv_obj_remove_style_all(s_zl_dlg);
-    lv_obj_set_size(s_zl_dlg, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(s_zl_dlg, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(s_zl_dlg, LV_OPA_40, 0);
-    lv_obj_set_clickable(s_zl_dlg, true);
-    lv_obj_t *box = lv_obj_create(s_zl_dlg);
-    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
-    lv_obj_center(box);
-    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
-    lv_obj_set_style_border_width(box, 0, 0);
-    lv_obj_set_style_radius(box, 14, 0);
-    lv_obj_set_style_pad_all(box, 12, 0);
-    lv_obj_set_style_pad_row(box, 6, 0);
-    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
-    lv_obj_set_style_text_color(box, lv_color_hex(0x111827), 0);
-    lv_obj_set_scrollable(box, false);
-    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_t *t = lv_label_create(box);
-    lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
-    lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(t, _("ZALO_STEP2"));
-    lv_obj_t *h = lv_label_create(box);
-    lv_obj_set_width(h, lv_pct(100)); lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(h, lv_color_hex(0x6B7280), 0);
-    lv_label_set_text(h, _("ZALO_CODE_HINT"));
-    s_zl_code = lv_label_create(box);
-    lv_obj_set_style_text_font(s_zl_code, &fd_font_mont_32, 0);
-    lv_obj_set_style_text_color(s_zl_code, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    s_zl_info = lv_label_create(box);
-    lv_obj_set_width(s_zl_info, lv_pct(100)); lv_label_set_long_mode(s_zl_info, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(s_zl_info, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(s_zl_info, lv_color_hex(0x6B7280), 0);
-    lv_obj_t *row = lv_obj_create(box);
-    lv_obj_remove_style_all(row);
-    lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_column(row, 10, 0);
-    lv_obj_set_style_pad_top(row, 4, 0);
-    zl_btn(row, _("LATER"), false);
-    zl_btn(row, _("ZALO_NEW_CODE"), true);
-    fd_zlink_code_start();
-    zl_dlg_fill();
-}
-
-static void zl_row_cb(lv_event_t *e)
-{
-    (void)e;
-    if (!fd_ota_is_paired() || s_zl_dlg) return;
-    if (fd_zlink_linked() == FD_ZL_YES) { fd_ui_show(FD_SCR_PAIR); return; }   /* da lien ket: nhu cu */
-    zl_dlg_open();
-}
-
-static void zl_timer_cb(lv_timer_t *t)
-{
-    (void)t;
-    uint32_t g = fd_zlink_gen();
-    if (g != s_zl_gen) { s_zl_gen = g; zl_row_fill(); }
-    zl_dlg_fill();   /* dem nguoc + trang thai ma */
-}
-
-static void zl_row(lv_obj_t *parent)
-{
-    s_zl_row = item(parent, LV_SYMBOL_OK, _("ZALO_STEP2"), zl_row_cb, NULL, &s_zl_sub);
-    lv_obj_set_style_text_font(s_zl_sub, &fd_font_noto_14, 0);
-    s_zl_gen = fd_zlink_gen();
-    s_zl_timer = lv_timer_create(zl_timer_cb, 500, NULL);
-    fd_zlink_refresh();
-}
-
 /* ---------- Xac nhan bat che do nha phat trien (hop thoai tren lv_layer_top) ---------- */
 static lv_obj_t *s_dev_sw, *s_dlg;
 static bool s_dlg_on;   /* trang thai muon chuyen toi */
@@ -312,7 +155,6 @@ static void dlg_close(bool confirm)
         fd_ota_set_server(s_dlg_on);
         lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
     if (s_pair_card) pair_icon_fill();
-        zl_row_fill();
         fd_ui_toast(s_dlg_on ? _("UNPAIRED_LAB") : _("UNPAIRED_OFFICIAL"));
     }
     else if (s_dev_sw) lv_obj_set_state(s_dev_sw, LV_STATE_CHECKED, !s_dlg_on);   /* Huy -> tra cong tac ve cu */
@@ -388,7 +230,6 @@ static void dev_cb(lv_event_t *e)
 /* Vuot quay lai khi hop thoai dang mo = Huy */
 static bool on_back(void)
 {
-    if (s_zl_dlg) { zl_dlg_close(); return true; }
     if (!s_dlg) return false;
     dlg_close(false);
     return true;
@@ -434,7 +275,6 @@ static void refresh(void)
     lv_label_set_text(s_pin_sub, fd_pin_is_set() ? _("SET") : _("NOT_SET"));
     lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
     if (s_pair_card) pair_icon_fill();
-    zl_row_fill();
     lv_label_set_text_fmt(s_rot_sub, "%d°", fd_display_rotation_deg(fd_display_get_rotation()));
 }
 
@@ -446,8 +286,10 @@ static void build(lv_obj_t *scr)
     lv_obj_set_scrollable(body, true);
     /* Tieu de lon can giua (font subset 32 px co dau, chi dung o day) */
     ui_screen_title(body, _("SETTINGS"));
-    pair_card(body);   /* muc lon dau danh sach (Buoc 1: Dinh danh) */
-    zl_row(body);      /* Buoc 2: Lien ket Zalo */
+    pair_card(body);   /* muc lon dau danh sach */
+    s_zl_gen = fd_zlink_gen();
+    s_zl_tm = lv_timer_create(zl_tm_cb, 1000, NULL);
+    fd_zlink_refresh();
     item(body, LV_SYMBOL_WIFI, "WiFi", go_cb, (void *)(intptr_t)FD_SCR_WIFI, &s_wifi_sub);
     item(body, LV_SYMBOL_KEYBOARD, _("LANGUAGE"), go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
@@ -461,9 +303,7 @@ static void build(lv_obj_t *scr)
 }
 
 static void destroy(void) {
-    if (s_zl_timer) { lv_timer_delete(s_zl_timer); s_zl_timer = NULL; }
-    zl_dlg_close();
-    s_zl_row = s_zl_sub = NULL;
+    if (s_zl_tm) { lv_timer_delete(s_zl_tm); s_zl_tm = NULL; }
     s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
     if (s_dlg) {   /* roi man khi hop thoai mo = Huy */
         lv_obj_delete(s_dlg);
