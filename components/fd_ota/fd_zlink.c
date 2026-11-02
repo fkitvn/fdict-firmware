@@ -132,7 +132,7 @@ static void do_status(void)
     char *resp = malloc(RESP_CAP);
     if (!resp) return;
     int code = call("/api/devices/zalo-link/status", resp);
-    if (code == 200) { set_linked(json_true(resp, "zalo_linked") ? FD_ZL_YES : FD_ZL_NO); set_warranty(json_true(resp, "warranty_activated") ? 1 : 0, resp); }
+    if (code == 200) { set_linked(json_true(resp, "warranty_activated") ? FD_ZL_YES : FD_ZL_NO);   /* 2.1.1: Buoc 2 xong = bao hanh da kich hoat (device_warranties) */ set_warranty(json_true(resp, "warranty_activated") ? 1 : 0, resp); }
     else if (code == 401) { set_linked(FD_ZL_UNKNOWN); set_warranty(-1, NULL); }
     ESP_LOGI(TAG, "status -> %d", code);
     free(resp);
@@ -147,7 +147,7 @@ static void do_code(uint32_t seq)
     int code = call("/api/devices/zalo-link/start", resp);
     ESP_LOGI(TAG, "start -> %d", code);   /* khong log body (co ma) */
     if (seq != s_code_seq) goto out;
-    if (code == 200 && json_true(resp, "linked")) { set_linked(FD_ZL_YES); set_code(FD_ZLC_DONE, NULL, -1, NULL); goto out; }
+    if (code == 200 && json_true(resp, "linked")) { do_status(); set_code(FD_ZLC_DONE, NULL, -1, NULL); goto out; }
     char c[8];
     if (code != 200 || !json_code(resp, c)) {
         char e[20];
@@ -166,7 +166,7 @@ static void do_code(uint32_t seq)
         int pc = call("/api/devices/zalo-link/poll", resp);
         if (seq != s_code_seq) break;
         if (pc == 200 && json_true(resp, "linked")) {
-            set_linked(FD_ZL_YES);
+            do_status();
             set_code(FD_ZLC_DONE, NULL, -1, NULL);
             break;
         }

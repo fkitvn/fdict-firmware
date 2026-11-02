@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.1] - 2026-11-02
+
+- Man Ghep chi con 2 buoc: Buoc 1 Dinh danh, Buoc 2 Kich hoat bao hanh (thay Lien ket Zalo). Nhap ma 6 so trong Mini App = lien ket Zalo + kich hoat bao hanh.
+- Buoc 2 xong khi server bao bao hanh da kich hoat (zalo-link/status warranty_activated, ban ghi bao hanh rieng theo thiet bi). Bo khoi Buoc 3.
+
 ## [2.1.0] - 2026-11-02
 
 - Màn *Ghép thiết bị*: Bước 3 *Kích hoạt bảo hành*. Khi đã liên kết Zalo mà chưa kích hoạt: "Bước 3: Kích hoạt bảo hành" + "Kích hoạt trong Zalo Mini App Fdict" (tự hỏi lại mỗi 10 s). Đã kích hoạt: "Đã kích hoạt bảo hành" + ngày hết hạn (dd/mm/yyyy, giờ VN).

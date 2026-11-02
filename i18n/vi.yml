@@ -93,7 +93,7 @@ vi:
   PAIR_HINT: Ghép máy với tài khoản trên điện thoại.
   PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
   PAIR_STEP_ID: Định danh
-  PAIR_STEP_ZALO: Liên kết Zalo
+  PAIR_STEP_ZALO: Kích hoạt bảo hành
   PAIR_TO_STUDY: Cần ghép thiết bị để học
   PASSWORD: Mật khẩu
   PIN_CODE: Mã PIN
@@ -197,8 +197,8 @@ vi:
   ZALO_CODE_ERROR: Không lấy được mã
   ZALO_CODE_EXPIRED: Mã đã hết hạn
   ZALO_CODE_EXPIRES: 'Hết hạn sau %d:%02d'
-  ZALO_CODE_HINT: Mở Mini App FDict trên Zalo và nhập mã này
+  ZALO_CODE_HINT: Nhập mã này trong Mini App FDict trên Zalo để kích hoạt bảo hành
   ZALO_GETTING_CODE: Đang lấy mã...
-  ZALO_LINKED: Đã liên kết Zalo
+  ZALO_LINKED: Đã kích hoạt bảo hành
   ZALO_NEW_CODE: Lấy mã mới
-  ZALO_WAITING: Chờ liên kết Zalo
+  ZALO_WAITING: Chưa kích hoạt bảo hành

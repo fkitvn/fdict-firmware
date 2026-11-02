@@ -92,20 +92,12 @@ static void pair_icon_fill(void)
     }
 }
 
-static void warr_sub(void)
-{
-    if (fd_ota_is_paired() && fd_zlink_linked() == FD_ZL_YES && fd_zlink_warranty(NULL, 0) == 0) {
-        lv_label_set_text(s_pair_sub, _("WARRANTY_NEEDED"));
-        lv_obj_set_style_text_color(s_pair_sub, lv_color_hex(FD_COLOR_ALERT), 0);
-    }
-}
-
 static lv_timer_t *s_zl_tm;
 static uint32_t s_zl_gen;
 static void zl_tm_cb(lv_timer_t *t)   /* trang thai Zalo tra ve bat dong bo -> ve lai the ghep */
 {
     (void)t;
-    if (s_zl_gen != fd_zlink_gen()) { s_zl_gen = fd_zlink_gen(); if (s_pair_card) { pair_icon_fill(); warr_sub(); } }
+    if (s_zl_gen != fd_zlink_gen()) { s_zl_gen = fd_zlink_gen(); if (s_pair_card) pair_icon_fill(); }
 }
 
 static void pair_card(lv_obj_t *parent)

@@ -22,7 +22,7 @@
 
 static lv_obj_t *s_qr, *s_qr_wrap;
 static uint32_t s_qr_sess;   /* phien da ve QR (0 = chua ve) */
-static lv_obj_t *s_wr, *s_av_box, *s_av, *s_hello, *s_sub, *s_msg, *s_help, *s_btn, *s_btn_lbl, *s_un_btn, *s_un_lbl, *s_dlg;
+static lv_obj_t *s_av_box, *s_av, *s_hello, *s_sub, *s_msg, *s_help, *s_btn, *s_btn_lbl, *s_un_btn, *s_un_lbl, *s_dlg;
 static lv_timer_t *s_tm;
 static bool s_want;        /* can lay ma (chua ghep / bam nut) - cho WiFi neu chua co */
 static bool s_nowifi, s_stop_sent;
@@ -30,8 +30,7 @@ static char s_shown_name[64] = "\x01";
 static uint32_t s_srv_seen;   /* fd_ota_server_gen da xu ly */
 /* 2 buoc */
 static lv_obj_t *s_steps, *s_st_ico[2], *s_st_txt[2], *s_zl_code, *s_zl_hint, *s_back_lbl;
-static bool s_step2, s_zl_started, s_seen_unpaired, s_low, s_wr_wait;
-static uint32_t s_wr_tick;
+static bool s_step2, s_zl_started, s_seen_unpaired, s_low;
 
 /* Ma thiet bi co dinh = MAC goc eFuse (12 hex thuong), vd 84c7bb78c178. Khong doi khi build/OTA/xoa NVS. */
 void ui_device_ident(char *out, size_t n)
@@ -141,7 +140,7 @@ static bool show_step2(void)
     step_set(0, 2);
     step_set(1, 1);
     lv_obj_set_hidden(s_steps, false);
-    lv_obj_t *hide[] = {s_av_box, s_hello, s_sub, s_wr, s_un_btn, s_qr_wrap, s_help};
+    lv_obj_t *hide[] = {s_av_box, s_hello, s_sub, s_un_btn, s_qr_wrap, s_help};
     for (size_t i = 0; i < sizeof(hide) / sizeof(hide[0]); i++) lv_obj_set_hidden(hide[i], true);
     s_qr_sess = 0;
     lv_obj_set_hidden(s_zl_code, false);
@@ -227,22 +226,6 @@ static void show(void)
     lv_obj_set_hidden(s_hello, !done);
     lv_obj_set_hidden(s_sub, !done);
     lv_obj_set_hidden(s_un_btn, !done);
-    {   /* 2.1.0: Buoc 3 Kich hoat bao hanh (chi hien trang thai; kich hoat trong Zalo Mini App) */
-        char ex[16], wt[48], wb[128];
-        int w = fd_zlink_warranty(ex, sizeof(ex));
-        bool sh = done && fd_zlink_linked() == FD_ZL_YES && w >= 0;
-        lv_obj_set_hidden(s_wr, !sh);
-        if (sh && s_low) lv_obj_set_hidden(s_av_box, true);   /* ngang: nhuong cho dong bao hanh */
-        if (sh) {
-            if (w == 1) {
-                snprintf(wt, sizeof(wt), _("WARRANTY_UNTIL"), ex[0] ? ex : "-");
-                snprintf(wb, sizeof(wb), "%s\n%s", _("WARRANTY_ACTIVE"), wt);
-            } else snprintf(wb, sizeof(wb), "%s\n%s", _("PAIR_STEP3"), _("WARRANTY_HINT"));
-            set_txt(s_wr, wb);
-            lv_obj_set_style_text_color(s_wr, lv_color_hex(w == 1 ? 0x16A34A : 0xD97706), 0);
-        }
-        s_wr_wait = sh && w == 0;
-    }
     if (done) {
         lv_obj_set_hidden(s_qr_wrap, true);
         lv_obj_set_hidden(s_msg, true);
@@ -304,12 +287,7 @@ static void show(void)
     lv_obj_set_state(s_btn, LV_STATE_DISABLED, p.state == FD_PAIR_REQUESTING && !s_nowifi);
 }
 
-static void tm_cb(lv_timer_t *t)
-{
-    (void)t;
-    if (s_wr_wait && ++s_wr_tick % 34 == 0) fd_zlink_refresh();   /* cho kich hoat tren Mini App: hoi lai ~10 s */
-    show();
-}
+static void tm_cb(lv_timer_t *t) { (void)t; show(); }
 
 static void pair_cb(lv_event_t *e)   /* Mo Wi-Fi / Lay ma / Lay ma moi / Thu lai */
 {
@@ -482,9 +460,6 @@ static void build(lv_obj_t *scr)
     s_hello = center_lbl(col, &fd_font_noto_18, 0x111827);
     s_sub = center_lbl(col, NULL, 0x16A34A);
     lv_label_set_text(s_sub, _("PAIRED_WITH_ACCOUNT"));
-    s_wr = center_lbl(col, NULL, 0xD97706);
-    lv_obj_set_hidden(s_wr, true);
-    s_wr_wait = false;
     /* chua ghep */
     s_qr_wrap = lv_obj_create(col);   /* nen trang + vien = quiet zone */
     lv_obj_remove_style_all(s_qr_wrap);
@@ -549,8 +524,6 @@ static void destroy(void)
     zl_stop();   /* roi man: dung poll ma Zalo, xoa ma */
     s_step2 = false;
     s_steps = s_st_ico[0] = s_st_ico[1] = s_st_txt[0] = s_st_txt[1] = s_zl_code = s_zl_hint = s_back_lbl = NULL;
-    s_wr = NULL;
-    s_wr_wait = false;
     s_qr = s_qr_wrap = s_av_box = s_av = s_hello = s_sub = s_msg = s_help = s_btn = s_btn_lbl = s_un_btn = s_un_lbl = NULL;
     fd_ota_pair_stop();   /* roi man: dung poll ghep */
 }
