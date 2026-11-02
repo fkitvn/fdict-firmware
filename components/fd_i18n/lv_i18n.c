@@ -202,6 +202,16 @@ static lv_i18n_phrase_t en_singulars[] = {
     {"WIFI_WRONG_PASSWORD", "Wrong password for “%s”. Select the network to re-enter it."},
     {"WILL_RESTART_WHEN_IDLE", "Will restart when idle"},
     {"WORD", "Word"},
+    {"ZALO_CODE_ERROR", "Could not get a code"},
+    {"ZALO_CODE_EXPIRED", "Code expired"},
+    {"ZALO_CODE_EXPIRES", "Expires in %d:%02d"},
+    {"ZALO_CODE_HINT", "Open FDict Mini App on Zalo and enter this code"},
+    {"ZALO_GETTING_CODE", "Getting code..."},
+    {"ZALO_LINKED", "Zalo linked"},
+    {"ZALO_NEED_STEP1", "Pair the device first"},
+    {"ZALO_NEW_CODE", "New code"},
+    {"ZALO_STEP2", "Step 2: Link Zalo"},
+    {"ZALO_WAITING", "Waiting for Zalo link"},
     {NULL, NULL} // End mark
 };
 
@@ -409,6 +419,16 @@ static lv_i18n_phrase_t vi_singulars[] = {
     {"WIFI_WRONG_PASSWORD", "Sai mật khẩu cho “%s”. Chọn mạng để nhập lại."},
     {"WILL_RESTART_WHEN_IDLE", "Sẽ khởi động lại khi rảnh"},
     {"WORD", "Từ"},
+    {"ZALO_CODE_ERROR", "Không lấy được mã"},
+    {"ZALO_CODE_EXPIRED", "Mã đã hết hạn"},
+    {"ZALO_CODE_EXPIRES", "Hết hạn sau %d:%02d"},
+    {"ZALO_CODE_HINT", "Mở Mini App FDict trên Zalo và nhập mã này"},
+    {"ZALO_GETTING_CODE", "Đang lấy mã..."},
+    {"ZALO_LINKED", "Đã liên kết Zalo"},
+    {"ZALO_NEED_STEP1", "Cần định danh (Bước 1) trước"},
+    {"ZALO_NEW_CODE", "Lấy mã mới"},
+    {"ZALO_STEP2", "Bước 2: Liên kết Zalo"},
+    {"ZALO_WAITING", "Chờ liên kết Zalo"},
     {NULL, NULL} // End mark
 };
 

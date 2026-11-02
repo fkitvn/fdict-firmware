@@ -21,6 +21,7 @@
 #include "fd_events.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_zlink.h"
 #include "fd_store.h"
 #include "fd_ui.h"
 #include "sys_info.h"
@@ -67,6 +68,7 @@ static void run_app(void)
     /* OTA: neu PENDING_VERIFY -> tu kiem tra (display + storage + WiFi trong 60 s) roi mark valid / rollback
      * (thay mark_app_valid() vo dieu kien truoc day). Display loi da abort o tren -> bootloader rollback. */
     if (fd_ota_start(true, storage_ok) != ESP_OK) ESP_LOGW(TAG, "fd_ota_start loi");
+    fd_zlink_refresh();   /* Buoc 2: trang thai lien ket Zalo (async, cho WiFi) */
     if (storage_ok) fd_deck_init();   /* 23/10: task bo tu offline chay tu boot -> tu dong bo khi WiFi len, gui outbox */
     sys_info_log_heap();
 

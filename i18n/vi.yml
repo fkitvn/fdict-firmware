@@ -183,3 +183,13 @@ vi:
   WIFI_WRONG_PASSWORD: Sai mật khẩu cho “%s”. Chọn mạng để nhập lại.
   WILL_RESTART_WHEN_IDLE: Sẽ khởi động lại khi rảnh
   WORD: Từ
+  ZALO_CODE_ERROR: Không lấy được mã
+  ZALO_CODE_EXPIRED: Mã đã hết hạn
+  ZALO_CODE_EXPIRES: 'Hết hạn sau %d:%02d'
+  ZALO_CODE_HINT: Mở Mini App FDict trên Zalo và nhập mã này
+  ZALO_GETTING_CODE: Đang lấy mã...
+  ZALO_LINKED: Đã liên kết Zalo
+  ZALO_NEED_STEP1: Cần định danh (Bước 1) trước
+  ZALO_NEW_CODE: Lấy mã mới
+  ZALO_STEP2: 'Bước 2: Liên kết Zalo'
+  ZALO_WAITING: Chờ liên kết Zalo

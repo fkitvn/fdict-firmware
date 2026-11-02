@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [1.3.7] - 2026-11-02
+
+- Cài đặt: thêm hàng "Bước 2: Liên kết Zalo" dưới thẻ định danh (Bước 1). Chưa định danh thì mờ; chưa liên kết hiện "Chờ liên kết Zalo", đã liên kết hiện "Đã liên kết Zalo".
+- Hộp mã 6 số (hết hạn 5 phút, đếm ngược, "Lấy mã mới", "Để sau"); nhập mã trong Mini App FDict trên Zalo. Thiết bị poll `/api/devices/zalo-link/poll` mỗi 4 s; mã không ghi log.
+- Khởi động và khi mở Cài đặt: hỏi `/api/devices/zalo-link/status` (task nền `fd_zlink`).
+
 ## [1.3.6] - 2026-10-27
 
 - Lab/dev: doi base URL sang `https://fdict-dev.joinnow.vn` (QR `/pairing-device`); HTTPS dung chung certificate bundle nhu production, khong tat kiem tra chung chi. Van cho phep `http://` Lab neu cau hinh lai thanh HTTP LAN.
