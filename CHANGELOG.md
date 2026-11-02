@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.2] - 2026-11-02
+
+- Bước 2 hiện mã kích hoạt bảo hành nhanh hơn: xin mã ngay (bỏ lần hỏi trạng thái trước), dùng lại mã còn hạn khi mở lại màn.
+
 ## [2.1.1] - 2026-11-02
 
 - Man Ghep chi con 2 buoc: Buoc 1 Dinh danh, Buoc 2 Kich hoat bao hanh (thay Lien ket Zalo). Nhap ma 6 so trong Mini App = lien ket Zalo + kich hoat bao hanh.

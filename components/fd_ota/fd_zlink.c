@@ -13,6 +13,8 @@
 static const char *TAG = "fd_zlink";
 #define BIT_STATUS 0x1
 #define BIT_START 0x2
+#define BIT_POLL 0x4     /* 2.1.2: tiep tuc poll ma con han (khong xin ma moi) */
+#define REUSE_MIN_S 60   /* ma con >= 60 s thi dung lai */
 #define POLL_MS 4000
 #define RESP_CAP 384
 
@@ -23,6 +25,7 @@ static volatile uint32_t s_gen, s_srv_gen;
 static fd_zlink_code_t s_code;
 static int64_t s_code_deadline_us;
 static volatile uint32_t s_code_seq;
+static volatile bool s_code_polling;
 static volatile int s_warr = -1;
 static char s_warr_exp[32];
 
@@ -138,14 +141,17 @@ static void do_status(void)
     free(resp);
 }
 
+static void poll_loop(uint32_t seq, char *resp);
+
 static void do_code(uint32_t seq)
 {
     char *resp = malloc(RESP_CAP);
     if (!resp) { set_code(FD_ZLC_ERROR, NULL, -1, "nomem"); return; }
     set_code(FD_ZLC_REQUESTING, NULL, -1, NULL);
-    if (!fd_net_is_connected()) { set_code(FD_ZLC_ERROR, NULL, -1, "no_wifi"); goto out; }
+    if (!wait_wifi(5)) { set_code(FD_ZLC_ERROR, NULL, -1, "no_wifi"); goto out; }
+    int64_t t0 = esp_timer_get_time();
     int code = call("/api/devices/zalo-link/start", resp);
-    ESP_LOGI(TAG, "start -> %d", code);   /* khong log body (co ma) */
+    ESP_LOGI(TAG, "start -> %d (%d ms)", code, (int)((esp_timer_get_time() - t0) / 1000));   /* khong log body (co ma) */
     if (seq != s_code_seq) goto out;
     if (code == 200 && json_true(resp, "linked")) { do_status(); set_code(FD_ZLC_DONE, NULL, -1, NULL); goto out; }
     char c[8];
@@ -156,10 +162,26 @@ static void do_code(uint32_t seq)
         goto out;
     }
     set_code(FD_ZLC_CODE, c, json_int(resp, "expires_in", 300), NULL);
-    memset(resp, 0, RESP_CAP);
+    set_linked(FD_ZL_NO);   /* start cap ma = chua kich hoat bao hanh -> khoi goi status rieng */
     memset(c, 0, sizeof(c));
+    poll_loop(seq, resp);
+out:
+    free(resp);
+}
+
+static void do_poll(uint32_t seq)
+{
+    char *resp = malloc(RESP_CAP);
+    if (!resp) return;
+    poll_loop(seq, resp);
+    free(resp);
+}
+
+static void poll_loop(uint32_t seq, char *resp)
+{
+    memset(resp, 0, RESP_CAP);
     while (seq == s_code_seq) {
-        vTaskDelay(pdMS_TO_TICKS(POLL_MS));
+        for (int w = 0; w < POLL_MS / 250 && seq == s_code_seq; w++) vTaskDelay(pdMS_TO_TICKS(250));   /* 2.1.2: thoat nhanh khi xin ma moi */
         if (seq != s_code_seq) break;
         if (esp_timer_get_time() >= s_code_deadline_us) { set_code(FD_ZLC_EXPIRED, NULL, -1, NULL); break; }
         if (!fd_net_is_connected()) continue;
@@ -173,8 +195,7 @@ static void do_code(uint32_t seq)
         if (pc == 410 || pc == 404) { set_code(FD_ZLC_EXPIRED, NULL, -1, NULL); break; }
         if (pc == 401) { set_linked(FD_ZL_UNKNOWN); set_code(FD_ZLC_ERROR, NULL, -1, "unpaired"); break; }
     }
-out:
-    free(resp);
+    if (seq == s_code_seq) s_code_polling = false;
 }
 
 static void task(void *arg)
@@ -184,6 +205,7 @@ static void task(void *arg)
         uint32_t bits = 0;
         xTaskNotifyWait(0, UINT32_MAX, &bits, portMAX_DELAY);
         if (bits & BIT_START) do_code(s_code_seq);
+        else if (bits & BIT_POLL) do_poll(s_code_seq);
         else if (bits & BIT_STATUS) do_status();
     }
 }
@@ -231,13 +253,34 @@ int fd_zlink_warranty(char *out, size_t n)
 void fd_zlink_code_start(void)
 {
     s_code_seq++;
+    s_code_polling = true;
     set_code(FD_ZLC_REQUESTING, NULL, -1, NULL);
     kick(BIT_START);
 }
 
+/* 2.1.2: ma con han -> dung lai + poll tiep; dang xin -> doi; con lai -> xin ma moi (1 request start, khong goi status truoc). */
+void fd_zlink_code_ensure(void)
+{
+    taskENTER_CRITICAL(&s_mux);
+    fd_zlink_code_state_t st = s_code.state;
+    int64_t left = (s_code_deadline_us - esp_timer_get_time()) / 1000000;
+    bool polling = s_code_polling;
+    taskEXIT_CRITICAL(&s_mux);
+    if (st == FD_ZLC_REQUESTING) return;
+    if (st == FD_ZLC_CODE && left >= REUSE_MIN_S) {
+        if (!polling) { s_code_seq++; s_code_polling = true; kick(BIT_POLL); }
+        return;
+    }
+    fd_zlink_code_start();
+}
+
 void fd_zlink_code_stop(void)
 {
-    s_code_seq++;
+    s_code_seq++;   /* dung poll; giu ma con han trong RAM de mo lai hien ngay (khong log) */
+    s_code_polling = false;
+    fd_zlink_code_t c;
+    fd_zlink_code_get(&c);
+    if (c.state == FD_ZLC_CODE && c.expires_s >= REUSE_MIN_S) return;
     set_code(FD_ZLC_IDLE, NULL, -1, NULL);
 }
 

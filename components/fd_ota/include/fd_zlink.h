@@ -25,6 +25,7 @@ void fd_zlink_refresh(void);               /* hoi trang thai (cho WiFi toi 90 s)
 fd_zlink_linked_t fd_zlink_linked(void);   /* UNKNOWN khi chua ghep / chua hoi duoc */
 uint32_t fd_zlink_gen(void);               /* tang moi khi trang thai doi (UI ve lai) */
 void fd_zlink_code_start(void);            /* xin ma moi (huy ma cu) + poll */
+void fd_zlink_code_ensure(void);           /* 2.1.2: dung lai ma con han (>= 60 s) hoac xin ma moi */
 void fd_zlink_code_stop(void);             /* dong hop ma: dung poll, xoa ma */
 void fd_zlink_code_get(fd_zlink_code_t *out);
 /* Buoc 3 (bao hanh, chi doc): -1 chua biet, 0 chua kich hoat, 1 da kich hoat (out = "dd/mm/yyyy" gio VN, co the NULL) */

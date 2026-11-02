@@ -129,7 +129,7 @@ static void zl_stop(void)
 static bool show_step2(void)
 {
     if (!s_step2) return false;
-    if (!s_zl_started) { s_zl_started = true; fd_zlink_code_start(); }
+    if (!s_zl_started) { s_zl_started = true; fd_zlink_code_ensure(); }
     fd_zlink_code_t c;
     fd_zlink_code_get(&c);
     if (c.state == FD_ZLC_DONE) {   /* lien ket xong -> man tai khoan, 2 buoc tick */
@@ -201,8 +201,7 @@ static void show(void)
     if (!done) { s_seen_unpaired = true; s_step2 = false; zl_stop(); }
     else if (s_seen_unpaired) {   /* Buoc 1 vua xong tren man nay -> chuyen thang Buoc 2 */
         s_seen_unpaired = false;
-        s_step2 = true;
-        fd_zlink_refresh();
+        s_step2 = true;   /* 2.1.2: vao Buoc 2 ngay, xin ma luon (start tra linked neu da kich hoat), khong hoi status truoc */
     } else if (!s_step2 && !s_zl_started && fd_zlink_linked() == FD_ZL_NO) s_step2 = true;   /* mo lai: tiep tuc Buoc 2 */
     if (done && show_step2()) return;
     lv_obj_set_hidden(s_zl_code, true);
@@ -512,7 +511,10 @@ static void build(lv_obj_t *scr)
     s_srv_seen = fd_ota_server_gen();
     s_step2 = s_zl_started = false;
     s_seen_unpaired = !fd_ota_is_paired();
-    if (!s_seen_unpaired) fd_zlink_refresh();   /* da ghep: hoi trang thai Zalo -> chua lien ket thi vao Buoc 2 */
+    if (!s_seen_unpaired) {   /* 2.1.2: da ghep -> xin ma ngay (1 request) thay vi status roi moi start */
+        if (fd_zlink_linked() == FD_ZL_YES) fd_zlink_refresh();
+        else { s_step2 = true; }
+    }
     show();
     s_tm = lv_timer_create(tm_cb, 300, NULL);
 }
