@@ -82,8 +82,8 @@ static void show_msg(shadow_t *c, const char *txt)
 {
     if (!fd_display_lock(1000)) return;
     if (c->msg) {
-        if (txt) { lv_label_set_text(c->msg, txt); lv_obj_remove_flag(c->msg, LV_OBJ_FLAG_HIDDEN); }
-        else lv_obj_add_flag(c->msg, LV_OBJ_FLAG_HIDDEN);
+        if (txt) { lv_label_set_text(c->msg, txt); lv_obj_set_hidden(c->msg, false); }
+        else lv_obj_set_hidden(c->msg, true);
     }
     fd_display_unlock();
 }
@@ -169,7 +169,7 @@ static void video_task(void *arg)
                 /* CONFIG_LV_CACHE_DEF_SIZE=0: khong co cache anh, doi src la du */
                 lv_image_set_src(c->img, &c->dsc[back]);
                 lv_obj_invalidate(c->img);
-                if (first && c->msg) lv_obj_add_flag(c->msg, LV_OBJ_FLAG_HIDDEN);
+                if (first && c->msg) lv_obj_set_hidden(c->msg, true);
             }
             fd_display_unlock();
             c->cur = back;
@@ -309,8 +309,8 @@ static void build_shadow(lv_obj_t *scr)
     }
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_scrollable(scr, false);
+    lv_obj_set_clickable(scr, true);
     lv_obj_add_event_cb(scr, tap_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *msg = lv_label_create(scr);
@@ -349,7 +349,7 @@ static void build_shadow(lv_obj_t *scr)
     }
     lv_obj_t *img = lv_image_create(scr);
     lv_obj_set_pos(img, 0, 0);
-    lv_obj_remove_flag(img, LV_OBJ_FLAG_CLICKABLE);   /* cham xuyen xuong screen = thoat */
+    lv_obj_set_clickable(img, false);   /* cham xuyen xuong screen = thoat */
     lv_image_set_src(img, &c->dsc[0]);
     lv_obj_move_background(img);
     c->img = img;
