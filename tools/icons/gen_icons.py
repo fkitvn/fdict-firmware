@@ -26,6 +26,7 @@ TILES = [
     ("img_tile_repeat", "Studio microphone", "studio_microphone_3d.png", "Nhại từ", None),
     ("img_tile_sync", "Counterclockwise arrows button", "counterclockwise_arrows_button_3d.png", "Đồng bộ", None),
     ("img_tile_stats", "Bar chart", "bar_chart_3d.png", "Thống kê", None),
+    ("img_tile_shadow", "Clapper board", "clapper_board_3d.png", "Shadowing", None),
     ("img_tile_settings", "Gear", "gear_3d.png", "Cài đặt", "slate"),
 ]
 TILE_PX = 48

@@ -43,6 +43,14 @@ void fd_audio_power_off(void);
 /* Reset codec ES8311 + PA (PA tat ~50 ms, khoi dong lai I2S, reset mem codec, init lai). Lan dau (boot): khoi tao
  * phan cung ngay (reset "boot"); sau do (thuc man hinh): xep yeu cau reset "wake" cho task am thanh (khong chan). */
 void fd_audio_reset_codec(void);
+/* 2.0.1 luong PCM 16 kHz mono (Shadowing). begin: tao bo dem PSRAM buf_samples, bat dau phat khi du prebuffer_samples.
+ * write: 1 task ghi duy nhat, tra so mau da ghi. end(abort): het du lieu (phat not) / huy ngay; sau end KHONG write nua.
+ * played: so mau da phat (dong ho dong bo video). active: con phien (chua giai phong). */
+esp_err_t fd_audio_stream_begin(size_t buf_samples, size_t prebuffer_samples);
+size_t fd_audio_stream_write(const int16_t *pcm, size_t n, uint32_t timeout_ms);
+void fd_audio_stream_end(bool abort);
+uint32_t fd_audio_stream_played(void);
+bool fd_audio_stream_active(void);
 
 
 #ifdef __cplusplus

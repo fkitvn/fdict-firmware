@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.0.1] - 2026-11-02
+
+- Home: thêm ô *Shadowing* (🎬) mở trình phát video toàn màn hình (ngang 320x240; máy đang dọc thì tạm xoay ngang, thoát trả lại hướng cũ, không lưu NVS).
+- Video cố định `https://www.youtube.com/watch?v=Gp340_5dT5g`, phát qua server: `GET /api/devices/media/stream` (Bearer thiết bị, `fd_ota_base_url()`), luồng FDMS v1 = MJPEG 320x240 ~10 fps + PCM s16 mono 16 kHz.
+- Giải mã JPEG bằng TJpgDec trong ROM vào 2 bộ đệm PSRAM; âm thanh qua ES8311 bằng API luồng mới `fd_audio_stream_*` (bộ đệm jitter 3 s, bắt đầu phát khi đủ 0,8 s). Đồng bộ: âm thanh là đồng hồ, khung trễ > 200 ms bị bỏ.
+- Trạng thái: đang tải / chưa WiFi / chưa ghép / server bận (429/503) / lỗi mạng / hết video. Chạm hoặc vuốt mép để thoát.
+
 ## [2.0.0] - 2026-11-02
 
 - Màn *Ghép thiết bị* thành 2 bước: thanh bước (1) Định danh → (2) Liên kết Zalo. Bước 1 giữ nguyên QR + web (Gmail/OTP) + poll.

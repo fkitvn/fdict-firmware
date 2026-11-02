@@ -96,6 +96,9 @@ int fd_ota_api_post_ex(const char *path, const char *json, char *resp, int cap, 
 /* GET {base}{path} + Bearer -> ghi body vao file dst (chi khi 200, <= max_bytes; loi -> xoa dst). Task rieng, khong LVGL.
  * Tra HTTP status; -1 mang/URL, -2 qua lon, -3 loi file. 401 -> xoa token, ve Chua ghep. */
 int fd_ota_api_get_file(const char *path, const char *dst, int max_bytes);
+/* 2.0.1: GET luong dai (Shadowing) co Bearer token; on_data tra false -> dung. Tra HTTP status / -1 loi mang. */
+int fd_ota_api_get_stream(const char *path, int read_timeout_ms, bool (*on_data)(const uint8_t *buf, int n, void *ctx),
+                          void *ctx);
 /* Nhu tren + ETag/Range (noi tiep kieu OTA): resume -> Range tu kich thuoc dst (+If-Range etag_in); khong resume +
  * etag_in -> If-None-Match (304). etag_out = ETag phan hoi. prog(got,total,ctx) goi tu task goi. */
 int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,

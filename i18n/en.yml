@@ -136,6 +136,15 @@ en:
   SERVER_UNREACHABLE: Cannot reach the server
   SET: Set
   SETTINGS: Settings
+  SHADOWING: Shadowing
+  SHADOW_BUSY: Server is busy, try again later
+  SHADOW_END: End of video
+  SHADOW_ERROR: 'Cannot load video (%s)'
+  SHADOW_LOADING: Loading video…
+  SHADOW_NET_ERROR: Network error, check Wi-Fi
+  SHADOW_NOT_PAIRED: Pair the device to watch videos
+  SHADOW_NO_WIFI: No Wi-Fi connection
+  SHADOW_TAP_EXIT: Tap to exit
   SHUFFLE: Shuffle
   SIZE: Size
   SLEEP: Sleep

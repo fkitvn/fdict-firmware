@@ -32,6 +32,7 @@ LV_IMAGE_DECLARE(img_tile_study);
 LV_IMAGE_DECLARE(img_tile_sync);
 LV_IMAGE_DECLARE(img_tile_stats);
 LV_IMAGE_DECLARE(img_tile_settings);
+LV_IMAGE_DECLARE(img_tile_shadow);
 
 static const struct {
     const lv_image_dsc_t *icon;
@@ -42,6 +43,7 @@ static const struct {
     {&img_tile_study, "STUDY", FD_SCR_STUDY},
     {&img_tile_sync, "SYNC", FD_SCR_SYNC},
     {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
+    {&img_tile_shadow, "SHADOWING", FD_SCR_SHADOW},
     {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},
 };
 
