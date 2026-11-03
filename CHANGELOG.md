@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.3] - 2026-11-03
+
+- Flashcard và Quiz học cả từ quét bài học / bộ từ trên Mini App.
+
 ## [2.1.2] - 2026-11-02
 
 - Bước 2 hiện mã kích hoạt bảo hành nhanh hơn: xin mã ngay (bỏ lần hỏi trạng thái trước), dùng lại mã còn hạn khi mở lại màn.
