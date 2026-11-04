@@ -32,11 +32,13 @@ typedef struct {
     char notes[160];          /* notes_vi */
     char err[20];             /* ma ngan: no_wifi, no_time, batt_low, too_large, net, http_NNN, verify_failed,
                                  bad_image, flash, busy */
+    uint8_t attempt;          /* >1: dang thu ket noi lai lan N (UI "Dang ket noi..."), 0/1 = binh thuong */
+    bool check_err;           /* ERROR thuoc buoc kiem tra (UI tu kiem tra lai sau 60..120 s khi con o man Thong tin) */
 } fd_ota_status_t;
 
 /* Goi 1 lan sau khi display + storage da khoi tao (app_main). Neu firmware dang PENDING_VERIFY: tu kiem tra
  * (display_ok, storage_ok, WiFi ket noi trong 60 s) -> hop le + bao booted_ok, hoac rollback + khoi dong lai.
- * Khoi dong task OTA (kiem tra sau WiFi + 30..120 s ngau nhien, roi dinh ky; khong cho dong bo gio SNTP). */
+ * Khoi dong task OTA. 4/11: KHONG kiem tra nen/dinh ky - chi kiem tra khi UI goi fd_ota_check_now (mo man Thong tin). */
 esp_err_t fd_ota_start(bool display_ok, bool storage_ok);
 
 /* UI cung cap: thiet bi ranh (khong thao tac >= 60 s hoac man hinh tat) va hien thong bao truoc khi khoi dong lai
@@ -46,7 +48,7 @@ void fd_ota_set_hooks(bool (*is_idle)(void), void (*before_reboot)(void));
 void fd_ota_get_status(fd_ota_status_t *out);
 void fd_ota_check_now(void);    /* nut "Kiem tra cap nhat" */
 void fd_ota_reboot_now(void);   /* nut "Khoi dong lai ngay": chi khi REBOOT_PENDING, cung duong khoi dong lai khi ranh */
-void fd_ota_update_now(void);   /* nut [Cap nhat]: tai ngay (khong cho ranh); khoi dong lai van cho ranh */
+void fd_ota_update_now(void);   /* nut [Cap nhat]: tai ngay; tai + xac minh xong -> tu khoi dong lai (khong tu tai khi ranh) */
 
 /* Kenh OTA: luon "stable". */
 void fd_ota_get_channel(char *out, size_t len);

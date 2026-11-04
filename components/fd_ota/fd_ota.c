@@ -19,6 +19,8 @@
 #include "esp_random.h"
 #include "esp_system.h"
 #include "esp_timer.h"
+#include "esp_tls.h"
+#include "lwip/netdb.h"
 #include "fd_batt.h"
 #include "fd_events.h"
 #include "fd_net.h"
@@ -101,7 +103,7 @@ static QueueHandle_t s_cmd;
 static SemaphoreHandle_t s_mx;
 static fd_ota_status_t s_st;
 static manifest_t s_man;           /* chi task fd_ota doc/ghi */
-static bool s_have_man, s_auto_pending, s_reboot_pending;
+static bool s_have_man, s_reboot_pending;
 static bool (*s_is_idle)(void);
 static void (*s_before_reboot)(void);
 static char s_dev_id[13], s_build[20];
@@ -115,6 +117,26 @@ static void st_set(fd_ota_state_t st, int pct, const char *err)
     s_st.state = st;
     s_st.pct = pct;
     strlcpy(s_st.err, err ? err : "", sizeof(s_st.err));
+    s_st.attempt = 0;
+    s_st.check_err = false;
+    xSemaphoreGive(s_mx);
+}
+
+/* 4/11: dang thu ket noi lai (attempt = lan thu tiep theo, >1) -> UI "Dang ket noi..." */
+static void st_try(fd_ota_state_t st, int pct, int attempt)
+{
+    st_set(st, pct, NULL);
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    s_st.attempt = (uint8_t)attempt;
+    xSemaphoreGive(s_mx);
+}
+
+/* loi thuoc buoc kiem tra: UI tu kiem tra lai khi nguoi dung con o man Thong tin */
+static void st_chk_err(const char *err)
+{
+    st_set(FD_OTA_ST_ERROR, 0, err);
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    s_st.check_err = true;
     xSemaphoreGive(s_mx);
 }
 
@@ -297,6 +319,52 @@ static void http_cfg(esp_http_client_config_t *c, const char *url, int timeout_m
     c->keep_alive_enable = true;
 }
 
+/* ---------- 4/11: thu lai loi mang + chan doan ----------
+ * NET_TRIES = 1 lan + 3 lan thu lai (cho 1 s, 2 s, 4 s). Loi esp-tls/mbedtls cuoi lay tu HTTP_EVENT_DISCONNECTED. */
+#define NET_TRIES 4
+static esp_err_t s_tls_esp;
+static int s_tls_mbed, s_tls_flags;
+
+static void tls_capture(esp_http_client_event_t *e)
+{
+    if (e->event_id != HTTP_EVENT_DISCONNECTED || !e->data) return;
+    int m = 0, f = 0;
+    esp_err_t te = esp_tls_get_and_clear_last_error((esp_tls_error_handle_t)e->data, &m, &f);
+    if (te != ESP_OK || m || f) { s_tls_esp = te; s_tls_mbed = m; s_tls_flags = f; }
+}
+
+static esp_err_t dl_evt(esp_http_client_event_t *e) { tls_capture(e); return ESP_OK; }
+
+/* 1 dong log/lan that bai: esp_err, HTTP, esp-tls/mbedtls, thoi gian, DNS (khong in host), RSSI, heap noi + PSRAM.
+ * Doc log: dns FAIL -> DNS/mang lanh; mbedtls -0x7F00 (ALLOC_FAILED) hoac khoi noi nho -> thieu RAM; timeout + dns ok -> TCP/TLS cham. */
+static void net_diag(const char *what, const char *url, esp_err_t e, int code, int64_t t0, int att, int tries)
+{
+    char host[96] = "";
+    const char *h = url ? strstr(url, "://") : NULL;
+    if (h) {
+        h += 3;
+        size_t n = strcspn(h, "/?#:");
+        if (n >= sizeof(host)) n = sizeof(host) - 1;
+        memcpy(host, h, n);
+        host[n] = 0;
+    }
+    int64_t td = esp_timer_get_time();
+    struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM}, *res = NULL;
+    int gr = host[0] ? getaddrinfo(host, NULL, &hints, &res) : -1;
+    if (res) freeaddrinfo(res);
+    int dns_ms = (int)((esp_timer_get_time() - td) / 1000);
+    int m = s_tls_mbed;
+    ESP_LOGW(TAG, "%s: lan %d/%d LOI %s HTTP %d | tls=%s mbedtls=%s0x%04x flags=0x%x | %d ms | dns=%s(%d) %d ms | rssi=%d | "
+                  "noi free=%u max=%u | psram free=%u max=%u",
+             what, att, tries, esp_err_to_name(e), code, esp_err_to_name(s_tls_esp), m < 0 ? "-" : "", (unsigned)(m < 0 ? -m : m),
+             s_tls_flags, (int)((td - t0) / 1000), gr == 0 ? "ok" : "FAIL", gr, dns_ms, fd_net_rssi(),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+    s_tls_esp = ESP_OK;
+    s_tls_mbed = s_tls_flags = 0;
+}
+
 static void add_auth(esp_http_client_handle_t cl)
 {
     char tok[320];
@@ -331,6 +399,7 @@ typedef struct {
 
 static esp_err_t http_evt(esp_http_client_event_t *e)
 {
+    tls_capture(e);
     rx_t *rx = e->user_data;
     if (!rx) return ESP_OK;
     if (e->event_id == HTTP_EVENT_ON_DATA && rx->buf) {
@@ -539,7 +608,7 @@ static bool fw_same_version(const char img[32], const char *man)
 /* tra ve so giay den lan kiem tra ke tiep */
 static int do_check(bool manual)
 {
-    if (!fd_net_is_connected()) { st_set(FD_OTA_ST_ERROR, 0, "no_wifi"); ESP_LOGI(TAG, "check: bo qua (chua WiFi)"); return RETRY_ERR_S; }
+    if (!fd_net_is_connected()) { st_chk_err("no_wifi"); ESP_LOGI(TAG, "check: bo qua (chua WiFi)"); return RETRY_ERR_S; }
     if (s_reboot_pending) { st_set(FD_OTA_ST_REBOOT_PENDING, 100, NULL); return CONFIG_FD_OTA_CHECK_INTERVAL_S; }
     st_set(FD_OTA_ST_CHECKING, 0, NULL);
     const char *ch = FD_OTA_CHANNEL;
@@ -551,17 +620,19 @@ static int do_check(bool manual)
     url_enc(ver_q, sizeof(ver_q), esp_app_get_description()->version);
     snprintf(url, sizeof(url), "%s/api/ota/check?hw=%s&channel=%s&fw_version=%s&build_id=%s&device_id=%s&battery=%d&rssi=%d",
              FD_OTA_BASE, CONFIG_FD_OTA_HW, ch, ver_q, s_build, s_dev_id, bat, rssi);
-    if (!url_allowed(url)) { st_set(FD_OTA_ST_ERROR, 0, "bad_url"); ESP_LOGI(TAG, "check: base URL khong phai https://"); return RETRY_ERR_S; }
+    if (!url_allowed(url)) { st_chk_err("bad_url"); ESP_LOGI(TAG, "check: base URL khong phai https://"); return RETRY_ERR_S; }
     ESP_LOGI(TAG, "check: GET /api/ota/check (%s, channel=%s, %s, %s, token=%s)", manual ? "thu cong" : "tu dong",
              ch, s_build, s_dev_id, fd_ota_is_paired() ? "co" : "khong");
     rx_t rx = {.cap = 2048};
     rx.buf = calloc(1, rx.cap);
-    if (!rx.buf) { st_set(FD_OTA_ST_ERROR, 0, "no_mem"); return RETRY_ERR_S; }
+    if (!rx.buf) { st_chk_err("no_mem"); return RETRY_ERR_S; }
     /* Kiem tra OTA doc lap voi ghep doi: luon gui device_id (MAC); Bearer chi khi co token.
      * 401 co Bearer -> thu lai 1 lan khong Bearer. 401 khi chua ghep -> trang thai "http_401", khong phai "net". */
     esp_err_t e = ESP_FAIL;
     int code = -1;
     bool use_auth = fd_ota_is_paired();
+    for (int net_try = 1; ; net_try++) {   /* 4/11: loi mang -> thu lai 3 lan (1 s, 2 s, 4 s), UI "Dang ket noi..." */
+    int64_t t0 = esp_timer_get_time();
     for (int att = 0; att < 2; att++) {
         rx.len = 0;
         rx.json = false;
@@ -586,28 +657,34 @@ static int do_check(bool manual)
         if (!(e == ESP_OK && code == 401 && use_auth)) break;
         use_auth = false;   /* token bi tu choi: thu lai khong Bearer (khong xoa token o day) */
     }
+    if (e == ESP_OK) break;
+    net_diag("check", url, e, code, t0, net_try, NET_TRIES);
+    if (net_try >= NET_TRIES || !fd_net_is_connected()) break;
+    st_try(FD_OTA_ST_CHECKING, 0, net_try + 1);
+    vTaskDelay(pdMS_TO_TICKS(1000 << (net_try - 1)));
+    }
     int ra = (e == ESP_OK && code >= 400) ? srv_error(code, &rx) : 0;
     if (e == ESP_OK && code == 401 && !fd_ota_is_paired()) {
-        st_set(FD_OTA_ST_ERROR, 0, "http_401");   /* UI: "may chu (401)", khong phai "mang" */
+        st_chk_err("http_401");   /* UI: "may chu (401)", khong phai "mang" */
         ESP_LOGI(TAG, "check: HTTP 401 khi chua ghep (may chu yeu cau Bearer cho device_id nay)");
         free(rx.buf);
         return RETRY_ERR_S;
     }
     if (e == ESP_OK && code == 429) {   /* qua tai: cho retry_after roi tu kiem tra lai */
-        st_set(FD_OTA_ST_ERROR, 0, "http_429");
+        st_chk_err("http_429");
         free(rx.buf);
         return ra > 0 ? (ra > CHECK_MAX_S ? CHECK_MAX_S : ra) : RETRY_ERR_S;
     }
     if (e != ESP_OK || code != 200) {
         char er[20];
         if (e != ESP_OK) strlcpy(er, "net", sizeof(er)); else snprintf(er, sizeof(er), "http_%d", code);
-        st_set(FD_OTA_ST_ERROR, 0, er);
+        st_chk_err(er);
         free(rx.buf);
         return RETRY_ERR_S;
     }
     cJSON *j = cJSON_ParseWithLength(rx.buf, rx.len);
     free(rx.buf);
-    if (!j) { st_set(FD_OTA_ST_ERROR, 0, "bad_json"); ESP_LOGI(TAG, "check: JSON loi"); return RETRY_ERR_S; }
+    if (!j) { st_chk_err("bad_json"); ESP_LOGI(TAG, "check: JSON loi"); return RETRY_ERR_S; }
     manifest_t m = {0};
     const cJSON *v = cJSON_GetObjectItemCaseSensitive(j, "check_again_s");
     m.again_s = cJSON_IsNumber(v) ? (int)v->valuedouble : CONFIG_FD_OTA_CHECK_INTERVAL_S;
@@ -628,13 +705,13 @@ static int do_check(bool manual)
     cJSON_Delete(j);
     int next = jitter_s(m.again_s);
     if (!m.update) {
-        s_have_man = s_auto_pending = false;
+        s_have_man = false;
         st_set(FD_OTA_ST_UP_TO_DATE, 0, NULL);
         ESP_LOGI(TAG, "check: da la ban moi nhat, kiem tra lai sau %d s", next);
         return next;
     }
     if (!m.rel[0] || !m.ver[0] || !is_hex64(m.sha) || !m.size || !url_allowed(m.url)) {
-        st_set(FD_OTA_ST_ERROR, 0, "bad_manifest");
+        st_chk_err("bad_manifest");
         ESP_LOGI(TAG, "check: manifest thieu/sai truong (rel/ver/sha256/size/url)");
         return RETRY_ERR_S;
     }
@@ -642,7 +719,6 @@ static int do_check(bool manual)
     str_get("bad_rel", bad, sizeof(bad));
     s_man = m;
     s_have_man = true;
-    s_auto_pending = strcmp(bad, m.rel) != 0;   /* da rollback ban nay tren may -> khong tu dong tai lai */
     xSemaphoreTake(s_mx, portMAX_DELAY);
     strlcpy(s_st.version, m.ver, sizeof(s_st.version));
     strlcpy(s_st.build, m.build, sizeof(s_st.build));
@@ -652,7 +728,7 @@ static int do_check(bool manual)
     xSemaphoreGive(s_mx);
     st_set(FD_OTA_ST_AVAILABLE, 0, NULL);
     ESP_LOGI(TAG, "check: co ban moi %s %s (%u B, rel %s, mandatory=%d, min_battery=%d)%s", m.ver, m.build,
-             (unsigned)m.size, m.rel, m.mandatory, m.min_batt, s_auto_pending ? "" : " - da rollback, chi tai thu cong");
+             (unsigned)m.size, m.rel, m.mandatory, m.min_batt, strcmp(bad, m.rel) ? "" : " - ban nay da rollback tren may");
     return next;
 }
 
@@ -705,47 +781,15 @@ static void url_add_dev_id(char *u, size_t cap)
     ESP_LOGI(TAG, "download: them device_id vao URL tai");
 }
 
-/* b cung host voi a va la duong dan /api/ota/download/ (khong ap cho URL ky san S3) */
-static bool same_host_download(const char *a, const char *b)
+/* a, b cung host (khong phan biet hoa thuong): chi gui Bearer khi URL tai cung host voi may chu API */
+static bool same_host(const char *a, const char *b)
 {
     const char *ha = strstr(a, "://"), *hb = strstr(b, "://");
     if (!ha || !hb) return false;
     ha += 3;
     hb += 3;
     size_t la = strcspn(ha, "/?#"), lb = strcspn(hb, "/?#");
-    if (la != lb || strncasecmp(ha, hb, la)) return false;
-    return !strncmp(hb + lb, "/api/ota/download/", 18);
-}
-
-/* URL tai: neu may chu chuyen huong 1 lan (302 toi URL ky san) -> dung Location va KHONG gui token toi host khac */
-static bool resolve_url(const char *url, char *out, size_t len, bool *with_auth)
-{
-    strlcpy(out, url, len);
-    *with_auth = true;
-    rx_t rx = {0};
-    esp_http_client_config_t c;
-    http_cfg(&c, url, HTTP_TIMEOUT_MS);
-    c.disable_auto_redirect = true;
-    c.event_handler = http_evt;
-    c.user_data = &rx;
-    esp_http_client_handle_t cl = esp_http_client_init(&c);
-    if (!cl) return false;
-    add_auth(cl);
-    esp_http_client_set_header(cl, "Range", "bytes=0-0");
-    esp_err_t e = esp_http_client_perform(cl);
-    int code = esp_http_client_get_status_code(cl);
-    esp_http_client_cleanup(cl);
-    ESP_LOGI(TAG, "download: probe %s HTTP %d", esp_err_to_name(e), code);
-    if (e == ESP_OK) auth_401(code);
-    if (e != ESP_OK && !(code >= 300 && code < 400)) return false;
-    if (code >= 300 && code < 400) {
-        if (!rx.loc[0] || !url_allowed(rx.loc)) { ESP_LOGI(TAG, "download: redirect khong hop le"); return false; }
-        strlcpy(out, rx.loc, len);
-        *with_auth = same_host_download(url, out);   /* cung host /api/ota/download: giu token + device_id */
-        if (*with_auth) url_add_dev_id(out, len);
-        log_url("download: redirect ->", out);
-    }
-    return code < 400;
+    return la == lb && !strncasecmp(ha, hb, la);
 }
 
 static void fail(const char *code, rstat_t rs, uint32_t dur)
@@ -768,26 +812,26 @@ static void do_update(bool manual)
     if (!part) { st_set(FD_OTA_ST_ERROR, 0, "no_part"); return; }
     if (s_man.size >= part->size) {
         ESP_LOGI(TAG, "update: %u B >= phan vung %s %u B", (unsigned)s_man.size, part->label, (unsigned)part->size);
-        s_auto_pending = false;
         fail("too_large", RS_FAILED, 0);
         return;
     }
-    s_auto_pending = false;   /* moi lan tai chi 1 lan tu dong; loi -> lan kiem tra sau */
     int64_t t0 = esp_timer_get_time();
     ESP_LOGI(TAG, "update: bat dau %s -> %s (%s) vao %s, %s", s_build, s_man.build, s_man.ver, part->label, manual ? "thu cong" : "tu dong");
     st_set(FD_OTA_ST_DOWNLOADING, 0, NULL);
     report_queue(s_man.rel, s_build, s_man.build, RS_DOWNLOADING, NULL, 0);
     report_flush();
 
+    /* 4/11: bo request do (Range bytes=0-0) - vao thang esp_https_ota voi URL tu manifest (+device_id);
+     * chuyen huong (neu co) do esp_http_client tu theo (max_redirection_count = 1). Bearer chi khi cung host API. */
     char url[256];
-    bool with_auth = true;
-    char src[256];
-    strlcpy(src, s_man.url, sizeof(src));
-    url_add_dev_id(src, sizeof(src));   /* luon gui device_id (ca khi chua ghep) */
-    if (!resolve_url(src, url, sizeof(url), &with_auth)) { fail("net", RS_FAILED, 0); return; }
+    strlcpy(url, s_man.url, sizeof(url));
+    url_add_dev_id(url, sizeof(url));   /* luon gui device_id (ca khi chua ghep) */
+    bool with_auth = same_host(url, FD_OTA_BASE);
+    log_url("download: GET", url);
 
     esp_http_client_config_t hc;
     http_cfg(&hc, url, HTTP_TIMEOUT_MS);
+    hc.event_handler = dl_evt;
     esp_https_ota_config_t oc = {
         .http_config = &hc,
         .http_client_init_cb = with_auth ? auth_init_cb : NULL,
@@ -799,10 +843,12 @@ static void do_update(bool manual)
     esp_err_t e = ESP_FAIL;
     int written = 0, last_pct = -1;
     for (int att = 1; att <= DL_ATTEMPTS; att++) {
+        int64_t ta = esp_timer_get_time();
         oc.ota_resumption = written > 0;
         oc.ota_image_bytes_written = written;
         e = esp_https_ota_begin(&oc, &h);
         ESP_LOGI(TAG, "download: begin #%d tu %d B: %s", att, written, esp_err_to_name(e));
+        if (e != ESP_OK) net_diag("download", url, e, -1, ta, att, DL_ATTEMPTS);
         if (e == ESP_OK) {
             int sz = esp_https_ota_get_image_size(h);
             if (sz > 0 && (uint32_t)sz != s_man.size) {
@@ -829,11 +875,15 @@ static void do_update(bool manual)
             if (e == ESP_OK && esp_https_ota_is_complete_data_received(h)) break;
             written = esp_https_ota_get_image_len_read(h);
             ESP_LOGI(TAG, "download: dut o %d B: %s", written, esp_err_to_name(e));
+            net_diag("download", url, e, -1, ta, att, DL_ATTEMPTS);
             esp_https_ota_abort(h);
             h = NULL;
         }
         if (s_abort) { ESP_LOGI(TAG, "download: huy (doi server)"); st_set(FD_OTA_ST_IDLE, 0, NULL); return; }
-        if (att < DL_ATTEMPTS) vTaskDelay(pdMS_TO_TICKS(3000 * att));
+        if (att < DL_ATTEMPTS) {   /* 4/11: cho 1 s, 2 s, 4 s; UI "Dang ket noi..." */
+            st_try(FD_OTA_ST_DOWNLOADING, last_pct < 0 ? 0 : last_pct, att + 1);
+            vTaskDelay(pdMS_TO_TICKS(1000 << (att - 1)));
+        }
         if (!fd_net_is_connected() && !fd_net_wait_connected(30000)) break;
     }
     if (s_abort) { if (h) esp_https_ota_abort(h); st_set(FD_OTA_ST_IDLE, 0, NULL); return; }
@@ -871,7 +921,11 @@ static void do_update(bool manual)
     s_have_man = false;
     s_reboot_pending = true;
     st_set(FD_OTA_ST_REBOOT_PENDING, 100, NULL);
-    ESP_LOGI(TAG, "reboot: cho thiet bi ranh");
+    /* 4/11: tai + xac minh xong -> khoi dong lai ngay (tu kiem tra / mark valid sau khi khoi dong giu nguyen) */
+    ESP_LOGI(TAG, "reboot: tai xong -> khoi dong lai ngay");
+    if (s_before_reboot) s_before_reboot();
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    esp_restart();
 }
 
 /* ---------- tu kiem tra sau OTA / phat hien rollback ---------- */
@@ -1368,7 +1422,6 @@ static void ota_task(void *arg)
 {
     (void)arg;
     selftest_run();
-    int64_t next_check = 0;            /* 0 = chua len lich (cho WiFi + gio) */
     int64_t next_report = 0;
     for (;;) {
         int cmd = 0;
@@ -1388,14 +1441,12 @@ static void ota_task(void *arg)
             token_save(NULL);
             name_save(NULL);
             rq_save(NULL, 0);
-            s_have_man = s_auto_pending = false;
+            s_have_man = false;
             s_abort = false;
             s_switch_pending = false;
             pair_set(FD_PAIR_IDLE, false, 0, NULL);
             st_set(FD_OTA_ST_IDLE, 0, NULL);
             ESP_LOGI(TAG, "server switched to %s, unpaired", s_lab ? "lab" : "prod");
-            if (fd_net_is_connected()) next_check = esp_timer_get_time() + 5LL * 1000000;
-            else next_check = 0;
             cmd = 0;
         }
         else if (cmd == CMD_PAIR_STOP) {
@@ -1404,22 +1455,14 @@ static void ota_task(void *arg)
         }
         pair_tick();
         int64_t now = esp_timer_get_time();
-        bool net = fd_net_is_connected();   /* khong can dong bo gio (SNTP) */
-        if (!next_check && net) {
-            int d = 30 + (int)(esp_random() % 91);
-            next_check = now + (int64_t)d * 1000000;
-            ESP_LOGI(TAG, "schedule: WiFi OK -> kiem tra sau %d s", d);
-        }
+        bool net = fd_net_is_connected();
+        /* 4/11: chi kiem tra khi UI yeu cau (mo man Thong tin / bam nut); khong kiem tra nen sau khoi dong/dong bo gio,
+         * khong dinh ky, khong tu tai khi ranh - chi tai khi nguoi dung bam [Cap nhat]. */
         if (cmd == CMD_CHECK) {
-            int s = do_check(true);
-            next_check = now + (int64_t)s * 1000000;
+            do_check(true);
         } else if (cmd == CMD_UPDATE) {
             if (s_have_man && !s_reboot_pending) do_update(true);
-        } else if (next_check && now >= next_check) {
-            int s = net ? do_check(false) : 60;
-            next_check = esp_timer_get_time() + (int64_t)s * 1000000;
         }
-        if (s_have_man && s_auto_pending && !s_reboot_pending && net && idle_now()) do_update(false);
         if (s_reboot_pending && (cmd == CMD_REBOOT || idle_now())) {   /* nut "Khoi dong lai ngay" hoac thiet bi ranh */
             ESP_LOGI(TAG, "reboot: %s -> khoi dong lai de cap nhat", cmd == CMD_REBOOT ? "nguoi dung bam" : "thiet bi ranh");
             if (s_before_reboot) s_before_reboot();

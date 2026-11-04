@@ -16,6 +16,7 @@
 #include "esp_ota_ops.h"
 #include "esp_image_format.h"
 #include "esp_timer.h"
+#include "esp_random.h"
 #include "esp_partition.h"
 #include "fd_store.h"
 #include "fd_tts.h"
@@ -107,7 +108,7 @@ static void ota_show(void)
         lv_obj_set_hidden(s_ota_spin, true);
         lv_label_set_text(s_ota_btn_lbl, btn);
         return;
-    case FD_OTA_ST_CHECKING: spin = true; snprintf(b, sizeof(b), _("CHECKING")); break;
+    case FD_OTA_ST_CHECKING: spin = true; snprintf(b, sizeof(b), st.attempt > 1 ? _("OTA_CONNECTING") : _("CHECKING")); break;
     case FD_OTA_ST_UP_TO_DATE: col = 0x16A34A; snprintf(b, sizeof(b), _("NO_UPDATE_AVAILABLE")); break;
     case FD_OTA_ST_AVAILABLE: {
         unsigned c = (unsigned)(((uint64_t)st.size * 100 + 524288) / 1048576);   /* MB x100, lam tron */
@@ -116,7 +117,11 @@ static void ota_show(void)
         btn = _("UPDATE");
         break;
     }
-    case FD_OTA_ST_DOWNLOADING: spin = true; snprintf(b, sizeof(b), _("OTA_DOWNLOADING"), st.pct); break;
+    case FD_OTA_ST_DOWNLOADING:
+        spin = true;
+        if (st.attempt > 1) snprintf(b, sizeof(b), _("OTA_CONNECTING"));
+        else snprintf(b, sizeof(b), _("OTA_DOWNLOADING"), st.pct);
+        break;
     case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), _("WILL_RESTART_WHEN_IDLE")); btn = _("RESTART_NOW"); break;
     default: col = 0xDC2626; snprintf(b, sizeof(b), _("ERROR_FMT"), ota_err_vi(st.err, eb, sizeof(eb))); break;
     }
@@ -134,6 +139,7 @@ static void ota_show(void)
 static int64_t s_last_check_us;   /* giu qua cac lan mo man: mo lai trong 60 s -> dung ket qua cu */
 static bool s_auto_wait;          /* cho WiFi de tu kiem tra */
 static bool s_popup_pending;      /* hien hop thoai khi co ban moi (1 lan / lan mo man) */
+static int64_t s_recheck_us;      /* 4/11: kiem tra loi -> tu kiem tra lai sau 60..120 s (chi khi con o man nay) */
 static lv_obj_t *s_dlg;
 
 static void dlg_close(void)
@@ -245,6 +251,15 @@ static void ota_timer_cb(lv_timer_t *t)
     warr_fill();
     if (s_auto_wait && fd_net_is_connected()) auto_check();
     ota_show();
+    {   /* 4/11: kiem tra loi -> hen kiem tra lai 60..120 s; roi man (destroy) -> huy */
+        fd_ota_status_t cs;
+        fd_ota_get_status(&cs);
+        int64_t now = esp_timer_get_time();
+        if (cs.state == FD_OTA_ST_ERROR && cs.check_err && fd_net_is_connected()) {
+            if (!s_recheck_us) s_recheck_us = now + (int64_t)(60 + esp_random() % 61) * 1000000;
+            else if (now >= s_recheck_us) { s_recheck_us = 0; s_last_check_us = now; fd_ota_check_now(); }
+        } else s_recheck_us = 0;
+    }
     if (!s_popup_pending) return;
     fd_ota_status_t st;
     fd_ota_get_status(&st);
@@ -507,6 +522,7 @@ static void destroy(void)
     s_ota_msg = s_ota_spin = s_ota_btn_lbl = NULL;
     dlg_close();
     s_auto_wait = s_popup_pending = false;
+    s_recheck_us = 0;
 }
 static void on_tick(void) { refresh(); }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
