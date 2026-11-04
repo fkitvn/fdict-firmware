@@ -44,6 +44,7 @@ static const struct {
     {&img_tile_sync, "SYNC", FD_SCR_SYNC},
     {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
     {&img_tile_shadow, "SHADOWING", FD_SCR_SHADOW},
+    {&img_tile_study, "SENTENCE", FD_SCR_SENTENCE},
     {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},
 };
 

@@ -34,6 +34,7 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_PAIR] = &g_scr_pair,
     [FD_SCR_LANG] = &g_scr_lang,
     [FD_SCR_SHADOW] = &g_scr_shadow,
+    [FD_SCR_SENTENCE] = &g_scr_sentence,
 };
 
 static fd_scr_t s_cur = FD_SCR_COUNT;

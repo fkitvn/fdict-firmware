@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.6] - 2026-11-04
+
+- Thêm bài học mới "Sắp xếp câu": xếp các thẻ từ đã xáo trộn thành câu tiếng Anh hoàn chỉnh bằng nút bấm hoặc chạm, kiểm tra đáp án ngay, xem câu đúng và nghĩa tiếng Việt. Câu lấy từ ví dụ trong bộ từ của bạn, chưa có thì dùng câu mẫu.
+
 ## [2.1.5] - 2026-11-04
 
 - Thêm chế độ đen trắng trong Cài đặt.

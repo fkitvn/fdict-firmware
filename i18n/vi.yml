@@ -202,3 +202,16 @@ vi:
   ZALO_LINKED: Đã kích hoạt bảo hành
   ZALO_NEW_CODE: Lấy mã mới
   ZALO_WAITING: Chưa kích hoạt bảo hành
+  SENTENCE: 'Sắp xếp câu'
+  SEN_LOADING: 'Đang tải câu…'
+  SEN_PROGRESS: 'Câu %d/%d'
+  SEN_PREV: 'Trước'
+  SEN_NEXT: 'Sau'
+  SEN_UNDO: 'Xóa'
+  SEN_PICK: 'Chọn'
+  SEN_CORRECT: 'Chính xác!'
+  SEN_WRONG: 'Chưa đúng'
+  SEN_ANSWER_IS: 'Đáp án:'
+  SEN_CONTINUE: 'Tiếp'
+  SEN_RESULT: 'Đúng %d/%d câu'
+  SEN_AGAIN: 'Học tiếp'

@@ -27,6 +27,7 @@ typedef enum {
     FD_SCR_PAIR,        /* Cai dat > Ghep thiet bi */
     FD_SCR_LANG,        /* Cai dat > Ngon ngu / Language (1.3.0) */
     FD_SCR_SHADOW,      /* 2.0.1 Shadowing: phat video (luong tu server) */
+    FD_SCR_SENTENCE,    /* 2.1.6 Sap xep thanh cau */
     FD_SCR_COUNT,
 } fd_scr_t;
 

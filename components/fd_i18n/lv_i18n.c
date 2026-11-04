@@ -227,6 +227,19 @@ static lv_i18n_phrase_t en_singulars[] = {
     {"WARRANTY_NEEDED", "Warranty not activated"},
     {"PAIR_STEP_ID", "Identify"},
     {"PAIR_STEP_ZALO", "Activate warranty"},
+    {"SENTENCE", "Sentence order"},
+    {"SEN_LOADING", "Loading sentences…"},
+    {"SEN_PROGRESS", "Sentence %d/%d"},
+    {"SEN_PREV", "Prev"},
+    {"SEN_NEXT", "Next"},
+    {"SEN_UNDO", "Undo"},
+    {"SEN_PICK", "Pick"},
+    {"SEN_CORRECT", "Correct!"},
+    {"SEN_WRONG", "Not quite"},
+    {"SEN_ANSWER_IS", "Answer:"},
+    {"SEN_CONTINUE", "Next"},
+    {"SEN_RESULT", "%d/%d correct"},
+    {"SEN_AGAIN", "Play again"},
     {NULL, NULL} // End mark
 };
 
@@ -459,6 +472,19 @@ static lv_i18n_phrase_t vi_singulars[] = {
     {"WARRANTY_NEEDED", "Chưa kích hoạt bảo hành"},
     {"PAIR_STEP_ID", "Định danh"},
     {"PAIR_STEP_ZALO", "Kích hoạt bảo hành"},
+    {"SENTENCE", "Sắp xếp câu"},
+    {"SEN_LOADING", "Đang tải câu…"},
+    {"SEN_PROGRESS", "Câu %d/%d"},
+    {"SEN_PREV", "Trước"},
+    {"SEN_NEXT", "Sau"},
+    {"SEN_UNDO", "Xóa"},
+    {"SEN_PICK", "Chọn"},
+    {"SEN_CORRECT", "Chính xác!"},
+    {"SEN_WRONG", "Chưa đúng"},
+    {"SEN_ANSWER_IS", "Đáp án:"},
+    {"SEN_CONTINUE", "Tiếp"},
+    {"SEN_RESULT", "Đúng %d/%d câu"},
+    {"SEN_AGAIN", "Học tiếp"},
     {NULL, NULL} // End mark
 };
 

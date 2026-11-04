@@ -204,3 +204,16 @@ en:
   ZALO_NEW_CODE: New code
   ZALO_WAITING: Warranty not activated
     again
+  SENTENCE: 'Sentence order'
+  SEN_LOADING: 'Loading sentences…'
+  SEN_PROGRESS: 'Sentence %d/%d'
+  SEN_PREV: 'Prev'
+  SEN_NEXT: 'Next'
+  SEN_UNDO: 'Undo'
+  SEN_PICK: 'Pick'
+  SEN_CORRECT: 'Correct!'
+  SEN_WRONG: 'Not quite'
+  SEN_ANSWER_IS: 'Answer:'
+  SEN_CONTINUE: 'Next'
+  SEN_RESULT: '%d/%d correct'
+  SEN_AGAIN: 'Play again'
