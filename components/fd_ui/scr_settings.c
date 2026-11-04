@@ -235,8 +235,8 @@ static bool on_back(void)
     return true;
 }
 
-/* Hang co cong tac: Che do nha phat trien */
-static void dev_row(lv_obj_t *parent)
+/* Hang co cong tac (icon, chu, trang thai, cb VALUE_CHANGED) */
+static lv_obj_t *switch_row(lv_obj_t *parent, const char *icon, const char *text, bool checked, lv_event_cb_t cb)
 {
     lv_obj_t *r = lv_obj_create(parent);
     lv_obj_set_size(r, lv_pct(100), 48);
@@ -250,15 +250,28 @@ static void dev_row(lv_obj_t *parent)
     lv_obj_set_style_pad_column(r, 10, 0);
     lv_obj_t *i = lv_label_create(r);
     lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
-    lv_label_set_text(i, LV_SYMBOL_WARNING);
+    lv_label_set_text(i, icon);
     lv_obj_t *l = lv_label_create(r);
-    lv_label_set_text(l, _("DEVELOPER_MODE"));
+    lv_label_set_text(l, text);
     lv_obj_set_flex_grow(l, 1);
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);   /* ngang: chu dai khong tran hang */
-    lv_obj_t *sw = s_dev_sw = lv_switch_create(r);
+    lv_obj_t *sw = lv_switch_create(r);
     lv_obj_set_size(sw, 46, 24);
-    lv_obj_set_state(sw, LV_STATE_CHECKED, fd_ui_devmode_get());
-    lv_obj_add_event_cb(sw, dev_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_set_state(sw, LV_STATE_CHECKED, checked);
+    lv_obj_add_event_cb(sw, cb, LV_EVENT_VALUE_CHANGED, NULL);
+    return sw;
+}
+
+/* Hang co cong tac: Che do nha phat trien */
+static void dev_row(lv_obj_t *parent)
+{
+    s_dev_sw = switch_row(parent, LV_SYMBOL_WARNING, _("DEVELOPER_MODE"), fd_ui_devmode_get(), dev_cb);
+}
+
+/* Che do den trang: ap dung ngay + luu NVS (khong can xac nhan) */
+static void gray_cb(lv_event_t *e)
+{
+    fd_display_set_grayscale(lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED), true);
 }
 
 static void refresh(void)
@@ -296,6 +309,7 @@ static void build(lv_obj_t *scr)
     item(body, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), go_cb, (void *)(intptr_t)FD_SCR_VOLUME, &s_vol_sub);
     item(body, LV_SYMBOL_POWER, _("SCREEN_TIMEOUT"), go_cb, (void *)(intptr_t)FD_SCR_TIMEOUT, &s_to_sub);
     item(body, LV_SYMBOL_REFRESH, _("SCREEN_ROTATION"), go_cb, (void *)(intptr_t)FD_SCR_ROTATION, &s_rot_sub);
+    switch_row(body, LV_SYMBOL_IMAGE, _("GRAYSCALE_MODE"), fd_display_get_grayscale(), gray_cb);
     item(body, LV_SYMBOL_EYE_CLOSE, _("PIN_CODE"), go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
     item(body, LV_SYMBOL_LIST, _("ABOUT"), go_cb, (void *)(intptr_t)FD_SCR_ABOUT, NULL);
     dev_row(body);   /* cong tac che do nha phat trien (bat overlay vung vuot mep) */

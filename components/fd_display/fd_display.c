@@ -53,6 +53,59 @@ static int load_rotation(void)
 static int s_bright = CONFIG_BOARD_BACKLIGHT_DEFAULT;
 static bool s_asleep;   /* man hinh tat (het thoi gian cho): doi do sang chi luu, khong bat den */
 
+/* Che do den trang (NVS fd/gray): chuyen MOI pixel sang xam trong flush cb (truoc khi port dao byte),
+ * nen phu het: logo, anh, icon, video Shadowing (lv_image), lop top/sys. */
+#define NVS_GRAY "gray"
+static volatile bool s_gray;
+static lv_display_flush_cb_t s_port_flush;
+
+static void gray_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px)
+{
+    if (s_gray) {
+        uint16_t *p = (uint16_t *)px;
+        size_t n = lv_area_get_size(area);
+        for (size_t k = 0; k < n; k++) {
+            uint32_t c = p[k];
+            uint32_t r = (c >> 11) & 0x1F, g = (c >> 5) & 0x3F, b = c & 0x1F;
+            /* Y = (77 R8 + 150 G8 + 29 B8) >> 8, R8 = r<<3, G8 = g<<2, B8 = b<<3 */
+            uint32_t y = (77u * (r << 3) + 150u * (g << 2) + 29u * (b << 3)) >> 8;
+            p[k] = (uint16_t)(((y >> 3) << 11) | ((y >> 2) << 5) | (y >> 3));
+        }
+    }
+    s_port_flush(disp, area, px);
+}
+
+static bool load_gray(void)
+{
+    nvs_handle_t h;
+    uint8_t v = 0;
+    if (nvs_open(NVS_NS, NVS_READONLY, &h) == ESP_OK) {
+        nvs_get_u8(h, NVS_GRAY, &v);
+        nvs_close(h);
+    }
+    return v == 1;
+}
+
+void fd_display_set_grayscale(bool on, bool persist)
+{
+    s_gray = on;
+    if (persist) {
+        nvs_handle_t h;
+        if (nvs_open(NVS_NS, NVS_READWRITE, &h) == ESP_OK) {
+            nvs_set_u8(h, NVS_GRAY, on ? 1 : 0);
+            nvs_commit(h);
+            nvs_close(h);
+        }
+    }
+    if (s_disp) {   /* ve lai toan bo (ca lop top/sys) de doi mau ngay */
+        lv_obj_invalidate(lv_screen_active());
+        lv_obj_invalidate(lv_display_get_layer_top(s_disp));
+        lv_obj_invalidate(lv_display_get_layer_sys(s_disp));
+    }
+}
+
+bool fd_display_get_grayscale(void) { return s_gray; }
+
 static int load_brightness(void)
 {
     nvs_handle_t h;
@@ -99,6 +152,7 @@ static void apply_hw(const board_orient_t *o)
 esp_err_t fd_display_init(void)
 {
     s_rot = load_rotation();
+    s_gray = load_gray();
     const board_orient_t *o = &BOARD_ORIENTS[s_rot];
 
     esp_lcd_panel_io_handle_t io = NULL;
@@ -137,6 +191,9 @@ esp_err_t fd_display_init(void)
     };
     s_disp = lvgl_port_add_disp(&disp_cfg);
     ESP_RETURN_ON_FALSE(s_disp, ESP_FAIL, TAG, "lvgl_port_add_disp");
+    s_port_flush = lv_display_get_flush_cb(s_disp);   /* boc flush cb cua port: che do den trang */
+    ESP_RETURN_ON_FALSE(s_port_flush, ESP_FAIL, TAG, "flush cb");
+    lv_display_set_flush_cb(s_disp, gray_flush);
 
     esp_err_t err = board_touch_init(&s_tp);
     if (err == ESP_OK) {

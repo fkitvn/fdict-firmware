@@ -33,6 +33,11 @@ esp_err_t fd_display_set_rotation(int idx, bool persist);
 int fd_display_get_rotation(void);
 int fd_display_rotation_deg(int idx);
 
+/* Che do den trang: moi pixel thanh xam trong flush cb. Ve lai toan man (ca top/sys). GOI KHI DANG GIU LOCK
+ * (hoac trong task LVGL). persist=true thi luu NVS (fd/gray); luc init doc lai tu NVS. */
+void fd_display_set_grayscale(bool on, bool persist);
+bool fd_display_get_grayscale(void);
+
 #ifdef __cplusplus
 }
 #endif
