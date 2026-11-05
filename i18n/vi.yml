@@ -159,8 +159,8 @@ vi:
   SPLASH_TAGLINE: FDict One - Máy học từ vựng
   START: Bắt đầu
   STATISTICS: Thống kê
-  STUDY: Học tập
-  STUDY_NEEDS_WIFI: Học tập cần Wi-Fi để tải câu hỏi.
+  STUDY: 'Quiz'
+  STUDY_NEEDS_WIFI: 'Quiz cần Wi-Fi để tải câu hỏi.'
   SWIPE_BACK_HINT: Vuốt từ mép trái/phải để quay lại
   SYNC: Đồng bộ
   SYNC_PENDING_N: Chờ đồng bộ %d
@@ -261,3 +261,26 @@ vi:
   WT_UP_SENDING: 'Đang gửi…'
   WT_UP_OK: 'Đã gửi báo cáo'
   WT_UP_ERR: 'Gửi lỗi: %s'
+  SYNC_NOW: 'Đồng bộ ngay'
+  SYNC_WORDS: 'Từ vựng'
+  SYNC_SENTENCES: 'Câu ví dụ'
+  SYNC_COLLECTIONS: 'Bộ từ'
+  SYNC_LAST: 'Lần đồng bộ cuối'
+  SYNC_PENDING: 'Kết quả chờ gửi'
+  SYNC_STATE_OK: 'Đã đồng bộ'
+  SYNC_STATE_RUN: 'Đang đồng bộ…'
+  SYNC_STATE_PULL: 'Đang tải %d%%'
+  SYNC_STATE_IDLE: 'Chờ Wi-Fi'
+  SYNC_NEVER: 'Chưa đồng bộ'
+  SYNC_AUTO_HINT: 'Tự động đồng bộ khi có Wi-Fi'
+  STATS_NEED_WIFI: 'Cần kết nối Wi-Fi để xem thống kê'
+  STATS_LOADING: 'Đang tải thống kê…'
+  STATS_WORDS: 'Tổng số từ'
+  STATS_MASTERED: 'Đã thuộc'
+  STATS_LEARNING: 'Đang học'
+  STATS_NEW: 'Từ mới'
+  STATS_TODAY: 'Hôm nay'
+  STATS_WEEK: '7 ngày qua'
+  STATS_STREAK: 'Chuỗi ngày học'
+  STATS_ANS_FMT: '%d/%d đúng'
+  STATS_DAYS_FMT: '%d ngày'

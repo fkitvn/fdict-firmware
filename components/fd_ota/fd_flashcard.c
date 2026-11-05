@@ -9,6 +9,7 @@
 #include "esp_log.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -133,7 +134,9 @@ static void task(void *arg)
     int code = 0, n = 0;
     if (tmp && rx) {
         if (!s_cache_tried) { s_cache_tried = true; load_cache(tmp, rx); }
-        if (!fd_ota_is_paired()) err = FD_STUDY_ERR_UNPAIRED;
+        int ln = fd_sync_build_cards(tmp, FD_FC_MAX);   /* 2.3.0: the tu kho dong bo (offline, theo uu tien hoc) */
+        if (ln > 0) { n = ln; err = FD_STUDY_ERR_NONE; }
+        else if (!fd_ota_is_paired()) err = FD_STUDY_ERR_UNPAIRED;
         else if (!fd_net_is_connected()) err = FD_STUDY_ERR_NO_WIFI;
         else {
             char id[16];

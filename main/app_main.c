@@ -17,6 +17,7 @@
 #include "board.h"
 #include "fd_batt.h"
 #include "fd_deck.h"
+#include "fd_sync.h"
 #include "fd_display.h"
 #include "fd_events.h"
 #include "fd_net.h"
@@ -69,6 +70,7 @@ static void run_app(void)
      * (thay mark_app_valid() vo dieu kien truoc day). Display loi da abort o tren -> bootloader rollback. */
     if (fd_ota_start(true, storage_ok) != ESP_OK) ESP_LOGW(TAG, "fd_ota_start loi");
     fd_zlink_refresh();   /* Buoc 2: trang thai lien ket Zalo (async, cho WiFi) */
+    if (storage_ok) fd_sync_init();   /* 2.3.0: kho tu + cai dat dong bo tu cloud, outbox ket qua hoc */
     if (storage_ok) fd_deck_init();   /* 23/10: task bo tu offline chay tu boot -> tu dong bo khi WiFi len, gui outbox */
     sys_info_log_heap();
 

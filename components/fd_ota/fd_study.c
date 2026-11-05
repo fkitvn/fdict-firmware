@@ -10,6 +10,7 @@
 #include "fd_deck.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -150,6 +151,8 @@ static fd_study_err_t fetch_one(const char *dir, bool local, fd_study_session_t 
     bool vi = !strcmp(dir, "vi-en");
     *http = 0;
     *from_cache = true;
+    /* 2.3.0: kho dong bo (bo tu that cua nguoi dung) la nguon chinh, hoc 100% offline; ket qua = su kien fd_sync */
+    if (fd_sync_ready() && fd_sync_build_quiz(out, vi, 10) == FD_STUDY_ERR_NONE) { *from_cache = false; return FD_STUDY_ERR_NONE; }
     if (fd_deck_has_fresh(vi) && fd_deck_build_session(out, vi, true) == FD_STUDY_ERR_NONE) return FD_STUDY_ERR_NONE;
     fd_study_err_t err = FD_STUDY_ERR_NO_DECK;
     if (!local) {
@@ -292,8 +295,11 @@ static char *build_result(const seg_t *g, int *correct)
 }
 
 /* ket qua phien -> outbox (fd_deck gui khi online; 409 = da nhan) va giai phong slot. Goi khi KHONG giu khoa. */
+static bool seg_local(const seg_t *g) { return !strncmp(g->s.session_id, "lq-", 3); }
+
 static void seg_submit(seg_t *g)
 {
+    if (seg_local(g)) { fd_sync_kick(); return; }   /* tung cau da vao outbox fd_sync */
     int correct = 0;
     char *body = build_result(g, &correct);
     if (body) fd_deck_outbox_add(g->s.session_id, body);
@@ -348,7 +354,10 @@ void fd_study_answer(int pos, int choice)
     bool full = false;
     if (g) {
         int k = pos - g->start;
-        if (g->ch[k] < 0 && choice >= 0) g->answered++;
+        if (g->ch[k] < 0 && choice >= 0) {
+            g->answered++;
+            if (seg_local(g)) fd_sync_event("quiz", g->s.q[k].id, choice == g->s.q[k].answer);   /* ghi ngay (ben vung) */
+        }
         g->ch[k] = (int8_t)(choice >= 0 && choice < 4 ? choice : -1);
         full = g->answered >= g->s.n;
         if (pos + 1 > s_cur) s_cur = pos + 1;
@@ -360,7 +369,7 @@ void fd_study_answer(int pos, int choice)
             lock();
             g->used = false;
             unlock();
-        } else {
+        } else if (!seg_local(g)) {
             char *body = build_result(g, NULL);   /* tien do .part (mat dien / thoat giua chung van gui duoc) */
             if (body) fd_deck_outbox_progress(g->s.session_id, body);
             free(body);

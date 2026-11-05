@@ -15,6 +15,7 @@
 #include "esp_timer.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -474,7 +475,7 @@ static void task(void *arg)
         bool stale = last_full == 0 || now - last_full >= PF_REFRESH_US;
         int fe = fresh_count('e'), fv = fresh_count('v');
         bool low = fe < PF_FRESH_MIN || fv < PF_FRESH_MIN;   /* cache-first can san phien chua dung cho ca 2 chieu */
-        if (on && now >= next_pf && (cache_q() < PF_TARGET_Q || stale || low)) {
+        if (on && !fd_sync_ready() && now >= next_pf && (cache_q() < PF_TARGET_Q || stale || low)) {
             if (low) dir_i = fe <= fv ? 0 : 1;   /* bu chieu dang thieu truoc */
             bool ok = prefetch_one(dir_i ? "vi-en" : "en-vi");
             dir_i ^= 1;

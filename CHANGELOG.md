@@ -3,6 +3,15 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.0] - 2026-11-06
+
+- Đồng bộ: sao chép toàn bộ bộ từ, nghĩa, câu ví dụ và cài đặt học từ mini app về máy (LittleFS, ghi nguyên tử); cloud là nguồn đúng, từ/bộ bị xoá trên cloud cũng bị xoá trên máy.
+- Tự đồng bộ nền khi có Wi-Fi (kiểm tra revision ~90 s), nút Đồng bộ ngay; màn Đồng bộ hiện số từ, câu, bộ, lần đồng bộ cuối, kết quả chờ gửi.
+- Kết quả học offline lưu hàng đợi bền vững, gửi theo lô khi có mạng, chỉ xoá khi server xác nhận.
+- Quiz (đổi tên từ Học tập), Flash card, Sắp xếp câu học 100% offline từ kho đồng bộ, theo ưu tiên từ mới/chưa thuộc; mọi mô-đun học cần ghép thiết bị.
+- Thống kê lấy trực tiếp từ server (gửi kết quả chờ trước), không Wi-Fi thì báo cần kết nối.
+- Trang chủ: hàng 1 Flash card, Quiz, Sắp xếp câu; hàng 2 Đồng bộ, Thống kê, Cài đặt.
+
 ## [2.2.10] - 2026-11-05
 
 - Thử nút bấm: thêm têu đề, hướng dẫn và dòng trạng thái (giống các màn kiểm thử khác).

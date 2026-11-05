@@ -8,6 +8,7 @@
 #include "esp_timer.h"
 #include "fd_fonts.h"
 #include "fd_net.h"
+#include "fd_ota.h"
 #include "fd_sentence.h"
 #include "fd_voice.h"
 #include "nvs.h"
@@ -404,20 +405,24 @@ static void show_result(void)
 }
 
 /* ---------- screen ---------- */
+static bool s_gate;
+
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
+    s_gate = !fd_ota_is_paired();   /* 2.3.0: can ghep (nhu Quiz) */
+    if (s_gate) { ui_pair_gate(s_body); return; }
     snd_load();
     show_setup();
 }
 
 static void destroy(void) { s_body = s_ans = NULL; memset(s_tile, 0, sizeof(s_tile)); }
 
-static void on_tick(void) { poll_load(); fd_sen_sync(); }   /* co mang: gui ket qua dang cho */
+static void on_tick(void) { if (s_gate) return; poll_load(); fd_sen_sync(); }   /* co mang: gui ket qua dang cho */
 
 static bool on_button(const fd_evt_button_t *b)
 {
-    if (b->action != FD_BTN_CLICK) return false;
+    if (b->action != FD_BTN_CLICK || s_gate) return false;
     if (s_view == V_PLAY) {
         switch (ui_key_cell(b->index)) {
         case 0: next_free(-1); refresh_play(); break;

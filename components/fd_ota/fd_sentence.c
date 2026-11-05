@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -42,6 +43,8 @@ static char s_sid[FD_SEN_ID_LEN];
 static fd_sen_status_t s_st;
 static int s_count = 10, s_streak;
 static uint32_t s_dur;
+static bool s_local;                /* 2.3.0: bo cau tu kho dong bo: moi cau tra loi = su kien fd_sync */
+static char s_wid[FD_SEN_MAX][FD_SYNC_WID_LEN];
 static bool s_can_submit;           /* bo cau hien tai la phien server chua lam */
 static volatile bool s_sync_busy;
 static int64_t s_sync_last;
@@ -320,11 +323,17 @@ static void task(void *arg)
     char sid[FD_SEN_ID_LEN] = "";
     fd_study_err_t err = FD_STUDY_ERR_NOMEM;
     int code = 0, n = 0, src = FD_SEN_SRC_ONLINE;
-    bool submit = false;
+    bool submit = false, local = false;
+    static char wid[FD_SEN_MAX][FD_SYNC_WID_LEN];
     if (rx && tmp) {
         err = FD_STUDY_ERR_NONE;
-        code = fetch_online(rx, tmp, sid, &n);
-        submit = n > 0;
+        n = fd_sync_build_sentences(tmp, wid, s_count);   /* kho dong bo: offline 100% */
+        if (n > 0) {
+            local = true;
+            src = FD_SEN_SRC_CACHE;
+            for (int i = 0; i < n; i++) shuffle_ex(&tmp[i]);
+        } else code = fetch_online(rx, tmp, sid, &n);
+        submit = n > 0 && !local;
         if (n <= 0) {   /* offline / loi server: cache -> bo mau */
             src = FD_SEN_SRC_CACHE;
             lock();
@@ -352,6 +361,8 @@ static void task(void *arg)
         s_st.n = n;
         s_st.source = src;
         s_can_submit = submit;
+        s_local = local;
+        if (local) memcpy(s_wid, wid, sizeof(s_wid));
     }
     s_st.err = err;
     s_st.http = code;
@@ -456,6 +467,7 @@ bool fd_sen_submit(int best_streak, uint32_t duration_ms)
     if (!init()) return false;
     lock();
     bool ok = !s_st.submitted && !s_st.busy && s_st.n > 0;
+    bool sync_local = false;
     char *body = NULL;
     if (ok) {
         s_st.submitted = true;
@@ -469,7 +481,8 @@ bool fd_sen_submit(int best_streak, uint32_t duration_ms)
             snprintf(tp, sizeof(tp), SDIR "/o_tmp.tmp");
             if (!body || !write_atomic(path, tp, body)) ESP_LOGW(TAG, "khong ghi duoc hang doi ket qua");
         }
-        if (s_st.source != FD_SEN_SRC_BUILTIN) {   /* phien cache/online da lam: khong gui lai */
+        if (s_local) sync_local = true;
+        else if (s_st.source != FD_SEN_SRC_BUILTIN) {   /* phien cache/online da lam: khong gui lai */
             FILE *f = fopen(USED, "w");
             if (f) fclose(f);
         }
@@ -477,7 +490,8 @@ bool fd_sen_submit(int best_streak, uint32_t duration_ms)
     }
     unlock();
     free(body);
-    if (ok) sync_kick(true);
+    if (sync_local) fd_sync_kick();
+    else if (ok) sync_kick(true);
     return ok;
 }
 
@@ -501,10 +515,13 @@ bool fd_sen_ex(int i, fd_sen_ex_t *out)
 bool fd_sen_answer(int i, const int *order, int n, uint32_t ms)
 {
     if (!init() || !order) return false;
-    bool ok = false;
+    bool ok = false, first = false;
+    char wid[FD_SYNC_WID_LEN] = "";
     lock();
     if (i >= 0 && i < s_st.n && n == s_ex[i].n) {
         res_t *r = &s_res[i];
+        first = !r->done && s_local;
+        if (first) strlcpy(wid, s_wid[i], sizeof(wid));
         r->done = true;
         r->n = n;
         r->ms = ms;
@@ -517,5 +534,6 @@ bool fd_sen_answer(int i, const int *order, int n, uint32_t ms)
         }
     }
     unlock();
+    if (first) fd_sync_event("sen", wid, ok);   /* 2.3.0: ket qua offline vao outbox dong bo */
     return ok;
 }

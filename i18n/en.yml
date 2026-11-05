@@ -159,8 +159,8 @@ en:
   SPLASH_TAGLINE: FDict One - Vocabulary learning device
   START: Start
   STATISTICS: Statistics
-  STUDY: Study
-  STUDY_NEEDS_WIFI: Study needs Wi-Fi to download questions.
+  STUDY: 'Quiz'
+  STUDY_NEEDS_WIFI: 'Quiz needs Wi-Fi to download questions.'
   SWIPE_BACK_HINT: Swipe from the left/right edge to go back
   SYNC: Sync
   SYNC_PENDING_N: '%d waiting to sync'
@@ -263,3 +263,26 @@ en:
   WT_UP_SENDING: 'Sending report…'
   WT_UP_OK: 'Report sent'
   WT_UP_ERR: 'Send failed: %s'
+  SYNC_NOW: 'Sync now'
+  SYNC_WORDS: 'Words'
+  SYNC_SENTENCES: 'Sentences'
+  SYNC_COLLECTIONS: 'Collections'
+  SYNC_LAST: 'Last sync'
+  SYNC_PENDING: 'Unsent results'
+  SYNC_STATE_OK: 'Up to date'
+  SYNC_STATE_RUN: 'Syncing…'
+  SYNC_STATE_PULL: 'Downloading %d%%'
+  SYNC_STATE_IDLE: 'Waiting for Wi-Fi'
+  SYNC_NEVER: 'Never'
+  SYNC_AUTO_HINT: 'Syncs automatically when Wi-Fi is on'
+  STATS_NEED_WIFI: 'Wi-Fi is needed to view statistics'
+  STATS_LOADING: 'Loading statistics…'
+  STATS_WORDS: 'Total words'
+  STATS_MASTERED: 'Mastered'
+  STATS_LEARNING: 'Learning'
+  STATS_NEW: 'New'
+  STATS_TODAY: 'Today'
+  STATS_WEEK: 'Last 7 days'
+  STATS_STREAK: 'Study streak'
+  STATS_ANS_FMT: '%d/%d correct'
+  STATS_DAYS_FMT: '%d days'

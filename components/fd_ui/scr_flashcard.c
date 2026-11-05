@@ -12,6 +12,7 @@
 #include "fd_fonts.h"
 #include "fd_audio.h"
 #include "fd_flashcard.h"
+#include "fd_ota.h"
 #include "fd_dict_mini.h"   /* struct fd_fc_item (word, ipa, meaning, audio TODO) */
 #include "nvs.h"
 #include "ui_priv.h"
@@ -394,11 +395,15 @@ static void show_setup(void)
     lv_obj_set_style_text_letter_space(bl, 1, 0);
 }
 
+static bool s_gate;
+
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
     s_pad_hor0 = lv_obj_get_style_pad_left(s_body, LV_PART_MAIN);
     lv_obj_set_style_pad_column(s_body, 6, 0);
+    s_gate = !fd_ota_is_paired();   /* 2.3.0: can ghep (nhu Quiz) */
+    if (s_gate) { ui_pair_gate(s_body); return; }
     cfg_load();
     fd_fc_refresh();   /* tai the nen (da ghep + WiFi); khong chan */
     show_setup();
@@ -410,7 +415,7 @@ static void destroy(void) { s_body = s_front = s_back = s_count = NULL; }
 static void back_setup_async(void *arg) { (void)arg; if (s_body) show_setup(); }
 static bool on_back(void)
 {
-    if (s_view == V_SETUP) return false;
+    if (s_gate || s_view == V_SETUP) return false;
     lv_async_call(back_setup_async, NULL);
     return true;
 }

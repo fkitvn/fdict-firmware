@@ -94,3 +94,7 @@ lv_obj_t *ui_batt_label_create(lv_obj_t *parent);
 void ui_batt_label_update(lv_obj_t *lbl);
 /* always=true: khong bao gio an; pct<0 -> icon pin rong mau xam + "--%". Tu cap nhat moi 1 s qua lv_timer. */
 lv_obj_t *ui_batt_label_create_ex(lv_obj_t *parent, bool always);
+/* 2.3.0 (ui_widgets.c): cong chua ghep dung chung cho moi mo-dun hoc: "Can ghep thiet bi de hoc" + [Quay lai][Ghep thiet bi].
+ * Xoa noi dung body. Nut kieu chung (primary = nen amber). */
+void ui_pair_gate(lv_obj_t *body);
+lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb);

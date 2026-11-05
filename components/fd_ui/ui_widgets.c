@@ -6,6 +6,7 @@
 #include "fd_batt.h"
 #include "fd_fonts.h"
 #include "fd_net.h"
+#include "fd_ota.h"
 #include "fd_voice.h"
 #include "ui_priv.h"
 #include "fd_tts.h"
@@ -288,4 +289,55 @@ void ui_answer_cell_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m, uint3
     lv_obj_set_style_text_color(ic, lv_color_hex(glyph_colour), 0);
     lv_label_set_text(ic, m == UI_ANS_CORRECT ? LV_SYMBOL_OK : LV_SYMBOL_CLOSE);
     lv_obj_center(ic);
+}
+
+/* 2.3.0: cong "Can ghep thiet bi de hoc" dung chung cho MOI mo-dun hoc (giong man Quiz cu): chi kiem tra token cuc bo,
+ * da ghep thi hoc offline tu kho dong bo. */
+static void gate_home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
+static void gate_pair_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_PAIR); }
+
+lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb)
+{
+    lv_obj_t *b = lv_button_create(p);
+    lv_obj_set_height(b, 36);
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_radius(b, 10, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(primary ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_color(l, lv_color_hex(primary ? 0xFFFFFF : FD_COLOR_TEXT), 0);
+    lv_label_set_text(l, t);
+    lv_obj_center(l);
+    if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
+    return b;
+}
+
+static lv_obj_t *gate_label(lv_obj_t *p, const char *t, const lv_font_t *f, uint32_t c)
+{
+    lv_obj_t *l = lv_label_create(p);
+    if (f) lv_obj_set_style_text_font(l, f, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(c), 0);
+    lv_obj_set_width(l, lv_pct(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(l, t);
+    return l;
+}
+
+void ui_pair_gate(lv_obj_t *body)
+{
+    lv_obj_clean(body);
+    lv_obj_set_flex_flow(body, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(body, 8, 0);
+    gate_label(body, _("PAIR_TO_STUDY"), &fd_font_noto_18, FD_COLOR_TEXT);
+    gate_label(body, _("PAIR_HINT"), NULL, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *r = lv_obj_create(body);
+    lv_obj_remove_style_all(r);
+    lv_obj_set_size(r, lv_pct(100), 44);
+    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(r, 8, 0);
+    ui_gate_btn(r, _("BACK"), false, gate_home_cb);
+    ui_gate_btn(r, _("PAIR_DEVICE"), true, gate_pair_cb);
 }

@@ -678,11 +678,15 @@ static void dlg_open(void)
     dlg_btn(row, _("QUIT"), true);
 }
 
+static bool s_gate;
+
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
     fd_deck_init();
     lv_obj_set_scrollable(s_body, false);
+    s_gate = !fd_ota_is_paired();   /* 2.3.0: moi mo-dun hoc can ghep (token cuc bo; da ghep -> hoc offline) */
+    if (s_gate) { ui_pair_gate(s_body); return; }
     cfg_load();
     show_setup();
 }
@@ -699,6 +703,7 @@ static void destroy(void)
 
 static bool on_back(void)
 {
+    if (s_gate) return false;
     if (s_dlg) { dlg_close(); return true; }
     if (s_view == V_QUIZ) {
         stop_timer();
@@ -718,7 +723,7 @@ static bool on_back(void)
 /* Nut cung: nut -> mau phim -> o (COLOUR_CELL[xoay]) = lua chon A..D. RESULT: bam ngan = "Hoc tiep". */
 static bool on_button(const fd_evt_button_t *b)
 {
-    if (b->action != FD_BTN_CLICK) return false;
+    if (b->action != FD_BTN_CLICK || s_gate) return false;
     if (s_view == V_QUIZ) {
         int cell = ui_key_cell(b->index);
         if (cell >= 0) answer(cell);
