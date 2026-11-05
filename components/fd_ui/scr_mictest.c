@@ -25,7 +25,8 @@ static bool s_was_rec;
 
 /* ---------- Thu loa ---------- */
 #define SPK_RATE   16000
-#define SPK_AMP    16000.0f          /* ~ -6 dBFS */
+#define SPK_AMP    4000.0f           /* 2.2.6: ~ -18 dBFS (tranh sut ap/brownout khi am luong cao) */
+#define SPK_FADE   480               /* 30 ms vao/ra */
 #define SPK_CHUNK  320
 static lv_obj_t *s_spk_tone, *s_spk_sweep, *s_spk_stop, *s_spk_status;
 static volatile bool s_spk_run, s_spk_alive;
@@ -44,11 +45,11 @@ static void spk_task(void *arg)
             else {
                 int p = k % (SPK_RATE * 6 / 10), on = SPK_RATE * 4 / 10;
                 env = (k >= SPK_RATE * 18 / 10 || p >= on) ? 0.0f : 1.0f;
-                if (env > 0 && p < 160) env = p / 160.0f;
-                else if (env > 0 && p > on - 160) env = (on - p) / 160.0f;
+                if (env > 0 && p < SPK_FADE) env = (float)p / SPK_FADE;
+                else if (env > 0 && p > on - SPK_FADE) env = (float)(on - p) / SPK_FADE;
             }
-            if (mode && k < 160) env = k / 160.0f;
-            if (mode && k > total - 160) env = (total - k) / 160.0f;
+            if (mode && k < SPK_FADE) env = (float)k / SPK_FADE;
+            if (mode && k > total - SPK_FADE) env = (float)(total - k) / SPK_FADE;
             ph += 2.0f * (float)M_PI * f / SPK_RATE;
             if (ph > 2.0f * (float)M_PI) ph -= 2.0f * (float)M_PI;
             buf[i] = (int16_t)(SPK_AMP * env * sinf(ph));
@@ -69,7 +70,7 @@ static void spk_start(int mode)
     if (fd_audio_get_volume() == 0) { fd_ui_toast(_("MIC_MUTED")); return; }
     if (fd_audio_stream_begin(SPK_RATE, SPK_CHUNK * 4) != ESP_OK) { fd_ui_toast(_("MIC_FAILED")); return; }
     s_spk_run = s_spk_alive = true;
-    if (xTaskCreate(spk_task, "fd_spktest", 3072, (void *)(intptr_t)mode, 5, NULL) != pdPASS) {
+    if (xTaskCreate(spk_task, "fd_spktest", 4096, (void *)(intptr_t)mode, 5, NULL) != pdPASS) {
         s_spk_run = s_spk_alive = false;
         fd_audio_stream_end(true);
         fd_ui_toast(_("MIC_FAILED"));
@@ -177,6 +178,7 @@ static lv_obj_t *act_btn(lv_obj_t *parent, const char *sym, const char *txt, lv_
     lv_obj_set_flex_flow(b, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(b, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *i = lv_label_create(b);
+    lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);   /* 2.2.6: Noto khong co LV_SYMBOL_* (o vuong) */
     lv_label_set_text(i, sym);
     lv_obj_t *l = lv_label_create(b);
     lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
