@@ -66,7 +66,7 @@ en:
   MIC_RECORDING: Recording...
   MIC_SAVED: 'Recording: %d.%d s'
   MIC_STOP: Stop
-  MIC_TEST: Mic test
+  MIC_TEST: Speaker & mic test
   MISSING: Missing
   NEVER: Never
   NEXT: Next >
@@ -238,18 +238,32 @@ en:
   SEN_PLAY_AUDIO: 'Play audio after each sentence'
   DEV_TOOLS: 'Test tools'
   BTN_TEST: 'Test 4 buttons'
-  BTN_TEST_HINT: 'Press each physical button one by one'
+  BTN_TEST_HINT: 'Press each button below the screen one by one'
   BTN_TEST_PROGRESS: 'Pressed %d/4'
   BTN_TEST_PASS: 'Pass: all 4 buttons work'
-  BTN_TEST_EXIT_HINT: 'Hold B1, swipe from edge or tap Back to exit'
+  BTN_TEST_EXIT_HINT: 'Hold IO21 (rightmost), swipe from edge or tap Back to exit'
   BTN_TEST_RESET: 'Reset'
   WIFI_TEST: 'Wi-Fi test'
   WT_START: 'Start (60 s)'
   WT_STOP: 'Stop'
   WT_IDLE: 'Not started'
   WT_RUNNING: 'Running...'
-  WT_DONE: 'Finished'
-  WT_PASS: 'Finished: stable'
   WT_FAILED: 'Cannot start test'
-  WT_STATS: "Time: %u/%u s\nSuccess: %u   Failed: %u\nLatency avg/max: %u / %u ms\nDisconnects: %u"
   WT_HINT: 'Sends an HTTP request to the server every second'
+  WT_SERVER: 'Server: %s'
+  WT_OFFICIAL: 'Official'
+  WT_C_OK: 'Success'
+  WT_C_FAIL: 'Failed'
+  WT_C_AVG: 'Latency avg'
+  WT_C_MAX: 'Latency max'
+  WT_C_DISC: 'Disconnects'
+  WT_C_RSSI: 'RSSI min/avg/max'
+  WT_V_STABLE: 'Stable'
+  WT_V_UNSTABLE: 'Unstable'
+  WT_V_FAILED: 'Connection failed'
+  SPK_TEST: 'Speaker'
+  SPK_TONE: '1 kHz tone'
+  SPK_SWEEP: 'Sweep'
+  SPK_STOP: 'Stop'
+  SPK_PLAYING: 'Playing test sound...'
+  MIC_SECTION: 'Microphone'

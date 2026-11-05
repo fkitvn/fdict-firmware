@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.3] - 2026-11-05
+
+- Thử 4 nút bấm: 4 ô một hàng ở đáy màn hình, đúng vị trí nút thật (IO2, IO3, IO14, IO21).
+- Thử Wi-Fi: giao diện mới (vạch tín hiệu, vòng tiến độ 60 s, thẻ số liệu, kết luận màu, RSSI min/TB/max).
+- Thử micro chuyển vào Chế độ nhà phát triển, đổi tên "Thử loa & micro", thêm thử loa (âm 1 kHz, quét tần số).
+
 ## [2.2.2] - 2026-11-05
 
 - Cài đặt > Chế độ nhà phát triển: màn hình riêng gồm công tắc bật/tắt, Thử 4 nút bấm (bấm lần lượt B1–B4, Đạt khi đủ 4) và Thử Wi-Fi (SSID, RSSI, IP; 60 s gửi HTTP tới máy chủ, đếm thành công/lỗi, độ trễ TB/max, số lần mất kết nối).

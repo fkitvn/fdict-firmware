@@ -1,12 +1,15 @@
-/* 2.2.2 Che do nha phat trien > Thu 4 nut bam: 4 o B1..B4 (GPIO tu board_pins.h, vien mau phim), bam (click / double /
- * giu) nut nao -> o do sang + dau check. Du 4 nut -> "Dat".
- * Thoat: vuot mep / nut [Thoat] tren man hinh luon dung; GIU B1 chi quay lai SAU KHI da dat (truoc do giu B1 = danh dau B1,
- * khong thoat -> khong xung dot voi bai thu). Moi nut cung deu bi nuot (khong toi cac xu ly toan cuc). */
+/* 2.2.2 Che do nha phat trien > Thu 4 nut bam. 2.2.3: 4 o xep 1 hang ngang o DAY man hinh, dung vi tri nut vat ly
+ * (hang nut duoi man hinh, trai -> phai: IO2, IO3, IO14, IO21), nhan theo GPIO.
+ * Anh xa: board_buttons.c dang ky nut chi so i tren chan s_pins[i] = {BOARD_BTN1..4} = {21, 2, 3, 14}
+ * -> chi so 0 = IO21 (phai cung, nut "giu de quay lai" toan cuc), 1 = IO2, 2 = IO3, 3 = IO14. O tim chi so theo GPIO.
+ * Bam (click / double / giu) nut nao -> o do sang + dau check. Du 4 nut -> "Dat".
+ * Thoat: vuot mep / nut [Quay lai] luon dung; GIU IO21 (chi so 0, nhu truoc) chi quay lai SAU KHI da dat. */
 #include "board_pins.h"
 #include "fd_fonts.h"
 #include "ui_priv.h"
 
-static const int s_gpio[4] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};
+static const int s_gpio[4] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};   /* theo chi so nut (driver) */
+static const int s_pos_gpio[4] = {2, 3, 14, 21};   /* o tu trai qua phai = vi tri nut vat ly */
 static lv_obj_t *s_cell[4], *s_mark[4], *s_status, *s_hint;
 static uint8_t s_done;   /* bit i = da bam Bi */
 static uint16_t s_cnt[4];
@@ -23,8 +26,8 @@ static void refresh(void)
     if (!s_status) return;
     for (int i = 0; i < 4; i++) {
         bool on = (s_done >> i) & 1;
-        lv_obj_set_style_bg_color(s_cell[i], lv_color_hex(on ? 0xDCFCE7 : 0xFFFFFF), 0);
-        lv_label_set_text_fmt(s_mark[i], "B%d  GPIO %d\n%s %u", i + 1, s_gpio[i], on ? LV_SYMBOL_OK : "-", (unsigned)s_cnt[i]);
+        lv_obj_set_style_bg_color(s_cell[i], lv_color_hex(on ? 0x22C55E : 0xFFFFFF), 0);
+        lv_label_set_text_fmt(s_mark[i], "IO%d\n%s %u", s_gpio[i], on ? LV_SYMBOL_OK : "-", (unsigned)s_cnt[i]);
     }
     int n = done_count();
     if (n == 4) {
@@ -79,36 +82,13 @@ static void build(lv_obj_t *scr)
     lv_obj_t *body = ui_page_create(scr);
     lv_obj_set_style_pad_all(body, 8, 0);
     lv_obj_set_style_pad_row(body, 6, 0);
-    lv_obj_set_scrollable(body, true);
+    lv_obj_set_scrollable(body, false);
     lv_obj_set_flex_align(body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
     lv_obj_t *t = lv_label_create(body);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(t, _("BTN_TEST"));
-
-    lv_obj_t *grid = lv_obj_create(body);
-    lv_obj_remove_style_all(grid);
-    lv_obj_set_size(grid, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);
-    lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(grid, 6, 0);
-    lv_obj_set_style_pad_column(grid, 6, 0);
-    for (int i = 0; i < 4; i++) {
-        lv_obj_t *c = s_cell[i] = lv_obj_create(grid);
-        lv_obj_set_size(c, lv_pct(47), 58);
-        lv_obj_set_style_radius(c, 10, 0);
-        lv_obj_set_style_border_width(c, 3, 0);
-        int k = ui_key_colour(i);
-        lv_obj_set_style_border_color(c, lv_color_hex(k >= 0 ? ui_key_rgb(k) : FD_COLOR_BORDER), 0);
-        lv_obj_set_style_pad_all(c, 2, 0);
-        lv_obj_set_scrollable(c, false);
-        lv_obj_set_clickable(c, false);
-        s_mark[i] = lv_label_create(c);
-        lv_obj_set_style_text_font(s_mark[i], &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_align(s_mark[i], LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_center(s_mark[i]);
-    }
 
     s_status = lv_label_create(body);
     lv_obj_set_style_text_font(s_status, &fd_font_noto_18, 0);
@@ -124,6 +104,37 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_pad_column(row, 10, 0);
     act_btn(row, _("BTN_TEST_RESET"), reset_cb);
     act_btn(row, _("BACK"), exit_cb);
+
+    lv_obj_t *sp = lv_obj_create(body);   /* day hang o xuong day man hinh */
+    lv_obj_remove_style_all(sp);
+    lv_obj_set_width(sp, 1);
+    lv_obj_set_flex_grow(sp, 1);
+
+    lv_obj_t *grid = lv_obj_create(body);
+    lv_obj_remove_style_all(grid);
+    lv_obj_set_size(grid, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(grid, 6, 0);
+    for (int p = 0; p < 4; p++) {   /* p = vi tri trai -> phai; i = chi so nut co GPIO do */
+        int i = 0;
+        while (i < 3 && s_gpio[i] != s_pos_gpio[p]) i++;
+        lv_obj_t *c = s_cell[i] = lv_obj_create(grid);
+        lv_obj_set_height(c, 64);
+        lv_obj_set_flex_grow(c, 1);
+        lv_obj_set_style_radius(c, 10, 0);
+        lv_obj_set_style_border_width(c, 3, 0);
+        int k = ui_key_colour(i);
+        lv_obj_set_style_border_color(c, lv_color_hex(k >= 0 ? ui_key_rgb(k) : FD_COLOR_BORDER), 0);
+        lv_obj_set_style_pad_all(c, 2, 0);
+        lv_obj_set_scrollable(c, false);
+        lv_obj_set_clickable(c, false);
+        s_mark[i] = lv_label_create(c);
+        lv_obj_set_style_text_font(s_mark[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_align(s_mark[i], LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_center(s_mark[i]);
+    }
+
 
     s_done = 0;
     for (int i = 0; i < 4; i++) s_cnt[i] = 0;
