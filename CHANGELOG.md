@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.5] - 2026-11-05
+
+- Thử 4 nút bấm: chỉ hiện Nút 1–4 (trái → phải), bớt chữ.
+- Sửa lỗi bấm một nút bị ghi nhận thêm nút IO21: bỏ qua lần nhấn "ma" xảy ra gần như cùng lúc với nút khác; log mức GPIO cả 4 nút để chẩn đoán.
+
 ## [2.2.4] - 2026-11-05
 
 - Cài đặt: mục đổi tên "Dành cho nhà phát triển" (công tắc bên trong vẫn là "Chế độ nhà phát triển").

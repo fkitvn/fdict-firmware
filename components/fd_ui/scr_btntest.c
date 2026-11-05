@@ -10,6 +10,7 @@
 
 static const int s_gpio[4] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};   /* theo chi so nut (driver) */
 static const int s_pos_gpio[4] = {2, 3, 14, 21};   /* o tu trai qua phai = vi tri nut vat ly */
+static int s_pos[4];   /* chi so nut -> vi tri 0..3 (Nut 1..4) */
 static lv_obj_t *s_cell[4], *s_mark[4], *s_status, *s_hint;
 static uint8_t s_done;   /* bit i = da bam Bi */
 static uint16_t s_cnt[4];
@@ -27,7 +28,7 @@ static void refresh(void)
     for (int i = 0; i < 4; i++) {
         bool on = (s_done >> i) & 1;
         lv_obj_set_style_bg_color(s_cell[i], lv_color_hex(on ? 0x22C55E : 0xFFFFFF), 0);
-        lv_label_set_text_fmt(s_mark[i], "IO%d\n%s %u", s_gpio[i], on ? LV_SYMBOL_OK : "-", (unsigned)s_cnt[i]);
+        lv_label_set_text_fmt(s_mark[i], _("BTN_TEST_KEY"), s_pos[i] + 1);
     }
     int n = done_count();
     if (n == 4) {
@@ -119,6 +120,7 @@ static void build(lv_obj_t *scr)
     for (int p = 0; p < 4; p++) {   /* p = vi tri trai -> phai; i = chi so nut co GPIO do */
         int i = 0;
         while (i < 3 && s_gpio[i] != s_pos_gpio[p]) i++;
+        s_pos[i] = p;
         lv_obj_t *c = s_cell[i] = lv_obj_create(grid);
         lv_obj_set_height(c, 64);
         lv_obj_set_flex_grow(c, 1);
@@ -130,7 +132,7 @@ static void build(lv_obj_t *scr)
         lv_obj_set_scrollable(c, false);
         lv_obj_set_clickable(c, false);
         s_mark[i] = lv_label_create(c);
-        lv_obj_set_style_text_font(s_mark[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_font(s_mark[i], &fd_font_noto_14, 0);
         lv_obj_set_style_text_align(s_mark[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_center(s_mark[i]);
     }
