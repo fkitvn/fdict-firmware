@@ -235,3 +235,4 @@ en:
   SEN_TAP_HINT: 'Tap the words in order'
   SEN_OFFLINE: 'Offline mode'
   SEN_SYNC_LATER: 'Results will sync when online'
+  SEN_PLAY_AUDIO: 'Play audio after each sentence'

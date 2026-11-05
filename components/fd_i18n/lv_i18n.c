@@ -258,6 +258,7 @@ static lv_i18n_phrase_t en_singulars[] = {
     {"SEN_TAP_HINT", "Tap the words in order"},
     {"SEN_OFFLINE", "Offline mode"},
     {"SEN_SYNC_LATER", "Results will sync when online"},
+    {"SEN_PLAY_AUDIO", "Play audio after each sentence"},
     {NULL, NULL} // End mark
 };
 
@@ -521,6 +522,7 @@ static lv_i18n_phrase_t vi_singulars[] = {
     {"SEN_TAP_HINT", "Chạm các từ theo đúng thứ tự"},
     {"SEN_OFFLINE", "Đang học ngoại tuyến"},
     {"SEN_SYNC_LATER", "Kết quả sẽ đồng bộ khi có mạng"},
+    {"SEN_PLAY_AUDIO", "Phát âm thanh sau mỗi câu"},
     {NULL, NULL} // End mark
 };
 

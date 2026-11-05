@@ -233,3 +233,4 @@ vi:
   SEN_TAP_HINT: 'Chạm các từ theo đúng thứ tự'
   SEN_OFFLINE: 'Đang học ngoại tuyến'
   SEN_SYNC_LATER: 'Kết quả sẽ đồng bộ khi có mạng'
+  SEN_PLAY_AUDIO: 'Phát âm thanh sau mỗi câu'

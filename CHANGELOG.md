@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.0] - 2026-11-05
+
+- Wi-Fi: tăng bộ đệm RX (ổn định hơn khi OTA).
+- Logo FDict chỉ hiện lúc khởi động / bật từ nút Ngủ.
+- Sắp xếp câu: tùy chọn phát âm sau mỗi câu trước khi Bắt đầu.
+
 ## [2.1.9] - 2026-11-05
 
 - Sửa rè/méo loa ở mức âm lượng cao: âm lượng tối đa giờ không vượt mức gốc của bộ giải mã (0 dB).

@@ -1,20 +1,24 @@
 /* 2.1.6 Sap xep thanh cau (fd_sentence): the tu da xao, chon dung thu tu -> kiem tra -> phan hoi -> cau tiep.
  * Nut cung (theo o COLOUR_CELL cua xoay hien tai): TL = the truoc, TR = the sau, BL = xoa the vua chon, BR = chon.
  * Moi tu la 1 the chu nhat (vien). Cham the de chon lan luot -> the chuyen len vung cau; cham vung cau = xoa tu cuoi.
- * Chon du the -> tu kiem tra ngay (cham tai may). 2.1.7: hoc offline (cache / bo cau mau), ket qua dong bo sau. */
+ * Chon du the -> tu kiem tra ngay (cham tai may). 2.1.7: hoc offline (cache / bo cau mau), ket qua dong bo sau.
+ * 2.2.0: man cai dat (phat am sau moi cau, NVS fd/sen_snd) truoc khi Bat dau. */
 #include <stdio.h>
 #include <string.h>
 #include "esp_timer.h"
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_sentence.h"
+#include "fd_voice.h"
+#include "nvs.h"
 #include "ui_priv.h"
 
 #define C_OK  0x16A34A
 #define C_BAD 0xDC2626
 #define COUNT 10
+#define SEN_SND_KEY "sen_snd"   /* NVS fd: 1 = phat am cau dung sau moi cau */
 
-typedef enum { V_LOAD, V_MSG, V_PLAY, V_FEED, V_RESULT } view_t;
+typedef enum { V_SETUP, V_LOAD, V_MSG, V_PLAY, V_FEED, V_RESULT } view_t;
 
 static view_t s_view;
 static lv_obj_t *s_body;
@@ -26,6 +30,29 @@ static int s_pick[FD_SEN_TOK], s_npick, s_cur;
 static bool s_used[FD_SEN_TOK];
 static int64_t s_t0, s_t_all;
 static bool s_waiting;              /* dang cho /start */
+static bool s_snd;                  /* phat am cau dung sau moi cau (NVS) */
+
+static void snd_load(void)
+{
+    nvs_handle_t h;
+    uint8_t v = 1;   /* mac dinh BAT */
+    if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) {
+        nvs_get_u8(h, SEN_SND_KEY, &v);
+        nvs_close(h);
+    }
+    s_snd = v != 0;
+}
+
+static void snd_save(bool on)
+{
+    s_snd = on;
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) == ESP_OK) {
+        nvs_set_u8(h, SEN_SND_KEY, on ? 1 : 0);
+        nvs_commit(h);
+        nvs_close(h);
+    }
+}
 
 static lv_obj_t *label(lv_obj_t *p, const char *t, const lv_font_t *f, uint32_t col)
 {
@@ -94,13 +121,50 @@ static lv_obj_t *tile_label(lv_obj_t *b, const char *t)
 }
 
 static void show_play(void);
+static void show_setup(void);
 static void start(void);
 
 /* ---------- LOAD / MSG ---------- */
-static void retry_cb(lv_event_t *e) { (void)e; start(); }
+static void retry_cb(lv_event_t *e) { (void)e; show_setup(); }
 static void home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
 static void pair_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_PAIR); }
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
+static void snd_cb(lv_event_t *e)
+{
+    snd_save(lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED));
+}
+static void begin_cb(lv_event_t *e) { (void)e; start(); }
+
+static void show_setup(void)
+{
+    s_view = V_SETUP;
+    body_reset();
+    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(s_body, 12, 0);
+    label(s_body, _("SENTENCE"), &fd_font_noto_18, FD_COLOR_TEXT);
+    lv_obj_t *r = lv_obj_create(s_body);
+    lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(r, lv_color_white(), 0);
+    lv_obj_set_style_border_width(r, 0, 0);
+    lv_obj_set_style_radius(r, 10, 0);
+    lv_obj_set_style_pad_hor(r, 12, 0);
+    lv_obj_set_style_pad_ver(r, 10, 0);
+    lv_obj_set_scrollable(r, false);
+    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(r, 10, 0);
+    lv_obj_t *l = lv_label_create(r);
+    lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_label_set_text(l, _("SEN_PLAY_AUDIO"));
+    lv_obj_set_flex_grow(l, 1);
+    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+    lv_obj_t *sw = lv_switch_create(r);
+    lv_obj_set_size(sw, 46, 24);
+    lv_obj_set_state(sw, LV_STATE_CHECKED, s_snd);
+    lv_obj_add_event_cb(sw, snd_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    button(s_body, _("START"), begin_cb);
+}
 
 static void show_msg(const fd_sen_status_t *st)
 {
@@ -317,6 +381,7 @@ static void show_feed(bool ok)
     label(s_body, _("SEN_ANSWER_IS"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     label(s_body, s_ex.sentence, &fd_font_noto_18, FD_COLOR_TEXT);
     if (s_ex.hint[0]) label(s_body, s_ex.hint, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    if (s_snd && s_ex.sentence[0]) fd_pron_say(s_ex.sentence);   /* cum tu: Pico (fd_pron), toi da ~39 ky tu */
     lv_obj_t *r = row(s_body, false);
     button(r, _("SEN_CONTINUE"), next_cb);
 }
@@ -342,7 +407,8 @@ static void show_result(void)
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
-    start();
+    snd_load();
+    show_setup();
 }
 
 static void destroy(void) { s_body = s_ans = NULL; memset(s_tile, 0, sizeof(s_tile)); }
@@ -363,7 +429,8 @@ static bool on_button(const fd_evt_button_t *b)
         return true;
     }
     if (s_view == V_FEED) { next(); return true; }
-    if (s_view == V_RESULT) { start(); return true; }
+    if (s_view == V_RESULT) { show_setup(); return true; }
+    if (s_view == V_SETUP) { start(); return true; }
     return false;
 }
 

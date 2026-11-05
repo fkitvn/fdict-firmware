@@ -195,7 +195,7 @@ static void screen_wake(void)
     if (!fd_display_is_asleep()) return;
     lv_display_trigger_activity(NULL);
     fd_display_set_sleep(false);   /* khoi phuc do sang da luu / dang dung */
-    ui_splash_show();              /* man chao logo 1 s moi lan bat man */
+    /* Khong splash: chi boot / thuc deep sleep (reboot) moi hien logo (ui_splash_show luc init) */
     fd_audio_reset_codec();        /* thuc khong reboot: reset codec+PA (wake) */
     ESP_LOGI(TAG, "screen: on");
 }
@@ -676,7 +676,7 @@ esp_err_t fd_ui_start(fd_scr_t first)
     if (ui_pin_wake_locked()) first = FD_SCR_PIN;   /* thuc sau khi nguoi dung cho ngu + co PIN */
     show_now(first);
     swipe_overlay_create();
-    ui_splash_show();   /* man chao luc khoi dong, sau do la man first (Home) */
+    ui_splash_show();   /* man chao luc khoi dong (va thuc deep sleep = reboot); khong hien khi chi bat den nen */
     lv_timer_create(tick_cb, 1000, NULL);
     lv_timer_create(sleep_timer_cb, 500, NULL);
     lv_indev_t *ti = fd_display_touch_indev();

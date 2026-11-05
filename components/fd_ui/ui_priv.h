@@ -61,7 +61,7 @@ void ui_answer_cell_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m, uint3
 void ui_swipe_overlay_sync(void);
 /* Bang cai dat nhanh (ui_quick.c) */
 const ui_screen_t *ui_nav_current(void);
-/* ui_splash.c: man chao logo 1 s moi lan bat man hinh (boot + thuc) */
+/* ui_splash.c: man chao logo 1 s luc khoi dong / thuc deep sleep (khong khi chi bat den nen) */
 void ui_splash_show(void);
 bool ui_splash_active(void);
 void ui_pin_wake_init(void);     /* scr_pin.c: doc co fd/pin_req luc khoi dong */

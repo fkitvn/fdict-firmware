@@ -1,4 +1,5 @@
-/* Man chao: logo FDict One giua man hinh nen trang trong 1 s, moi lan man hinh bat (boot + thuc tu tat man).
+/* Man chao: logo FDict One giua man hinh nen trang trong 1 s, chi luc khoi dong that (boot / thuc deep sleep).
+ * Khong hien khi chi bat lai den nen sau thoi gian cho man hinh (screen_wake).
  * Logo 88x73 + dong chu "FDict One - May hoc tu vung" (Noto 14, 1 dong). Lop phu tren lv_layer_sys() nen man dang mo phia duoi giu nguyen va hien lai sau khi het 1 s.
  * Trong luc hien: cham bi ui_nav.c chuyen thanh "nha" (touch_read_wrap), nut bi nuot (on_fd_event). */
 #include "esp_log.h"
