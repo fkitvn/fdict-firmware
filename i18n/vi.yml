@@ -52,6 +52,19 @@ vi:
   LOADING_QUESTIONS: Đang tải câu hỏi…
   MEANING: Nghĩa
   MEMORY: Bộ nhớ
+  MIC_DELETE: Xóa
+  MIC_FAILED: Ghi âm thất bại
+  MIC_HINT: Ghi âm tối đa 5 giây
+  MIC_MUTED: Âm lượng đang tắt
+  MIC_NO_FILE: Chưa có bản ghi
+  MIC_NO_SPACE: Không đủ bộ nhớ
+  MIC_PLAY: Nghe lại
+  MIC_PLAYING: Đang phát...
+  MIC_RECORD: Ghi âm
+  MIC_RECORDING: Đang ghi âm...
+  MIC_SAVED: 'Bản ghi: %d.%d giây'
+  MIC_STOP: Dừng
+  MIC_TEST: Thử micro
   MISSING: Thiếu
   NEVER: Không tắt
   NEXT: Sau >

@@ -31,6 +31,9 @@ static const char *TAG = "fd_audio";
 #define PA_HOLD_OFF_MS 50  /* reset: giu PA tat truoc khi reset codec */
 #define REQ_RESET     SIZE_MAX   /* req_t.count: yeu cau reset codec+PA (thuc) */
 #define REQ_STREAM    (SIZE_MAX - 1)   /* 2.0.1: phat luong PCM tu s_sb (Shadowing) */
+#define REQ_REC       (SIZE_MAX - 2)   /* 2.1.8: ghi am thu tu mic (I2S RX) */
+#define REQ_WAV       (SIZE_MAX - 3)   /* 2.1.8: phat file WAV ghi am (req_t.path) */
+#define WAV_HDR       44
 
 typedef struct {
     const int16_t *pcm;   /* NULL = chuong */
@@ -42,15 +45,16 @@ typedef struct {
 } req_t;
 
 static QueueHandle_t s_q;
-static i2s_chan_handle_t s_tx;
+static i2s_chan_handle_t s_tx, s_rx;   /* 2.1.8 s_rx: ADC ES8311 (mic analog) qua DIN GPIO6, song cong voi TX */
 static bool s_hw_ok;
 static fd_es8311_handle_t s_es;
 static i2c_master_dev_handle_t s_dev;   /* ES8311 0x18 */
 static volatile int s_vol = -1;   /* -1 = chua doc NVS */
 static int s_vol_applied = -1;
 static volatile bool s_playing;
+static volatile bool s_rec_on;   /* 2.1.8 dang ghi am (hoac da xep yeu cau ghi) */
 bool fd_audio_is_playing(void) { return s_playing; }
-bool fd_audio_busy(void) { return s_playing || (s_q && uxQueueMessagesWaiting(s_q) > 0); }
+bool fd_audio_busy(void) { return s_playing || s_rec_on || (s_q && uxQueueMessagesWaiting(s_q) > 0); }
 
 int fd_audio_get_volume(void)
 {
@@ -131,7 +135,7 @@ static esp_err_t hw_init(void)
 
     i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     cc.auto_clear = true;
-    ESP_RETURN_ON_ERROR(i2s_new_channel(&cc, &s_tx, NULL), TAG, "i2s chan");
+    ESP_RETURN_ON_ERROR(i2s_new_channel(&cc, &s_tx, &s_rx), TAG, "i2s chan");
     i2s_std_config_t sc = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(SAMPLE_RATE),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
@@ -140,6 +144,7 @@ static esp_err_t hw_init(void)
     };
     sc.clk_cfg.mclk_multiple = I2S_MCLK_MULTIPLE_256;
     ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(s_tx, &sc), TAG, "i2s std");
+    ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(s_rx, &sc), TAG, "i2s rx");   /* chi enable khi ghi am */
 
     ESP_RETURN_ON_ERROR(board_i2c_init(), TAG, "i2c");
     i2c_device_config_t dc = {.dev_addr_length = I2C_ADDR_BIT_LEN_7, .device_address = 0x18, .scl_speed_hz = 400000};
@@ -286,6 +291,118 @@ static void stream_run(void)
     s_st_on = false;
 }
 
+/* 2.1.8 Ghi am thu: mic analog ES8311 -> ADC -> I2S RX (16 kHz, khe trai/phai: chon khe co nang luong lon hon).
+ * Ghi vao bo dem PSRAM (khong ghi flash trong luc doc DMA -> khong tran), het gio/dung -> luu WAV 16-bit mono.
+ * PA tat suot luc ghi (khong hu loa / hoi tiep). */
+static volatile bool s_rec_stop;
+static volatile uint32_t s_rec_n;
+static volatile int s_rec_lvl;
+static volatile esp_err_t s_rec_err = ESP_ERR_NOT_FOUND;
+static char s_rec_path[48];
+static uint32_t s_rec_max;   /* so mau toi da */
+
+static void wav_hdr(uint8_t *h, uint32_t data_bytes)
+{
+    const uint32_t riff = 36 + data_bytes, fmt_len = 16, sr = SAMPLE_RATE, br = SAMPLE_RATE * 2;
+    const uint16_t pcm = 1, ch = 1, ba = 2, bits = 16;
+    memcpy(h, "RIFF", 4); memcpy(h + 4, &riff, 4); memcpy(h + 8, "WAVEfmt ", 8); memcpy(h + 16, &fmt_len, 4);
+    memcpy(h + 20, &pcm, 2); memcpy(h + 22, &ch, 2); memcpy(h + 24, &sr, 4); memcpy(h + 28, &br, 4);
+    memcpy(h + 32, &ba, 2); memcpy(h + 34, &bits, 2); memcpy(h + 36, "data", 4); memcpy(h + 40, &data_bytes, 4);
+}
+
+static int lvl_of(int peak)   /* dinh -> 0..100 (thang dB -60..0) */
+{
+    if (peak < 33) return 0;
+    int l = (int)((20.0f * log10f((float)peak / 32767.0f) + 60.0f) * 100.0f / 60.0f);
+    return l < 0 ? 0 : l > 100 ? 100 : l;
+}
+
+static esp_err_t rec_capture(int16_t *pcm, uint32_t *out_n)
+{
+    fd_es8311_microphone_config(s_es, false);   /* mic analog + PGA, ADC gain 0x17 */
+    fd_es8311_microphone_gain_set(s_es, ES8311_MIC_GAIN_24DB);
+    ESP_RETURN_ON_ERROR(i2s_channel_enable(s_rx), TAG, "i2s rx en");
+    int16_t st[CHUNK * 2];
+    uint32_t n = 0, skip = SAMPLE_RATE / 10;   /* bo ~100 ms dau (tieng bup khi bat ADC) */
+    int fails = 0;
+    esp_err_t err = ESP_OK;
+    while (!s_rec_stop && n < s_rec_max) {
+        size_t r = 0;
+        esp_err_t e = i2s_channel_read(s_rx, st, sizeof(st), &r, 200);
+        if (e != ESP_OK || r < 4) {
+            if (++fails > 10) { err = e != ESP_OK ? e : ESP_ERR_TIMEOUT; break; }
+            continue;
+        }
+        fails = 0;
+        size_t k = r / 4;
+        int32_t el = 0, er = 0;
+        for (size_t i = 0; i < k; i++) { el += abs(st[2 * i]); er += abs(st[2 * i + 1]); }
+        int off = er > el ? 1 : 0, peak = 0;
+        for (size_t i = 0; i < k && n < s_rec_max; i++) {
+            if (skip) { skip--; continue; }
+            int16_t v = st[2 * i + off];
+            int a = abs(v);
+            if (a > peak) peak = a;
+            pcm[n++] = v;
+        }
+        s_rec_n = n;
+        s_rec_lvl = lvl_of(peak);
+    }
+    i2s_channel_disable(s_rx);
+    *out_n = n;
+    return err;
+}
+
+static void rec_run(void)
+{
+    esp_err_t err = ESP_OK;
+    int16_t *pcm = NULL;
+    uint32_t n = 0;
+    if (!s_hw_ok || !s_rx || !s_es) err = ESP_ERR_INVALID_STATE;
+    else if (!(pcm = heap_caps_malloc(s_rec_max * 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT))) err = ESP_ERR_NO_MEM;
+    else err = rec_capture(pcm, &n);
+    if (err == ESP_OK && n < SAMPLE_RATE / 10) err = ESP_ERR_INVALID_SIZE;   /* qua ngan (< 0.1 s) */
+    if (err == ESP_OK) {
+        uint8_t h[WAV_HDR];
+        wav_hdr(h, n * 2);
+        FILE *f = fopen(s_rec_path, "wb");
+        if (!f) err = ESP_FAIL;
+        else {
+            bool ok = fwrite(h, 1, WAV_HDR, f) == WAV_HDR && fwrite(pcm, 2, n, f) == n;
+            if (fclose(f) != 0) ok = false;
+            if (!ok) { remove(s_rec_path); err = ESP_ERR_NO_MEM; }
+        }
+    }
+    free(pcm);
+    ESP_LOGI(TAG, "ghi am: %u mau (%u ms) -> %s: %s", (unsigned)n, (unsigned)(n * 1000 / SAMPLE_RATE), s_rec_path,
+             esp_err_to_name(err));
+    s_rec_err = err;
+    s_rec_lvl = 0;
+    s_rec_on = false;
+}
+
+/* Phat WAV ghi am (16 kHz mono 16-bit, header 44 B). Am luong > 60%: giam mem ve muc ~60% (0.5 dB/buoc DAC,
+ * 60% ~ thanh ghi 152) de tranh meo o muc cao; khong doi am luong he thong. */
+static void play_wav(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f) { play_chime(); return; }
+    uint8_t h[WAV_HDR];
+    if (fread(h, 1, WAV_HDR, f) != WAV_HDR || memcmp(h, "RIFF", 4) || memcmp(h + 8, "WAVE", 4)) { fclose(f); play_chime(); return; }
+    int v = fd_audio_get_volume();
+    float att_db = v > 60 ? (float)((v * 256 / 100 - 1) - 152) * 0.5f : 0.0f;
+    int g = (int)(256.0f * powf(10.0f, -att_db / 20.0f));   /* Q8 */
+    static int16_t fb[512];
+    size_t k;
+    s_quiet = true;
+    while ((k = fread(fb, 2, sizeof(fb) / 2, f)) > 0) {
+        if (g < 256) for (size_t i = 0; i < k; i++) fb[i] = (int16_t)((int32_t)fb[i] * g / 256);
+        write_mono(fb, k);
+    }
+    s_quiet = false;
+    fclose(f);
+}
+
 static void audio_task(void *arg)
 {
     (void)arg;
@@ -302,6 +419,7 @@ static void audio_task(void *arg)
             continue;
         }
         if (!r.pcm && r.count == REQ_STREAM) { stream_run(); continue; }
+        if (!r.pcm && r.count == REQ_REC) { rec_run(); continue; }
         ESP_LOGD(TAG, "dequeue: %s %u B", r.text[0] ? r.text : (r.pcm ? "pcm" : "chime"), (unsigned)(r.count * 2));
         if (!s_hw_ok) { ESP_LOGD(TAG, "skip: hw not ok"); continue; }
         int v = fd_audio_get_volume();
@@ -318,7 +436,8 @@ static void audio_task(void *arg)
         amp(true);
         vTaskDelay(pdMS_TO_TICKS(PA_STARTUP_MS));   /* vendor music_test bat PA tu dau; PA can thoi gian khoi dong */
         static const int16_t z[CHUNK] = {0};
-        if (r.path[0] || r.flags) {
+        if (!r.pcm && r.count == REQ_WAV) play_wav(r.path);
+        else if (r.path[0] || r.flags) {
             for (int k = 0; k < (r.reps ? r.reps : 1); k++) {
                 if (k) for (int i = 0; i < 3 * DRAIN_CHUNKS; i++) write_mono(z, CHUNK);   /* nghi ~0.3 s giua 2 lan doc */
                 say_word(&r);
@@ -444,6 +563,38 @@ esp_err_t fd_audio_say_ex(const char *path, const char *text, unsigned flags, in
     return ESP_OK;
 }
 esp_err_t fd_audio_say_cached(const char *path, const char *text) { return fd_audio_say_ex(path, text, 0, 1); }
+
+esp_err_t fd_audio_rec_start(const char *path, uint32_t max_ms)
+{
+    ESP_RETURN_ON_FALSE(path && path[0] && strlen(path) < sizeof(s_rec_path) && max_ms >= 200 && max_ms <= 30000,
+                        ESP_ERR_INVALID_ARG, TAG, "rec arg");
+    if (s_rec_on || s_st_on) return ESP_ERR_INVALID_STATE;
+    ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
+    strlcpy(s_rec_path, path, sizeof(s_rec_path));
+    s_rec_max = max_ms * (SAMPLE_RATE / 1000);
+    s_rec_n = 0;
+    s_rec_lvl = 0;
+    s_rec_stop = false;
+    s_rec_err = ESP_OK;
+    s_rec_on = true;
+    req_t r = {.pcm = NULL, .count = REQ_REC};
+    if (xQueueSend(s_q, &r, 0) != pdTRUE) { s_rec_on = false; s_rec_err = ESP_ERR_TIMEOUT; return ESP_ERR_TIMEOUT; }
+    return ESP_OK;
+}
+void fd_audio_rec_stop(void) { s_rec_stop = true; }
+bool fd_audio_rec_active(void) { return s_rec_on; }
+uint32_t fd_audio_rec_ms(void) { return s_rec_n * 1000 / SAMPLE_RATE; }
+int fd_audio_rec_level(void) { return s_rec_lvl; }
+esp_err_t fd_audio_rec_result(void) { return s_rec_err; }
+esp_err_t fd_audio_play_wav(const char *path)
+{
+    ESP_RETURN_ON_FALSE(path && path[0] && strlen(path) < sizeof(((req_t *)0)->path), ESP_ERR_INVALID_ARG, TAG, "wav arg");
+    ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
+    req_t r = {.pcm = NULL, .count = REQ_WAV};
+    strlcpy(r.path, path, sizeof(r.path));
+    if (xQueueSend(s_q, &r, 0) != pdTRUE) return ESP_ERR_TIMEOUT;
+    return ESP_OK;
+}
 
 void fd_audio_set_miss_cb(void (*cb)(const char *text)) { s_miss_cb = cb; }
 void fd_audio_set_lookup_cb(bool (*cb)(const char *word, char *path, size_t plen, uint32_t *off, uint32_t *len)) { s_lookup_cb = cb; }

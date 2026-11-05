@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.8] - 2026-11-05
+
+- Thêm màn "Thử micro" (Cài đặt): ghi âm 5 giây từ micro trên máy, hiện thời lượng và mức âm, nghe lại qua loa hoặc xóa bản ghi.
+- Bản ghi lưu trong bộ nhớ máy (một file, ghi đè lần trước), kiểm tra dung lượng trống trước khi ghi.
+- Khi nghe lại, âm lượng được giữ ở mức vừa phải để tránh rè.
+
 ## [2.1.7] - 2026-11-05
 
 - Sắp xếp câu: mỗi từ là một thẻ, chạm lần lượt để ghép câu, đủ từ là tự chấm ngay; chạm vào câu để xóa từ vừa chọn.

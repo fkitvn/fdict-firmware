@@ -51,6 +51,17 @@ size_t fd_audio_stream_write(const int16_t *pcm, size_t n, uint32_t timeout_ms);
 void fd_audio_stream_end(bool abort);
 uint32_t fd_audio_stream_played(void);
 bool fd_audio_stream_active(void);
+/* 2.1.8 Ghi am thu (mic ES8311): ghi toi max_ms (200..30000, tu dung) vao path (< 48 ky tu; WAV 16 kHz mono 16-bit,
+ * ghi de file cu) trong task am thanh. Ghi vao PSRAM, luu file khi xong. stop: dung som (van luu phan da ghi).
+ * active: dang ghi/luu; ms: thoi luong da ghi; level: 0..100 (dB -60..0); result: ket qua lan ghi cuoi. */
+esp_err_t fd_audio_rec_start(const char *path, uint32_t max_ms);
+void fd_audio_rec_stop(void);
+bool fd_audio_rec_active(void);
+uint32_t fd_audio_rec_ms(void);
+int fd_audio_rec_level(void);
+esp_err_t fd_audio_rec_result(void);
+/* Phat file WAV do fd_audio_rec_start ghi (xep hang nhu phat am; am luong > 60% duoc giam ve ~60%). */
+esp_err_t fd_audio_play_wav(const char *path);
 
 
 #ifdef __cplusplus

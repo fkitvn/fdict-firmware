@@ -52,6 +52,19 @@ en:
   LOADING_QUESTIONS: Loading questions…
   MEANING: Meaning
   MEMORY: Memory
+  MIC_DELETE: Delete
+  MIC_FAILED: Recording failed
+  MIC_HINT: Records up to 5 seconds
+  MIC_MUTED: Volume is off
+  MIC_NO_FILE: No recording yet
+  MIC_NO_SPACE: Not enough storage
+  MIC_PLAY: Play
+  MIC_PLAYING: Playing...
+  MIC_RECORD: Record
+  MIC_RECORDING: Recording...
+  MIC_SAVED: 'Recording: %d.%d s'
+  MIC_STOP: Stop
+  MIC_TEST: Mic test
   MISSING: Missing
   NEVER: Never
   NEXT: Next >

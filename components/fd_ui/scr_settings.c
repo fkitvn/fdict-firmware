@@ -307,6 +307,7 @@ static void build(lv_obj_t *scr)
     item(body, LV_SYMBOL_KEYBOARD, _("LANGUAGE"), go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
     item(body, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), go_cb, (void *)(intptr_t)FD_SCR_VOLUME, &s_vol_sub);
+    item(body, LV_SYMBOL_AUDIO, _("MIC_TEST"), go_cb, (void *)(intptr_t)FD_SCR_MICTEST, NULL);
     item(body, LV_SYMBOL_POWER, _("SCREEN_TIMEOUT"), go_cb, (void *)(intptr_t)FD_SCR_TIMEOUT, &s_to_sub);
     item(body, LV_SYMBOL_REFRESH, _("SCREEN_ROTATION"), go_cb, (void *)(intptr_t)FD_SCR_ROTATION, &s_rot_sub);
     switch_row(body, LV_SYMBOL_IMAGE, _("GRAYSCALE_MODE"), fd_display_get_grayscale(), gray_cb);
