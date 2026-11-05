@@ -8,6 +8,7 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 - Wi-Fi: tăng bộ đệm RX (ổn định hơn khi OTA).
 - Logo FDict chỉ hiện lúc khởi động / bật từ nút Ngủ.
 - Sắp xếp câu: tùy chọn phát âm sau mỗi câu trước khi Bắt đầu.
+- Bảng nhanh: icon đen-trắng đổi sang biểu tượng tương phản (nửa vòng).
 
 ## [2.1.9] - 2026-11-05
 

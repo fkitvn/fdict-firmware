@@ -18,6 +18,7 @@ LV_IMAGE_DECLARE(img_rotate);
 LV_IMAGE_DECLARE(img_logo);
 LV_IMAGE_DECLARE(img_sun);
 LV_IMAGE_DECLARE(img_sleep);
+LV_IMAGE_DECLARE(img_contrast);   /* den trang: Material-style contrast A8 */
 
 static lv_obj_t *s_ov, *s_panel, *s_bri_val, *s_vol_icon, *s_vol_val, *s_vol_sl;
 
@@ -122,13 +123,21 @@ static void rot_cb(lv_event_t *e)
     if (ui_nav_current() != &g_scr_rotation) fd_ui_show(FD_SCR_ROTATION);   /* man chon 0/90/180/270; quay lai = man dang mo truoc do */
 }
 
-/* 2.1.9 Nut Den trang (thay Home): bat = nen amber nhat + icon amber dam, tat = nen trang + icon xam. */
+/* 2.1.9 Nut Den trang (thay Home): bat = nen amber nhat + icon amber dam, tat = nen trang + icon xam.
+ * 2.2.0: icon contrast (A8) thay LV_SYMBOL_IMAGE. */
 static void gray_style(lv_obj_t *b)
 {
     bool on = fd_display_get_grayscale();
     lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY_TINT) : lv_color_white(), 0);
-    lv_obj_t *l = lv_obj_get_child(b, 0);
-    if (l) lv_obj_set_style_text_color(l, lv_color_hex(on ? FD_COLOR_PRIMARY_DARK : 0x9CA3AF), 0);
+    lv_obj_t *ch = lv_obj_get_child(b, 0);
+    if (!ch) return;
+    uint32_t col = on ? FD_COLOR_PRIMARY_DARK : 0x9CA3AF;
+    if (lv_obj_check_type(ch, &lv_image_class)) {
+        lv_obj_set_style_image_recolor(ch, lv_color_hex(col), 0);
+        lv_obj_set_style_image_recolor_opa(ch, LV_OPA_COVER, 0);
+    } else {
+        lv_obj_set_style_text_color(ch, lv_color_hex(col), 0);
+    }
 }
 
 static void gray_cb(lv_event_t *e)
@@ -393,7 +402,10 @@ void ui_quick_open(void)
 
     qsym(qbtn(r, bw, rot_cb), LV_SYMBOL_REFRESH);    /* mo man Huong xoay */
     lv_obj_t *gb = qbtn(r, bw, gray_cb);   /* bat/tat che do den trang (cung cong tac Cai dat) */
-    qsym(gb, LV_SYMBOL_IMAGE);
+    lv_obj_t *gi = lv_image_create(gb);   /* contrast A8 24x24 (nua vong) */
+    lv_image_set_src(gi, &img_contrast);
+    lv_obj_set_style_image_recolor_opa(gi, LV_OPA_COVER, 0);
+    lv_obj_center(gi);
     gray_style(gb);
     qsym(qbtn(r, bw, set_cb), LV_SYMBOL_SETTINGS);   /* Cai dat */
 

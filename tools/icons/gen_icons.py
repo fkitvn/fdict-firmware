@@ -38,6 +38,7 @@ SMALL = [
     ("img_rotate", "screen_rotation", 24, "screen_rotation"),
     ("img_sun", "light_mode", 20, "light_mode (mat troi)"),
     ("img_sleep", "bedtime", 24, "bedtime (mat trang / ngu)"),
+    ("img_contrast", "contrast", 24, "contrast (nua vong / den trang)"),
 ]
 
 
