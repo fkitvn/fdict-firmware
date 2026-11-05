@@ -1259,46 +1259,6 @@ int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, boo
     return code;
 }
 
-/* 2.0.1 Shadowing: GET dang luong (chunked, dai), goi on_data(buf, n, ctx) moi lan doc; on_data tra false -> dung.
- * Khong luu file, khong xoa token khi 401 (chi bao ma loi cho man hinh). Tra HTTP status (200 = da het luong / bi dung),
- * -1 loi mang. read_timeout_ms: moi lan doc (server day ~10 khung/s nen 1 lan doc khong cho lau). */
-int fd_ota_api_get_stream(const char *path, int read_timeout_ms, bool (*on_data)(const uint8_t *buf, int n, void *ctx),
-                          void *ctx)
-{
-    if (!path || !on_data || !fd_net_is_connected()) return -1;
-    char url[320];
-    snprintf(url, sizeof(url), "%s%s", FD_OTA_BASE, path);
-    if (!url_allowed(url)) return -1;
-    esp_http_client_config_t c;
-    http_cfg(&c, url, read_timeout_ms > 0 ? read_timeout_ms : HTTP_TIMEOUT_MS);
-    c.method = HTTP_METHOD_GET;
-    c.buffer_size = 4096;
-    esp_http_client_handle_t cl = esp_http_client_init(&c);
-    if (!cl) return -1;
-    add_auth(cl);
-    int code = -1, tot = 0;
-    if (esp_http_client_open(cl, 0) == ESP_OK) {
-        esp_http_client_fetch_headers(cl);
-        code = esp_http_client_get_status_code(cl);
-        if (code == 200) {
-            uint8_t *buf = malloc(4096);
-            if (!buf) code = -3;
-            while (buf) {
-                int r = esp_http_client_read(cl, (char *)buf, 4096);
-                if (r < 0) { code = -1; break; }
-                if (r == 0) { if (!esp_http_client_is_complete_data_received(cl)) code = -1; break; }
-                tot += r;
-                if (!on_data(buf, r, ctx)) break;
-            }
-            free(buf);
-        }
-    }
-    esp_http_client_close(cl);
-    esp_http_client_cleanup(cl);
-    ESP_LOGI(TAG, "api stream -> %d (%d B)", code, tot);
-    return code;
-}
-
 /* Ban don gian (fd_voice): khong ETag / Range. */
 int fd_ota_api_get_file(const char *path, const char *dst, int max_bytes)
 {

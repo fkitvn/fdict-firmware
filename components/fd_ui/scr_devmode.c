@@ -150,7 +150,7 @@ static void build(lv_obj_t *scr)
     lv_obj_t *t = lv_label_create(body);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(t, _("DEVELOPER_MODE"));
+    lv_label_set_text(t, _("DEV_SECTION"));   /* 2.2.4: tieu de; cong tac ben trong van la DEVELOPER_MODE */
 
     lv_obj_t *r = lv_obj_create(body);   /* cong tac bat/tat */
     row_style(r);

@@ -54,7 +54,7 @@ static int s_bright = CONFIG_BOARD_BACKLIGHT_DEFAULT;
 static bool s_asleep;   /* man hinh tat (het thoi gian cho): doi do sang chi luu, khong bat den */
 
 /* Che do den trang (NVS fd/gray): chuyen MOI pixel sang xam trong flush cb (truoc khi port dao byte),
- * nen phu het: logo, anh, icon, video Shadowing (lv_image), lop top/sys. */
+ * nen phu het: logo, anh, icon (lv_image), lop top/sys. */
 #define NVS_GRAY "gray"
 static volatile bool s_gray;
 static lv_display_flush_cb_t s_port_flush;

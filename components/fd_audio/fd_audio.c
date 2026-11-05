@@ -30,7 +30,7 @@ static const char *TAG = "fd_audio";
 #define PA_TAIL_MS    40   /* truoc: 30 ms sau 1 khoi 0 -> cat mat ~60-90 ms cuoi */
 #define PA_HOLD_OFF_MS 50  /* reset: giu PA tat truoc khi reset codec */
 #define REQ_RESET     SIZE_MAX   /* req_t.count: yeu cau reset codec+PA (thuc) */
-#define REQ_STREAM    (SIZE_MAX - 1)   /* 2.0.1: phat luong PCM tu s_sb (Shadowing) */
+#define REQ_STREAM    (SIZE_MAX - 1)   /* 2.0.1: phat luong PCM tu s_sb (2.2.4: dung cho thu loa) */
 #define REQ_REC       (SIZE_MAX - 2)   /* 2.1.8: ghi am thu tu mic (I2S RX) */
 #define REQ_WAV       (SIZE_MAX - 3)   /* 2.1.8: phat file WAV ghi am (req_t.path) */
 #define WAV_HDR       44
@@ -245,7 +245,7 @@ static void say_word(const req_t *r)
     if (!(r->flags & FD_SAY_NO_DL) && r->path[0] && s_miss_cb) s_miss_cb(r->text);   /* vd: xep tai giong tot cho lan sau */
 }
 
-/* 2.0.1 luong PCM (Shadowing): 1 nguoi ghi (task mang) -> StreamBuffer PSRAM -> audio_task. Dong ho = so mau da ghi I2S. */
+/* 2.0.1 luong PCM (2.2.4: thu loa, Shadowing da go): 1 nguoi ghi (task mang) -> StreamBuffer PSRAM -> audio_task. Dong ho = so mau da ghi I2S. */
 static StreamBufferHandle_t s_sb;
 static volatile bool s_st_on, s_st_end, s_st_abort;
 static volatile uint32_t s_st_played;

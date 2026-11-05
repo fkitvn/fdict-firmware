@@ -170,15 +170,6 @@ static lv_i18n_phrase_t en_singulars[] = {
     {"SERVER_UNREACHABLE", "Cannot reach the server"},
     {"SET", "Set"},
     {"SETTINGS", "Settings"},
-    {"SHADOWING", "Shadowing"},
-    {"SHADOW_BUSY", "Server is busy, try again later"},
-    {"SHADOW_END", "End of video"},
-    {"SHADOW_ERROR", "Cannot load video (%s)"},
-    {"SHADOW_LOADING", "Loading video…"},
-    {"SHADOW_NET_ERROR", "Network error, check Wi-Fi"},
-    {"SHADOW_NOT_PAIRED", "Pair the device to watch videos"},
-    {"SHADOW_NO_WIFI", "No Wi-Fi connection"},
-    {"SHADOW_TAP_EXIT", "Tap to exit"},
     {"SHUFFLE", "Shuffle"},
     {"SIZE", "Size"},
     {"SLEEP", "Sleep"},
@@ -290,6 +281,7 @@ static lv_i18n_phrase_t en_singulars[] = {
     {"SPK_STOP", "Stop"},
     {"SPK_PLAYING", "Playing test sound..."},
     {"MIC_SECTION", "Microphone"},
+    {"DEV_SECTION", "For developers"},
     {NULL, NULL} // End mark
 };
 
@@ -465,15 +457,6 @@ static lv_i18n_phrase_t vi_singulars[] = {
     {"SERVER_UNREACHABLE", "Không kết nối được máy chủ"},
     {"SET", "Đã đặt"},
     {"SETTINGS", "Cài đặt"},
-    {"SHADOWING", "Shadowing"},
-    {"SHADOW_BUSY", "Máy chủ đang bận, thử lại sau"},
-    {"SHADOW_END", "Hết video"},
-    {"SHADOW_ERROR", "Không tải được video (%s)"},
-    {"SHADOW_LOADING", "Đang tải video…"},
-    {"SHADOW_NET_ERROR", "Lỗi mạng, kiểm tra WiFi"},
-    {"SHADOW_NOT_PAIRED", "Ghép thiết bị để xem video"},
-    {"SHADOW_NO_WIFI", "Chưa kết nối WiFi"},
-    {"SHADOW_TAP_EXIT", "Chạm để thoát"},
     {"SHUFFLE", "Trộn"},
     {"SIZE", "Kích thước"},
     {"SLEEP", "Ngủ"},
@@ -585,6 +568,7 @@ static lv_i18n_phrase_t vi_singulars[] = {
     {"SPK_STOP", "Dừng"},
     {"SPK_PLAYING", "Đang phát âm thử..."},
     {"MIC_SECTION", "Micro"},
+    {"DEV_SECTION", "Dành cho nhà phát triển"},
     {NULL, NULL} // End mark
 };
 

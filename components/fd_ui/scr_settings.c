@@ -212,7 +212,7 @@ static void build(lv_obj_t *scr)
     switch_row(body, LV_SYMBOL_IMAGE, _("GRAYSCALE_MODE"), fd_display_get_grayscale(), gray_cb);
     item(body, LV_SYMBOL_EYE_CLOSE, _("PIN_CODE"), go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
     item(body, LV_SYMBOL_LIST, _("ABOUT"), go_cb, (void *)(intptr_t)FD_SCR_ABOUT, NULL);
-    item(body, LV_SYMBOL_WARNING, _("DEVELOPER_MODE"), go_cb, (void *)(intptr_t)FD_SCR_DEVMODE, &s_dev_sub);   /* 2.2.2: man rieng */
+    item(body, LV_SYMBOL_WARNING, _("DEV_SECTION"), go_cb, (void *)(intptr_t)FD_SCR_DEVMODE, &s_dev_sub);   /* 2.2.2: man rieng */
     refresh();
 }
 

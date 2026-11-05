@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.4] - 2026-11-05
+
+- Cài đặt: mục đổi tên "Dành cho nhà phát triển" (công tắc bên trong vẫn là "Chế độ nhà phát triển").
+- Gỡ bỏ hoàn toàn tính năng Shadowing (ô Home, màn hình, icon, chuỗi, API luồng video).
+
 ## [2.2.3] - 2026-11-05
 
 - Thử 4 nút bấm: 4 ô một hàng ở đáy màn hình, đúng vị trí nút thật (IO2, IO3, IO14, IO21).

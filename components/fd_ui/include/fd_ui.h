@@ -26,7 +26,6 @@ typedef enum {
     FD_SCR_REPEAT,      /* MOCKUP Nhai tu */
     FD_SCR_PAIR,        /* Cai dat > Ghep thiet bi */
     FD_SCR_LANG,        /* Cai dat > Ngon ngu / Language (1.3.0) */
-    FD_SCR_SHADOW,      /* 2.0.1 Shadowing: phat video (luong tu server) */
     FD_SCR_SENTENCE,    /* 2.1.6 Sap xep thanh cau */
     FD_SCR_MICTEST,     /* 2.1.8 Thu micro; 2.2.3 Che do nha phat trien > Thu loa & micro */
     FD_SCR_DEVMODE,     /* 2.2.2 Cai dat > Che do nha phat trien (cong tac + cong cu kiem tra) */
