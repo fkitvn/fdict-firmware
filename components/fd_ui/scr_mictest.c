@@ -1,16 +1,14 @@
 /* 2.1.8 Cai dat > Thu micro: ghi am 5 s tu mic tren may (ES8311, tu dung), luu /data/mictest.wav (1 file, ghi de),
  * hien thoi luong + thanh muc am khi ghi; [Ghi am/Dung] [Nghe lai] [Xoa]. Kiem tra dung luong trong truoc khi ghi.
  * Nghe lai qua fd_audio_play_wav (am luong > 60% giam ve ~60% de tranh re).
- * 2.2.3: chuyen vao Che do nha phat trien, doi ten "Thu loa & micro"; them thu loa: [Am 1 kHz] (3 tieng bip 0,4 s) /
- * [Quet tan so] (200 Hz -> 4 kHz, 4 s) / [Dung], sinh PCM trong task rieng qua luong fd_audio_stream_* theo am luong he
- * thong (DAC toi da 0 dB do fd_audio gioi han; bien do -6 dBFS de khong meo). */
+ * 2.2.3: chuyen vao Che do nha phat trien, doi ten "Thu loa & micro"; thu loa: [Am 1 kHz] / [Quet tan so] theo am luong
+ * he thong (DAC toi da 0 dB do fd_audio gioi han). 2.2.7: xem ghi chu "Thu loa" ben duoi. */
 #include <stdio.h>
 #include <sys/stat.h>
 #include "fd_audio.h"
 #include "fd_fonts.h"
 #include "fd_store.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_heap_caps.h"
 #include "ui_priv.h"
 #include <math.h>
 
@@ -23,63 +21,67 @@ static lv_obj_t *s_status, *s_bar, *s_rec_btn, *s_rec_ico, *s_rec_txt, *s_play_b
 static lv_timer_t *s_tm;
 static bool s_was_rec;
 
-/* ---------- Thu loa ---------- */
+/* ---------- Thu loa ----------
+ * 2.2.7: KHONG dung luong fd_audio_stream_* nua. Thiet bi 2.2.3 bi reset khi het am thu: "assert failed" trong tlsf_free
+ * <- heap_caps_free <- vStreamBufferGenericDeleteWithCaps <- stream_run (fd_audio.c), tuc hong heap PSRAM khi xoa
+ * StreamBuffer luc ket thuc luong. Thay bang PCM sinh san 1 lan vao PSRAM (khong bao gio giai phong) va phat qua
+ * fd_audio_play_pcm (cung duong da on dinh voi tieng bip/phat am). Am ngan nen khong can nut Dung. */
 #define SPK_RATE   16000
-#define SPK_AMP    4000.0f           /* 2.2.6: ~ -18 dBFS (tranh sut ap/brownout khi am luong cao) */
-#define SPK_FADE   480               /* 30 ms vao/ra */
-#define SPK_CHUNK  320
-static lv_obj_t *s_spk_tone, *s_spk_sweep, *s_spk_stop, *s_spk_status;
-static volatile bool s_spk_run, s_spk_alive;
+#define SPK_AMP    4000.0f            /* ~ -18 dBFS */
+#define SPK_FADE   480                /* 30 ms vao/ra */
+#define SPK_TONE_N (SPK_RATE * 3 / 2)  /* 1,5 s: 3 bip 0,3 s, nghi 0,2 s */
+#define SPK_SWEEP_N (SPK_RATE * 3)     /* 3 s: 200 Hz -> 4 kHz */
+static lv_obj_t *s_spk_tone, *s_spk_sweep, *s_spk_status;
+static bool s_spk_alive;
+static int16_t *s_tone_pcm, *s_sweep_pcm;
 
-static void spk_task(void *arg)
+static float fade(int k, int n)
 {
-    int mode = (int)(intptr_t)arg;   /* 0 = 1 kHz bip, 1 = quet */
-    static int16_t buf[SPK_CHUNK];
-    const int total = mode ? SPK_RATE * 4 : SPK_RATE * 2;   /* 4 s quet / 2 s (3 bip 0,4 s, nghi 0,2 s) */
-    float ph = 0;
-    for (int n = 0; n < total && s_spk_run; n += SPK_CHUNK) {
-        for (int i = 0; i < SPK_CHUNK; i++) {
-            int k = n + i;
-            float f = 1000.0f, env = 1.0f;
-            if (mode) f = 200.0f * powf(20.0f, (float)k / total);   /* 200 Hz -> 4 kHz (log) */
-            else {
-                int p = k % (SPK_RATE * 6 / 10), on = SPK_RATE * 4 / 10;
-                env = (k >= SPK_RATE * 18 / 10 || p >= on) ? 0.0f : 1.0f;
-                if (env > 0 && p < SPK_FADE) env = (float)p / SPK_FADE;
-                else if (env > 0 && p > on - SPK_FADE) env = (float)(on - p) / SPK_FADE;
-            }
-            if (mode && k < SPK_FADE) env = (float)k / SPK_FADE;
-            if (mode && k > total - SPK_FADE) env = (float)(total - k) / SPK_FADE;
+    if (k < SPK_FADE) return (float)k / SPK_FADE;
+    if (k > n - SPK_FADE) return (float)(n - k) / SPK_FADE;
+    return 1.0f;
+}
+
+static bool spk_prepare(void)
+{
+    if (!s_tone_pcm) {
+        int16_t *p = heap_caps_malloc(SPK_TONE_N * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+        if (!p) return false;
+        const int per = SPK_RATE / 2, on = SPK_RATE * 3 / 10;
+        for (int k = 0; k < SPK_TONE_N; k++) {
+            int q = k % per;
+            float env = q < on ? fade(q, on) : 0.0f;
+            p[k] = (int16_t)(SPK_AMP * env * sinf(2.0f * (float)M_PI * 1000.0f * k / SPK_RATE));
+        }
+        s_tone_pcm = p;
+    }
+    if (!s_sweep_pcm) {
+        int16_t *p = heap_caps_malloc(SPK_SWEEP_N * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+        if (!p) return false;
+        float ph = 0;
+        for (int k = 0; k < SPK_SWEEP_N; k++) {
+            float f = 200.0f * powf(20.0f, (float)k / SPK_SWEEP_N);   /* log 200 Hz -> 4 kHz */
             ph += 2.0f * (float)M_PI * f / SPK_RATE;
             if (ph > 2.0f * (float)M_PI) ph -= 2.0f * (float)M_PI;
-            buf[i] = (int16_t)(SPK_AMP * env * sinf(ph));
+            p[k] = (int16_t)(SPK_AMP * fade(k, SPK_SWEEP_N) * sinf(ph));
         }
-        size_t w = 0;
-        while (w < SPK_CHUNK && s_spk_run) w += fd_audio_stream_write(buf + w, SPK_CHUNK - w, 200);
+        s_sweep_pcm = p;
     }
-    fd_audio_stream_end(!s_spk_run);   /* Dung -> huy ngay; het -> phat not */
-    while (fd_audio_stream_active()) vTaskDelay(pdMS_TO_TICKS(20));
-    s_spk_run = false;
-    s_spk_alive = false;
-    vTaskDelete(NULL);
+    return true;
 }
 
 static void spk_start(int mode)
 {
-    if (s_spk_alive || fd_audio_rec_active() || fd_audio_busy() || fd_audio_stream_active()) return;
+    if (s_spk_alive || fd_audio_rec_active() || fd_audio_busy()) return;
     if (fd_audio_get_volume() == 0) { fd_ui_toast(_("MIC_MUTED")); return; }
-    if (fd_audio_stream_begin(SPK_RATE, SPK_CHUNK * 4) != ESP_OK) { fd_ui_toast(_("MIC_FAILED")); return; }
-    s_spk_run = s_spk_alive = true;
-    if (xTaskCreate(spk_task, "fd_spktest", 4096, (void *)(intptr_t)mode, 5, NULL) != pdPASS) {
-        s_spk_run = s_spk_alive = false;
-        fd_audio_stream_end(true);
-        fd_ui_toast(_("MIC_FAILED"));
-    }
+    if (!spk_prepare()) { fd_ui_toast(_("MIC_FAILED")); return; }
+    esp_err_t e = mode ? fd_audio_play_pcm(s_sweep_pcm, SPK_SWEEP_N) : fd_audio_play_pcm(s_tone_pcm, SPK_TONE_N);
+    if (e != ESP_OK) { fd_ui_toast(_("MIC_FAILED")); return; }
+    s_spk_alive = true;
 }
 
 static void spk_tone_cb(lv_event_t *e) { (void)e; spk_start(0); }
 static void spk_sweep_cb(lv_event_t *e) { (void)e; spk_start(1); }
-static void spk_stop_cb(lv_event_t *e) { (void)e; s_spk_run = false; }
 
 static long file_size(void)
 {
@@ -96,10 +98,10 @@ static void set_enabled(lv_obj_t *b, bool on)
 static void refresh(void)
 {
     if (!s_status) return;
+    if (s_spk_alive && !fd_audio_busy()) s_spk_alive = false;   /* phat xong */
     bool spk = s_spk_alive;
     set_enabled(s_spk_tone, !spk && !fd_audio_rec_active() && !fd_audio_busy());
     set_enabled(s_spk_sweep, !spk && !fd_audio_rec_active() && !fd_audio_busy());
-    set_enabled(s_spk_stop, spk);
     lv_label_set_text(s_spk_status, spk ? _("SPK_PLAYING") : "");
     bool rec = fd_audio_rec_active(), play = fd_audio_is_playing() || spk;
     long sz = file_size();
@@ -210,10 +212,9 @@ static void build(lv_obj_t *scr)
     lv_obj_remove_style_all(srow);
     lv_obj_set_size(srow, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(srow, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(srow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(srow, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     s_spk_tone = act_btn(srow, LV_SYMBOL_BELL, _("SPK_TONE"), spk_tone_cb, NULL, NULL);
     s_spk_sweep = act_btn(srow, LV_SYMBOL_SHUFFLE, _("SPK_SWEEP"), spk_sweep_cb, NULL, NULL);
-    s_spk_stop = act_btn(srow, LV_SYMBOL_STOP, _("SPK_STOP"), spk_stop_cb, NULL, NULL);
     s_spk_status = lv_label_create(body);
     lv_obj_set_style_text_color(s_spk_status, lv_color_hex(FD_COLOR_PRIMARY_TEXT), 0);
 
@@ -256,8 +257,7 @@ static void destroy(void)
 {
     if (s_tm) { lv_timer_delete(s_tm); s_tm = NULL; }
     if (fd_audio_rec_active()) fd_audio_rec_stop();   /* roi man: dung ghi (van luu phan da ghi) */
-    s_spk_run = false;   /* roi man: dung am thu (task tu ket thuc luong) */
-    s_spk_tone = s_spk_sweep = s_spk_stop = s_spk_status = NULL;
+    s_spk_tone = s_spk_sweep = s_spk_status = NULL;
     s_status = s_bar = s_rec_btn = s_rec_ico = s_rec_txt = s_play_btn = s_del_btn = NULL;
 }
 

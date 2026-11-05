@@ -2,9 +2,9 @@
  * luoi the so lieu, bang ket luan mau: xanh on dinh / vang khong on dinh / do loi) + RSSI min/TB/max.
  * [Bat dau] chay 60 s: moi ~1 s gui HTTP HEAD toi may chu dang dung (fd_ota_base_url(), khong token, khong log URL) trong
  * task rieng. Thanh cong = co phan hoi HTTP (bat ky ma), loi = timeout / loi mang. Mat ket noi: fd_net_dbg.
- * Ket qua cuoi gom trong wt_result_t; wt_on_finished() (task bai thu, ngoai LVGL) la cho cam buoc gui ket qua len may chu
- * sau nay (chua co hop dong endpoint -> hien chi log). */
+ * Ket qua cuoi gom trong wt_result_t; wt_on_finished() (task bai thu, ngoai LVGL) log + gui len may chu (2.2.7). */
 #include <stdio.h>
+#include <string.h>
 #include "esp_crt_bundle.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
@@ -50,13 +50,83 @@ static wt_verdict_t verdict_of(const wt_result_t *r)
     return WT_V_STABLE;
 }
 
-/* Cho cam: gui ket qua len may chu (se them khi co hop dong endpoint). Goi tu task bai thu, khong giu lock LVGL. */
+/* 2.2.7: gui ket qua: POST {base}/api/devices/diag/wifi (fd_ota_api_post_ex: Bearer device_token neu da ghep, khong log
+ * token/URL). Chay trong task bai thu. Trang thai cho UI: s_up_state + s_up_msg. */
+enum { UP_NONE = 0, UP_SENDING, UP_OK, UP_ERR, UP_SKIP };
+static volatile int s_up_state;
+static char s_up_msg[64];
+static char s_ssid_run[33], s_ip_run[20];
+
+static void json_str(char *out, size_t cap, const char *in)   /* chuoi JSON an toan (co dau ngoac kep) */
+{
+    size_t o = 0;
+    if (cap < 3) { if (cap) out[0] = 0; return; }
+    out[o++] = '"';
+    for (const unsigned char *p = (const unsigned char *)in; *p && o + 7 < cap; p++) {
+        if (*p == '"' || *p == '\\') { out[o++] = '\\'; out[o++] = (char)*p; }
+        else if (*p < 0x20) o += (size_t)snprintf(out + o, cap - o, "\\u%04x", *p);
+        else out[o++] = (char)*p;
+    }
+    out[o++] = '"';
+    out[o] = 0;
+}
+
+static void msg_of(const char *resp, char *out, size_t cap)   /* lay "message" tu body loi, neu co */
+{
+    out[0] = 0;
+    const char *m = resp ? strstr(resp, "\"message\"") : NULL;
+    if (!m || !(m = strchr(m + 9, '"'))) return;
+    m++;
+    size_t o = 0;
+    while (*m && *m != '"' && o + 1 < cap) { if (*m == '\\' && m[1]) m++; out[o++] = *m++; }
+    out[o] = 0;
+}
+
+static void wt_upload(const wt_result_t *r)
+{
+    if (!r->ok && !r->fail) { s_up_state = UP_SKIP; return; }
+    s_up_state = UP_SENDING;
+    char id[16], ssid[80], body[512];
+    static char resp[256];
+    fd_ota_get_device_id(id, sizeof(id));
+    json_str(ssid, sizeof(ssid), s_ssid_run);
+    int rmin = r->rssi_n ? r->rssi_min : -127, rmax = r->rssi_n ? r->rssi_max : -127;
+    int ravg = r->rssi_n ? (int)(r->rssi_sum / r->rssi_n) : -127;
+    if (ravg < rmin) ravg = rmin;
+    if (ravg > rmax) ravg = rmax;
+    unsigned dur = (unsigned)((r->t_end_us - r->t0_us + 500000) / 1000000);
+    if (dur < 1) dur = 1;
+    if (dur > 3600) dur = 3600;
+    char lat[48];
+    if (r->ok) snprintf(lat, sizeof(lat), "{\"avg\":%u,\"max\":%u}", (unsigned)(r->sum_ms / r->ok), (unsigned)r->max_ms);
+    else snprintf(lat, sizeof(lat), "null");
+    char ip[40] = "";
+    if (s_ip_run[0]) snprintf(ip, sizeof(ip), ",\"ip\":\"%s\"", s_ip_run);
+    snprintf(body, sizeof(body),
+             "{\"device_id\":\"%s\",\"ssid\":%s,\"rssi\":{\"min\":%d,\"avg\":%d,\"max\":%d},\"duration_s\":%u,"
+             "\"success\":%u,\"fail\":%u,\"latency_ms\":%s,\"disconnects\":%u,\"fw_version\":\"%s\"%s}",
+             id, ssid, rmin, ravg, rmax, dur, (unsigned)r->ok, (unsigned)r->fail, lat,
+             (unsigned)(r->disc > 10000 ? 10000 : r->disc), FD_FW_SEMVER, ip);
+    resp[0] = 0;
+    int code = fd_ota_api_post_ex("/api/devices/diag/wifi", body, resp, sizeof(resp), false);
+    ESP_LOGI(TAG, "gui ket qua: HTTP %d", code);
+    if (code == 200) { s_up_state = UP_OK; return; }
+    char m[48];
+    msg_of(resp, m, sizeof(m));
+    if (m[0]) snprintf(s_up_msg, sizeof(s_up_msg), "%s", m);
+    else if (code < 0) snprintf(s_up_msg, sizeof(s_up_msg), "%s", "network");
+    else snprintf(s_up_msg, sizeof(s_up_msg), "HTTP %d", code);
+    s_up_state = UP_ERR;
+}
+
+/* Ket thuc bai thu: log + gui ket qua len may chu. Goi tu task bai thu, khong giu lock LVGL. */
 static void wt_on_finished(const wt_result_t *r)
 {
     ESP_LOGI(TAG, "ket qua: verdict=%d ok=%u fail=%u disc=%u avg=%u max=%u ms rssi=%d/%d/%d%s", (int)r->verdict,
              (unsigned)r->ok, (unsigned)r->fail, (unsigned)r->disc, r->ok ? (unsigned)(r->sum_ms / r->ok) : 0u,
              (unsigned)r->max_ms, r->rssi_min, r->rssi_n ? (int)(r->rssi_sum / r->rssi_n) : 0, r->rssi_max,
              r->aborted ? " (dung som)" : "");
+    wt_upload(r);
 }
 
 static void wt_task(void *arg)
@@ -125,7 +195,7 @@ static void wt_task(void *arg)
 /* ---------- Giao dien ---------- */
 enum { C_OK, C_FAIL, C_AVG, C_MAX, C_DISC, C_RSSI, C_N };
 static lv_obj_t *s_ssid, *s_rssi, *s_ip, *s_bars[4], *s_arc, *s_arc_lbl, *s_banner, *s_banner_lbl, *s_btn, *s_btn_lbl;
-static lv_obj_t *s_val[C_N];
+static lv_obj_t *s_val[C_N], *s_up_lbl;
 static lv_timer_t *s_tm;
 
 static lv_obj_t *card(lv_obj_t *parent)
@@ -210,6 +280,15 @@ static void refresh(void)
     lv_obj_set_style_bg_color(s_banner, lv_color_hex(bg), 0);
     lv_obj_set_style_text_color(s_banner_lbl, lv_color_hex(fg), 0);
     lv_label_set_text(s_banner_lbl, txt);
+    switch (alive ? UP_NONE : s_up_state) {
+        case UP_SENDING: lv_label_set_text(s_up_lbl, _("WT_UP_SENDING")); break;
+        case UP_OK:      lv_label_set_text(s_up_lbl, _("WT_UP_OK")); break;
+        case UP_ERR:     lv_label_set_text_fmt(s_up_lbl, _("WT_UP_ERR"), s_up_msg); break;
+        default:         lv_label_set_text(s_up_lbl, ""); break;
+    }
+    bool sending = s_up_state == UP_SENDING;
+    if (sending) lv_obj_add_state(s_btn, LV_STATE_DISABLED);
+    else lv_obj_remove_state(s_btn, LV_STATE_DISABLED);
     lv_label_set_text(s_btn_lbl, alive ? _("WT_STOP") : _("WT_START"));
     lv_obj_set_style_bg_color(s_btn, lv_color_hex(alive ? 0xDC2626 : FD_COLOR_PRIMARY), 0);
 }
@@ -221,6 +300,10 @@ static void start_stop_cb(lv_event_t *e)
     (void)e;
     if (s_task_alive) { s_run = false; refresh(); return; }   /* task tu thoat sau request hien tai */
     if (!fd_net_is_connected()) { fd_ui_toast(_("NOT_CONNECTED")); return; }
+    if (s_up_state == UP_SENDING) return;
+    s_up_state = UP_NONE;
+    fd_net_ssid(s_ssid_run, sizeof(s_ssid_run));
+    fd_net_ip(s_ip_run, sizeof(s_ip_run));
     fd_net_dbg_t d;
     fd_net_dbg_get(&d);
     s_disc0 = d.disc_count;
@@ -230,7 +313,7 @@ static void start_stop_cb(lv_event_t *e)
     taskEXIT_CRITICAL(&s_mux);
     s_run = true;
     s_task_alive = true;
-    if (xTaskCreate(wt_task, "fd_wifitest", 6144, NULL, 4, NULL) != pdPASS) {
+    if (xTaskCreate(wt_task, "fd_wifitest", 8192, NULL, 4, NULL) != pdPASS) {
         s_run = s_task_alive = false;
         s_st.t0_us = 0;
         fd_ui_toast(_("WT_FAILED"));
@@ -324,6 +407,8 @@ static void build(lv_obj_t *scr)
     s_btn_lbl = lv_label_create(s_btn);
     lv_obj_center(s_btn_lbl);
     lv_obj_add_event_cb(s_btn, start_stop_cb, LV_EVENT_CLICKED, NULL);
+    s_up_lbl = label(rcol, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_set_width(s_up_lbl, lv_pct(100)); lv_label_set_long_mode(s_up_lbl, LV_LABEL_LONG_WRAP);
 
     /* Luoi the so lieu 2 cot */
     static const char *const K[C_N] = {"WT_C_OK", "WT_C_FAIL", "WT_C_AVG", "WT_C_MAX", "WT_C_DISC", "WT_C_RSSI"};
@@ -355,6 +440,7 @@ static void destroy(void)
 {
     if (s_tm) { lv_timer_delete(s_tm); s_tm = NULL; }
     s_run = false;   /* roi man: dung bai thu (task tu thoat) */
+    s_up_lbl = NULL;
     s_ssid = s_rssi = s_ip = s_arc = s_arc_lbl = s_banner = s_banner_lbl = s_btn = s_btn_lbl = NULL;
     for (int i = 0; i < 4; i++) s_bars[i] = NULL;
     for (int i = 0; i < C_N; i++) s_val[i] = NULL;

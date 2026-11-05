@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.7] - 2026-11-05
+
+- Thử Wi-Fi: gửi báo cáo kết quả lên máy chủ, hiện trạng thái gửi.
+- Sửa lỗi khởi động lại khi thử loa (hỏng heap lúc kết thúc luồng âm thanh): âm thử phát bằng PCM dựng sẵn, ngắn (1,5 s / 3 s).
+
 ## [2.2.6] - 2026-11-05
 
 - Thử loa & micro: sửa icon bị ô vuông; âm thử nhỏ hơn (-18 dB) và vào/ra êm để tránh sụt áp gây khởi động lại.

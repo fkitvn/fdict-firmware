@@ -258,3 +258,6 @@ vi:
   SPK_PLAYING: 'Đang phát âm thử...'
   MIC_SECTION: 'Micro'
   DEV_SECTION: 'Dành cho nhà phát triển'
+  WT_UP_SENDING: 'Đang gửi…'
+  WT_UP_OK: 'Đã gửi báo cáo'
+  WT_UP_ERR: 'Gửi lỗi: %s'

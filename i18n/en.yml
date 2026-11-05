@@ -260,3 +260,6 @@ en:
   SPK_PLAYING: 'Playing test sound...'
   MIC_SECTION: 'Microphone'
   DEV_SECTION: 'For developers'
+  WT_UP_SENDING: 'Sending report…'
+  WT_UP_OK: 'Report sent'
+  WT_UP_ERR: 'Send failed: %s'
