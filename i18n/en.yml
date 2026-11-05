@@ -41,6 +41,8 @@ en:
   FORGET: Forget
   FORGET_THIS_NETWORK: Forget this network
   FRONT_SIDE: Front side
+  GRAYSCALE_OFF: 'Black & white off'
+  GRAYSCALE_ON: 'Black & white on'
   HELLO: Hello!
   HELLO_NAME: 'Hello, %s!'
   HOME: Home

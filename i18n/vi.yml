@@ -41,6 +41,8 @@ vi:
   FORGET: Quên
   FORGET_THIS_NETWORK: Quên mạng này
   FRONT_SIDE: Mặt trước
+  GRAYSCALE_OFF: 'Đã tắt chế độ đen trắng'
+  GRAYSCALE_ON: 'Đã bật chế độ đen trắng'
   HELLO: Xin chào!
   HELLO_NAME: 'Xin chào, %s!'
   HOME: Về Home

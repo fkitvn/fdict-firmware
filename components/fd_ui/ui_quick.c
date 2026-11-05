@@ -1,7 +1,7 @@
 /* Bang cai dat nhanh (vuot tu mep tren xuong, moi man ke ca Home), tren lv_layer_top.
  * Do sang 10..100 (ap dung ngay, luu khi nha) | Am luong 0..100 (luu + chuong xem truoc khi nha) |
  * 2 hang gon (quick_stats.c): Muc tieu hom nay 12/20 + thanh | Streak 4 ngay + 7 cham T2..CN (duoi tieu de, tren thanh truot).
- * Hang nut: Wi-Fi, Xoay (man chon huong), Home, Cai dat, Ngu. Dong: vuot len tren bang, cham nen mo, quay lai / giu B1, chuyen man. */
+ * Hang nut: Wi-Fi, Xoay (man chon huong), Den trang (bat/tat, 2.1.9 thay Home), Cai dat, Ngu. Dong: vuot len tren bang, cham nen mo, quay lai / giu B1, chuyen man. */
 #include <stdio.h>
 #include <string.h>
 #include "fd_audio.h"
@@ -122,11 +122,21 @@ static void rot_cb(lv_event_t *e)
     if (ui_nav_current() != &g_scr_rotation) fd_ui_show(FD_SCR_ROTATION);   /* man chon 0/90/180/270; quay lai = man dang mo truoc do */
 }
 
-static void home_cb(lv_event_t *e)
+/* 2.1.9 Nut Den trang (thay Home): bat = nen amber nhat + icon amber dam, tat = nen trang + icon xam. */
+static void gray_style(lv_obj_t *b)
 {
-    (void)e;
-    ui_quick_close(false);
-    if (!ui_pin_wake_locked()) ui_nav_home();   /* async (lv_async_call) nhu scr_rotation go_home_async; dang khoa PIN -> khong di */
+    bool on = fd_display_get_grayscale();
+    lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY_TINT) : lv_color_white(), 0);
+    lv_obj_t *l = lv_obj_get_child(b, 0);
+    if (l) lv_obj_set_style_text_color(l, lv_color_hex(on ? FD_COLOR_PRIMARY_DARK : 0x9CA3AF), 0);
+}
+
+static void gray_cb(lv_event_t *e)
+{
+    bool on = !fd_display_get_grayscale();
+    fd_display_set_grayscale(on, true);   /* luu NVS fd/gray, ap dung luc khoi dong (fd_display) */
+    gray_style(lv_event_get_target_obj(e));
+    fd_ui_toast(on ? _("GRAYSCALE_ON") : _("GRAYSCALE_OFF"));
 }
 
 static void set_cb(lv_event_t *e)
@@ -366,7 +376,7 @@ void ui_quick_open(void)
     lv_obj_t *r = mkrow(s_panel);
     lv_obj_set_height(r, 44);
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    /* Hang nut (20/10 09:32): Wi-Fi, Xoay, Home, Cai dat, Ngu - tat ca qua qbtn() (cung kieu). Ngang 320: 5 x 48 + 4 x 12;
+    /* Hang nut (20/10 09:32; 2.1.9 Home -> Den trang): Wi-Fi, Xoay, Den trang, Cai dat, Ngu - tat ca qua qbtn() (cung kieu). Ngang 320: 5 x 48 + 4 x 12;
      * doc 240 (noi dung ~214 px): 5 x 38 + 4 x 4. */
     bool narrow = lv_display_get_horizontal_resolution(NULL) < 300;
     int32_t bw = narrow ? 38 : 48;
@@ -382,7 +392,9 @@ void ui_quick_open(void)
     ui_wifi_slash_sync(wi, ns != FD_NET_CONNECTED && ns != FD_NET_CONNECTING);
 
     qsym(qbtn(r, bw, rot_cb), LV_SYMBOL_REFRESH);    /* mo man Huong xoay */
-    qsym(qbtn(r, bw, home_cb), LV_SYMBOL_HOME);      /* ve Home */
+    lv_obj_t *gb = qbtn(r, bw, gray_cb);   /* bat/tat che do den trang (cung cong tac Cai dat) */
+    qsym(gb, LV_SYMBOL_IMAGE);
+    gray_style(gb);
     qsym(qbtn(r, bw, set_cb), LV_SYMBOL_SETTINGS);   /* Cai dat */
 
 #if CONFIG_FD_SLEEP_BTN

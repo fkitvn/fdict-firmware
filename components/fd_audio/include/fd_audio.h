@@ -60,7 +60,7 @@ bool fd_audio_rec_active(void);
 uint32_t fd_audio_rec_ms(void);
 int fd_audio_rec_level(void);
 esp_err_t fd_audio_rec_result(void);
-/* Phat file WAV do fd_audio_rec_start ghi (xep hang nhu phat am; am luong > 60% duoc giam ve ~60%). */
+/* Phat file WAV do fd_audio_rec_start ghi (xep hang nhu phat am, theo am luong he thong). */
 esp_err_t fd_audio_play_wav(const char *path);
 
 

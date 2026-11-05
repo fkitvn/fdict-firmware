@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.9] - 2026-11-05
+
+- Sửa rè/méo loa ở mức âm lượng cao: âm lượng tối đa giờ không vượt mức gốc của bộ giải mã (0 dB).
+- Thanh âm lượng chỉnh đều tai hơn (giảm dần theo dB): 100% to nhất không méo, 50% khoảng -20 dB.
+- Mức âm lượng ở 70% trở xuống sẽ nhỏ hơn trước; tăng lên nếu cần.
+- Bảng kéo xuống: nút Home thay bằng nút bật/tắt màn hình đen trắng.
+
 ## [2.1.8] - 2026-11-05
 
 - Thêm màn "Thử micro" (Cài đặt): ghi âm 5 giây từ micro trên máy, hiện thời lượng và mức âm, nghe lại qua loa hoặc xóa bản ghi.

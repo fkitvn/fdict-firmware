@@ -381,22 +381,17 @@ static void rec_run(void)
     s_rec_on = false;
 }
 
-/* Phat WAV ghi am (16 kHz mono 16-bit, header 44 B). Am luong > 60%: giam mem ve muc ~60% (0.5 dB/buoc DAC,
- * 60% ~ thanh ghi 152) de tranh meo o muc cao; khong doi am luong he thong. */
+/* Phat WAV ghi am (16 kHz mono 16-bit, header 44 B) theo am luong he thong (2.1.9: DAC toi da 0 dB, khong can giam). */
 static void play_wav(const char *path)
 {
     FILE *f = fopen(path, "rb");
     if (!f) { play_chime(); return; }
     uint8_t h[WAV_HDR];
     if (fread(h, 1, WAV_HDR, f) != WAV_HDR || memcmp(h, "RIFF", 4) || memcmp(h + 8, "WAVE", 4)) { fclose(f); play_chime(); return; }
-    int v = fd_audio_get_volume();
-    float att_db = v > 60 ? (float)((v * 256 / 100 - 1) - 152) * 0.5f : 0.0f;
-    int g = (int)(256.0f * powf(10.0f, -att_db / 20.0f));   /* Q8 */
     static int16_t fb[512];
     size_t k;
     s_quiet = true;
     while ((k = fread(fb, 2, sizeof(fb) / 2, f)) > 0) {
-        if (g < 256) for (size_t i = 0; i < k; i++) fb[i] = (int16_t)((int32_t)fb[i] * g / 256);
         write_mono(fb, k);
     }
     s_quiet = false;

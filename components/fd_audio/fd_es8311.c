@@ -369,11 +369,13 @@ esp_err_t fd_es8311_voice_volume_set(fd_es8311_handle_t dev, int volume, int *vo
         volume = 100;
     }
 
+    /* 2.1.9: duong cong log, tran 0 dB (0xBF; 0.5 dB/buoc). dB = -40 * (100 - vol) / 100: 100 -> 0 dB, 50 -> -20 dB,
+     * 1 -> -39.6 dB; 0 = tat (0x00). Khong bao gio > 0 dB (truoc: 80% = +6 dB, 100% = +32 dB -> meo/cat dinh). */
     int reg32;
     if (volume == 0) {
         reg32 = 0;
     } else {
-        reg32 = ((volume) * 256 / 100) - 1;
+        reg32 = 0xBF - (100 - volume) * 80 / 100;
     }
 
     // provide user with real volume set
@@ -391,7 +393,7 @@ esp_err_t fd_es8311_voice_volume_get(fd_es8311_handle_t dev, int *volume)
     if (reg32 == 0) {
         *volume = 0;
     } else {
-        *volume = ((reg32 * 100) / 256) + 1;
+        *volume = reg32 >= 0xBF ? 100 : reg32 <= 0xBF - 80 ? 1 : 100 - (0xBF - reg32) * 100 / 80;
     }
     return ESP_OK;
 }
