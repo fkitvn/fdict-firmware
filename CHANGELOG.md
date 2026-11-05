@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.9] - 2026-11-05
+
+- Thử loa & micro: tự chuẩn hoá âm lượng bản ghi (tối đa 20x) và tăng gain micro lên 30 dB, phát lại nghe rõ hơn.
+
 ## [2.2.8] - 2026-11-05
 
 - Thử 4 nút bấm: 4 vòng tròn số 1–4, sáng lên và kêu bíp mỗi lần bấm (không giới hạn).

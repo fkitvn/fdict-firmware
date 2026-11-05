@@ -320,7 +320,7 @@ static int lvl_of(int peak)   /* dinh -> 0..100 (thang dB -60..0) */
 static esp_err_t rec_capture(int16_t *pcm, uint32_t *out_n)
 {
     fd_es8311_microphone_config(s_es, false);   /* mic analog + PGA, ADC gain 0x17 */
-    fd_es8311_microphone_gain_set(s_es, ES8311_MIC_GAIN_24DB);
+    fd_es8311_microphone_gain_set(s_es, ES8311_MIC_GAIN_30DB);   /* 2.2.9: 24 -> 30 dB */
     ESP_RETURN_ON_ERROR(i2s_channel_enable(s_rx), TAG, "i2s rx en");
     int16_t st[CHUNK * 2];
     uint32_t n = 0, skip = SAMPLE_RATE / 10;   /* bo ~100 ms dau (tieng bup khi bat ADC) */
@@ -363,6 +363,18 @@ static void rec_run(void)
     else err = rec_capture(pcm, &n);
     if (err == ESP_OK && n < SAMPLE_RATE / 10) err = ESP_ERR_INVALID_SIZE;   /* qua ngan (< 0.1 s) */
     if (err == ESP_OK) {
+        /* 2.2.9: chuan hoa dinh ~ -1 dBFS (29204), gain toi da 20x, kep int16 */
+        int32_t pk = 0;
+        for (uint32_t i = 0; i < n; i++) { int32_t a = abs((int32_t)pcm[i]); if (a > pk) pk = a; }
+        float g = pk > 0 ? 29204.0f / (float)pk : 1.0f;
+        if (g > 20.0f) g = 20.0f;
+        if (g > 1.0f) {
+            for (uint32_t i = 0; i < n; i++) {
+                int32_t v = (int32_t)lrintf((float)pcm[i] * g);
+                pcm[i] = (int16_t)(v > 32767 ? 32767 : (v < -32768 ? -32768 : v));
+            }
+        }
+        ESP_LOGI(TAG, "ghi am: dinh %d, gain x%.2f", (int)pk, (double)(g > 1.0f ? g : 1.0f));
         uint8_t h[WAV_HDR];
         wav_hdr(h, n * 2);
         FILE *f = fopen(s_rec_path, "wb");
