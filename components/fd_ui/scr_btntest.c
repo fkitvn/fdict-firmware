@@ -1,9 +1,9 @@
-/* Che do nha phat trien > Thu 4 nut bam (2.2.8: toi gian).
+/* Che do nha phat trien > Thu nut bam (2.2.10: tieu de + huong dan + trang thai, giong Wi-Fi / loa & micro).
  * 4 vong tron so 1..4 o day man hinh, dung vi tri nut vat ly (trai -> phai: IO2, IO3, IO14, IO21).
  * Anh xa: board_buttons.c dang ky nut chi so i tren chan s_pins[i] = {BOARD_BTN1..4} = {21, 2, 3, 14}
  * -> vong tim chi so nut theo GPIO (Nut 4 = IO21 = chi so 0, nut "giu de quay lai" toan cuc).
  * Moi lan bam (khong gioi han): vong to day ~250 ms + tieng bip ngan (ui_vol_beep, bo qua neu am thanh dang ban ->
- * khong chong/xep hang). Nut da bam: vien xanh; du 4 -> dau check tren cung.
+ * khong chong/xep hang). Nut da bam: vien xanh; du 4 -> dong trang thai pass.
  * Thoat: nut [<] / vuot mep luon dung; giu Nut 4 chi quay lai SAU KHI du 4 nut (truoc do giu = danh dau Nut 4). */
 #include "board_pins.h"
 #include "fd_audio.h"
@@ -13,7 +13,7 @@
 #define FLASH_MS 250
 static const int s_gpio[4] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};   /* theo chi so nut (driver) */
 static const int s_pos_gpio[4] = {2, 3, 14, 21};   /* vong trai -> phai = vi tri nut vat ly */
-static lv_obj_t *s_cell[4], *s_num[4], *s_pass;
+static lv_obj_t *s_cell[4], *s_num[4], *s_status, *s_hint;
 static lv_timer_t *s_flash_tm[4];
 static uint8_t s_done;   /* bit i = da bam nut chi so i */
 
@@ -22,6 +22,21 @@ static int done_count(void)
     int n = 0;
     for (int i = 0; i < 4; i++) n += (s_done >> i) & 1;
     return n;
+}
+
+static void refresh_status(void)
+{
+    if (!s_status) return;
+    int n = done_count();
+    if (n == 4) {
+        lv_label_set_text(s_status, _("BTN_TEST_PASS"));
+        lv_obj_set_style_text_color(s_status, lv_color_hex(0x16A34A), 0);
+        if (s_hint) lv_label_set_text(s_hint, _("BTN_TEST_EXIT_HINT"));
+    } else {
+        lv_label_set_text_fmt(s_status, _("BTN_TEST_PROGRESS"), n);
+        lv_obj_set_style_text_color(s_status, lv_color_hex(FD_COLOR_PRIMARY_TEXT), 0);
+        if (s_hint) lv_label_set_text(s_hint, _("BTN_TEST_HINT"));
+    }
 }
 
 static void style_cell(int i, bool lit)
@@ -53,7 +68,7 @@ static bool on_button(const fd_evt_button_t *b)
         lv_timer_set_repeat_count(s_flash_tm[i], 1);
     }
     if (!fd_audio_busy()) ui_vol_beep();   /* bip moi lan bam; dang phat thi bo qua (khong chong) */
-    if (s_pass) lv_obj_set_hidden(s_pass, done_count() != 4);
+    refresh_status();
     return true;   /* nuot moi nut khi dang thu */
 }
 
@@ -63,13 +78,19 @@ static void build(lv_obj_t *scr)
 {
     lv_obj_t *body = ui_page_create(scr);
     lv_obj_set_style_pad_all(body, 10, 0);
+    lv_obj_set_style_pad_row(body, 8, 0);
     lv_obj_set_scrollable(body, false);
     lv_obj_set_flex_align(body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
+    /* Header: nut quay lai + tieu de (Noto 18, mau chu chinh; LV_SYMBOL dung Montserrat) */
     lv_obj_t *top = lv_obj_create(body);
     lv_obj_remove_style_all(top);
     lv_obj_set_size(top, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_t *bk = lv_button_create(top);   /* quay lai */
+    lv_obj_set_flex_flow(top, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(top, 8, 0);
+
+    lv_obj_t *bk = lv_button_create(top);
     lv_obj_set_size(bk, 44, 36);
     lv_obj_set_style_radius(bk, 10, 0);
     lv_obj_set_style_shadow_width(bk, 0, 0);
@@ -78,12 +99,26 @@ static void build(lv_obj_t *scr)
     lv_label_set_text(bl, LV_SYMBOL_LEFT);
     lv_obj_center(bl);
     lv_obj_add_event_cb(bk, exit_cb, LV_EVENT_CLICKED, NULL);
-    s_pass = lv_label_create(top);   /* du 4 nut */
-    lv_obj_set_style_text_font(s_pass, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(s_pass, lv_color_hex(0x16A34A), 0);
-    lv_label_set_text(s_pass, LV_SYMBOL_OK);
-    lv_obj_align(s_pass, LV_ALIGN_CENTER, 0, 0);
-    lv_obj_set_hidden(s_pass, true);
+
+    lv_obj_t *title = lv_label_create(top);
+    lv_obj_set_style_text_font(title, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_flex_grow(title, 1);
+    lv_label_set_long_mode(title, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_text(title, _("BTN_TEST"));
+
+    s_hint = lv_label_create(body);
+    lv_obj_set_style_text_font(s_hint, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(s_hint, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
+    lv_obj_set_width(s_hint, lv_pct(100));
+    lv_label_set_long_mode(s_hint, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(s_hint, LV_TEXT_ALIGN_CENTER, 0);
+
+    s_status = lv_label_create(body);
+    lv_obj_set_style_text_font(s_status, &fd_font_noto_18, 0);
+    lv_obj_set_width(s_status, lv_pct(100));
+    lv_label_set_long_mode(s_status, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(s_status, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t *sp = lv_obj_create(body);   /* day hang vong xuong day */
     lv_obj_remove_style_all(sp);
@@ -112,6 +147,7 @@ static void build(lv_obj_t *scr)
     }
     s_done = 0;
     for (int i = 0; i < 4; i++) style_cell(i, false);
+    refresh_status();
 }
 
 static void destroy(void)
@@ -120,7 +156,7 @@ static void destroy(void)
         if (s_flash_tm[i]) { lv_timer_delete(s_flash_tm[i]); s_flash_tm[i] = NULL; }
         s_cell[i] = s_num[i] = NULL;
     }
-    s_pass = NULL;
+    s_status = s_hint = NULL;
 }
 
 const ui_screen_t g_scr_btntest = {
