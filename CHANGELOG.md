@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.2] - 2026-11-05
+
+- Cài đặt > Chế độ nhà phát triển: màn hình riêng gồm công tắc bật/tắt, Thử 4 nút bấm (bấm lần lượt B1–B4, Đạt khi đủ 4) và Thử Wi-Fi (SSID, RSSI, IP; 60 s gửi HTTP tới máy chủ, đếm thành công/lỗi, độ trễ TB/max, số lần mất kết nối).
+
 ## [2.2.1] - 2026-11-05
 
 - Phát hành lại đầy đủ thay đổi 2.2.0; icon đen-trắng (tương phản) trên bảng nhanh.

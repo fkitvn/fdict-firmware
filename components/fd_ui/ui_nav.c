@@ -36,6 +36,9 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_SHADOW] = &g_scr_shadow,
     [FD_SCR_SENTENCE] = &g_scr_sentence,
     [FD_SCR_MICTEST] = &g_scr_mictest,
+    [FD_SCR_DEVMODE] = &g_scr_devmode,
+    [FD_SCR_BTNTEST] = &g_scr_btntest,
+    [FD_SCR_WIFITEST] = &g_scr_wifitest,
 };
 
 static fd_scr_t s_cur = FD_SCR_COUNT;
