@@ -80,6 +80,17 @@ static void spk_start(int mode)
     s_spk_alive = true;
 }
 
+/* 2.2.8: thanh am luong (cung cai dat he thong fd_audio, NVS fd/vol; codec gioi han 0 dB). Keo: cap nhat so;
+ * tha tay: luu + ap dung cho lan phat ke tiep (am thu / nghe lai). */
+static lv_obj_t *s_vol_lbl;
+static void vol_cb(lv_event_t *e)
+{
+    lv_obj_t *sl = lv_event_get_target_obj(e);
+    int v = (int)lv_slider_get_value(sl);
+    if (s_vol_lbl) lv_label_set_text_fmt(s_vol_lbl, "%d%%", v);
+    if (lv_event_get_code(e) == LV_EVENT_RELEASED) fd_audio_set_volume(v);
+}
+
 static void spk_tone_cb(lv_event_t *e) { (void)e; spk_start(0); }
 static void spk_sweep_cb(lv_event_t *e) { (void)e; spk_start(1); }
 
@@ -204,6 +215,26 @@ static void build(lv_obj_t *scr)
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(t, _("MIC_TEST"));
 
+    lv_obj_t *vr = lv_obj_create(body);   /* am luong */
+    lv_obj_remove_style_all(vr);
+    lv_obj_set_size(vr, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(vr, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(vr, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(vr, 10, 0);
+    lv_obj_set_style_pad_ver(vr, 6, 0);
+    lv_obj_t *vi = lv_label_create(vr);
+    lv_obj_set_style_text_font(vi, &lv_font_montserrat_14, 0);
+    lv_label_set_text(vi, LV_SYMBOL_VOLUME_MAX);
+    lv_obj_t *sl = lv_slider_create(vr);
+    lv_obj_set_flex_grow(sl, 1);
+    lv_slider_set_range(sl, 0, 100);
+    lv_slider_set_value(sl, fd_audio_get_volume(), LV_ANIM_OFF);
+    lv_obj_add_event_cb(sl, vol_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_event_cb(sl, vol_cb, LV_EVENT_RELEASED, NULL);
+    s_vol_lbl = lv_label_create(vr);
+    lv_obj_set_width(s_vol_lbl, 44);
+    lv_label_set_text_fmt(s_vol_lbl, "%d%%", fd_audio_get_volume());
+
     lv_obj_t *sh = lv_label_create(body);   /* --- Loa --- */
     lv_obj_set_style_text_color(sh, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
     lv_obj_set_width(sh, lv_pct(100));
@@ -257,7 +288,7 @@ static void destroy(void)
 {
     if (s_tm) { lv_timer_delete(s_tm); s_tm = NULL; }
     if (fd_audio_rec_active()) fd_audio_rec_stop();   /* roi man: dung ghi (van luu phan da ghi) */
-    s_spk_tone = s_spk_sweep = s_spk_status = NULL;
+    s_spk_tone = s_spk_sweep = s_spk_status = s_vol_lbl = NULL;
     s_status = s_bar = s_rec_btn = s_rec_ico = s_rec_txt = s_play_btn = s_del_btn = NULL;
 }
 
