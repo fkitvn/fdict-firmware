@@ -24,6 +24,7 @@ Thu nhỏ về 48×48 bằng Lanczos trên alpha nhân trước (tránh viền t
 | Đồng bộ | Counterclockwise arrows button 🔄 | `img_tile_sync.c` |
 | Thống kê | Bar chart 📊 | `img_tile_stats.c` |
 | Cài đặt | Gear ⚙️ (đổi màu) | `img_tile_settings.c` |
+| Sắp xếp câu | Puzzle piece 🧩 | `img_tile_sentence.c` |
 
 Bánh răng Fluent gốc màu tím nhạt (lavender), khó nhìn trên nền sáng: script giữ độ sáng tối từng điểm
 (khối 3D) nhưng chuyển sang tông xám xanh slate (hue #475569), kéo giãn tương phản, dải sáng 18–78% (tối hơn bản gốc).

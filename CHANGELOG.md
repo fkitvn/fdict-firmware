@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.1.7] - 2026-11-05
+
+- Sắp xếp câu: mỗi từ là một thẻ, chạm lần lượt để ghép câu, đủ từ là tự chấm ngay; chạm vào câu để xóa từ vừa chọn.
+- Học được khi không có mạng: dùng bộ câu đã tải hoặc câu mẫu có sẵn, chấm ngay trên máy; kết quả tự đồng bộ khi có mạng trở lại.
+- Ô "Sắp xếp câu" có biểu tượng riêng (mảnh ghép).
+
 ## [2.1.6] - 2026-11-04
 
 - Thêm bài học mới "Sắp xếp câu": xếp các thẻ từ đã xáo trộn thành câu tiếng Anh hoàn chỉnh bằng nút bấm hoặc chạm, kiểm tra đáp án ngay, xem câu đúng và nghĩa tiếng Việt. Câu lấy từ ví dụ trong bộ từ của bạn, chưa có thì dùng câu mẫu.

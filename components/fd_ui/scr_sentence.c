@@ -1,10 +1,12 @@
 /* 2.1.6 Sap xep thanh cau (fd_sentence): the tu da xao, chon dung thu tu -> kiem tra -> phan hoi -> cau tiep.
  * Nut cung (theo o COLOUR_CELL cua xoay hien tai): TL = the truoc, TR = the sau, BL = xoa the vua chon, BR = chon.
- * Cham truc tiep vao the cung duoc. Chon du the -> tu kiem tra. 401/410/429/message: ui_nav + fd_ota xu ly chung. */
+ * Moi tu la 1 the chu nhat (vien). Cham the de chon lan luot -> the chuyen len vung cau; cham vung cau = xoa tu cuoi.
+ * Chon du the -> tu kiem tra ngay (cham tai may). 2.1.7: hoc offline (cache / bo cau mau), ket qua dong bo sau. */
 #include <stdio.h>
 #include <string.h>
 #include "esp_timer.h"
 #include "fd_fonts.h"
+#include "fd_net.h"
 #include "fd_sentence.h"
 #include "ui_priv.h"
 
@@ -16,7 +18,7 @@ typedef enum { V_LOAD, V_MSG, V_PLAY, V_FEED, V_RESULT } view_t;
 
 static view_t s_view;
 static lv_obj_t *s_body;
-static lv_obj_t *s_ans;             /* hang cau dang ghep */
+static lv_obj_t *s_ans;             /* vung cau dang ghep (hang the da chon) */
 static lv_obj_t *s_tile[FD_SEN_TOK];
 static fd_sen_ex_t s_ex;
 static int s_pos, s_total, s_correct, s_streak, s_best;
@@ -68,6 +70,27 @@ static lv_obj_t *row(lv_obj_t *p, bool wrap)
     lv_obj_set_style_pad_row(r, 6, 0);
     lv_obj_set_scrollable(r, false);
     return r;
+}
+
+static void tile_box(lv_obj_t *b, bool cur)
+{
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_radius(b, 4, 0);
+    lv_obj_set_style_pad_hor(b, 8, 0);
+    lv_obj_set_style_pad_ver(b, 4, 0);
+    lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(b, cur ? 3 : 2, 0);
+    lv_obj_set_style_border_color(b, lv_color_hex(cur ? FD_COLOR_PRIMARY : 0x9CA3AF), 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(cur ? FD_COLOR_PRIMARY_TINT : 0xFFFFFF), 0);
+}
+
+static lv_obj_t *tile_label(lv_obj_t *b, const char *t)
+{
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_font(l, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_label_set_text(l, t);
+    return l;
 }
 
 static void show_play(void);
@@ -123,6 +146,7 @@ static void start(void)
     s_pos = s_correct = s_streak = s_best = 0;
     fd_sen_start(COUNT);   /* false = dang ban: van cho lan tai hien tai */
     s_waiting = true;
+    fd_sen_sync();
     s_t_all = esp_timer_get_time();
 }
 
@@ -152,11 +176,8 @@ static void tile_style(int i)
 {
     lv_obj_t *b = s_tile[i];
     if (!b) return;
-    lv_obj_set_hidden(b, s_used[i]);
-    bool cur = i == s_cur;
-    lv_obj_set_style_border_width(b, cur ? 3 : 1, 0);
-    lv_obj_set_style_border_color(b, lv_color_hex(cur ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(cur ? FD_COLOR_PRIMARY_TINT : 0xFFFFFF), 0);
+    lv_obj_set_hidden(b, s_used[i]);   /* the da chon chuyen len vung cau */
+    tile_box(b, i == s_cur);
 }
 
 static void next_free(int dir)
@@ -169,22 +190,39 @@ static void next_free(int dir)
 
 static void refresh_play(void)
 {
-    char buf[FD_SEN_TXT_LEN + 8];
-    ans_text(buf, sizeof(buf));
-    if (s_ans) lv_label_set_text(s_ans, buf);
+    if (s_ans) {
+        lv_obj_clean(s_ans);
+        if (s_npick == 0) {
+            lv_obj_t *l = lv_label_create(s_ans);
+            lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
+            lv_label_set_text(l, _("SEN_TAP_HINT"));
+            lv_obj_set_clickable(l, false);
+        }
+        for (int k = 0; k < s_npick; k++) {
+            lv_obj_t *t = lv_obj_create(s_ans);
+            lv_obj_set_size(t, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_scrollable(t, false);
+            lv_obj_set_clickable(t, false);   /* cham roi vao vung cau = xoa tu cuoi */
+            tile_box(t, false);
+            lv_obj_set_style_bg_color(t, lv_color_hex(0xF3F4F6), 0);
+            lv_obj_set_clickable(tile_label(t, s_ex.tok[s_pick[k]]), false);
+        }
+    }
     for (int i = 0; i < s_ex.n; i++) tile_style(i);
 }
 
 static void show_feed(bool ok);
 
+static void feed_async(void *ok) { if (s_body) show_feed(ok != NULL); }
+
 static void pick(int i)
 {
-    if (s_view != V_PLAY || i < 0 || i >= s_ex.n || s_used[i]) return;
+    if (s_view != V_PLAY || i < 0 || i >= s_ex.n || s_used[i] || s_npick >= s_ex.n) return;
     s_used[i] = true;
     s_pick[s_npick++] = i;
     if (s_npick >= s_ex.n) {
         uint32_t ms = (uint32_t)((esp_timer_get_time() - s_t0) / 1000);
-        show_feed(fd_sen_answer(s_pos, s_pick, s_npick, ms));
+        lv_async_call(feed_async, (void *)(intptr_t)fd_sen_answer(s_pos, s_pick, s_npick, ms));   /* khong xoa the trong chinh callback cua no */
         return;
     }
     if (s_used[s_cur]) next_free(1);
@@ -193,7 +231,7 @@ static void pick(int i)
 
 static void undo(void)
 {
-    if (s_view != V_PLAY || s_npick == 0) return;
+    if (s_view != V_PLAY || s_npick == 0 || s_npick >= s_ex.n) return;   /* du the: dang cham */
     s_cur = s_pick[--s_npick];
     s_used[s_cur] = false;
     refresh_play();
@@ -232,7 +270,11 @@ static void show_play(void)
     snprintf(tmp, sizeof(tmp), _("SEN_PROGRESS"), s_pos + 1, s_total);
     label(s_body, tmp, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     if (s_ex.hint[0]) label(s_body, s_ex.hint, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
-    s_ans = label(s_body, "", &fd_font_noto_18, FD_COLOR_TEXT);
+    fd_sen_status_t st;
+    fd_sen_get(&st);
+    if (st.source != FD_SEN_SRC_ONLINE) label(s_body, _("SEN_OFFLINE"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
+    s_ans = row(s_body, true);
+    lv_obj_set_style_min_height(s_ans, 36, 0);
     lv_obj_set_style_border_width(s_ans, 1, 0);
     lv_obj_set_style_border_side(s_ans, LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_border_color(s_ans, lv_color_hex(FD_COLOR_BORDER), 0);
@@ -242,14 +284,8 @@ static void show_play(void)
     lv_obj_t *pool = row(s_body, true);
     for (int i = 0; i < s_ex.n; i++) {
         lv_obj_t *b = lv_button_create(pool);
-        lv_obj_set_style_shadow_width(b, 0, 0);
-        lv_obj_set_style_radius(b, 8, 0);
-        lv_obj_set_style_pad_hor(b, 8, 0);
-        lv_obj_set_style_pad_ver(b, 4, 0);
-        lv_obj_t *l = lv_label_create(b);
-        lv_obj_set_style_text_font(l, &fd_font_noto_18, 0);
-        lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
-        lv_label_set_text(l, s_ex.tok[i]);
+        tile_box(b, false);
+        tile_label(b, s_ex.tok[i]);
         lv_obj_add_event_cb(b, tile_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         s_tile[i] = b;
     }
@@ -294,6 +330,9 @@ static void show_result(void)
     char tmp[48];
     snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, s_total);
     label(s_body, tmp, &fd_font_noto_18, s_correct * 2 >= s_total ? C_OK : C_BAD);
+    fd_sen_status_t st;
+    fd_sen_get(&st);
+    if (st.outbox > 0 && !fd_net_is_connected()) label(s_body, _("SEN_SYNC_LATER"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_t *r = row(s_body, false);
     button(r, _("BACK"), home_cb);
     button(r, _("SEN_AGAIN"), retry_cb);
@@ -308,7 +347,7 @@ static void build(lv_obj_t *scr)
 
 static void destroy(void) { s_body = s_ans = NULL; memset(s_tile, 0, sizeof(s_tile)); }
 
-static void on_tick(void) { poll_load(); }
+static void on_tick(void) { poll_load(); fd_sen_sync(); }   /* co mang: gui ket qua dang cho */
 
 static bool on_button(const fd_evt_button_t *b)
 {
