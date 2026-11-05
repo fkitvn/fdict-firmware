@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.2.1] - 2026-11-05
+
+- Phát hành lại đầy đủ thay đổi 2.2.0; icon đen-trắng (tương phản) trên bảng nhanh.
+
 ## [2.2.0] - 2026-11-05
 
 - Wi-Fi: tăng bộ đệm RX (ổn định hơn khi OTA).
