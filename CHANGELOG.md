@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.1] - 2026-11-06
+
+- Cập nhật firmware: hạ ngưỡng pin tối thiểu từ 10% xuống 5%.
+
 ## [2.3.0] - 2026-11-06
 
 - Đồng bộ: sao chép toàn bộ bộ từ, nghĩa, câu ví dụ và cài đặt học từ mini app về máy (LittleFS, ghi nguyên tử); cloud là nguồn đúng, từ/bộ bị xoá trên cloud cũng bị xoá trên máy.

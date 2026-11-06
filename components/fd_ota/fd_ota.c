@@ -56,7 +56,7 @@ uint32_t fd_ota_server_gen(void) { return s_srv_gen; }
 #define REPORT_TO_MS    6000
 #define RANGE_CHUNK     (64 * 1024)
 #define DL_ATTEMPTS     4
-#define MIN_BATT        10
+#define MIN_BATT        5
 #define IDLE_POLL_MS    1000
 #define SELFTEST_WIFI_MS 60000
 #define CHECK_MIN_S     3600
