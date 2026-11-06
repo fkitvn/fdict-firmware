@@ -51,6 +51,7 @@ en:
   IN_ORDER: In order
   LANGUAGE: Language
   LATER: Later
+  LOADING: Loading...
   LOADING_QUESTIONS: Loading questions…
   MEANING: Meaning
   MEMORY: Memory
@@ -72,7 +73,7 @@ en:
   NEXT: Next >
   NONE: None
   NOT_CONNECTED: Not connected
-  NOT_PAIRED: Not paired
+  NOT_PAIRED: Not signed in
   NOT_SET: Not set
   NO_NETWORKS_FOUND: No networks found
   NO_OFFLINE_DATA_YET: No offline data yet
@@ -100,16 +101,28 @@ en:
   OTA_RESTARTING: Restarting to update…
   OTA_UPDATE_ASK: New version %s/%s (%u.%02u MB). Update now?
   PAIRED_WITH_ACCOUNT: Paired with account
-  PAIR_CONNECT_WIFI: Connect to Wi-Fi to pair
-  PAIR_DEVICE: Pair device
+  PAIR_CONNECT_WIFI: Connect to Wi-Fi to sign in
+  PAIR_DEVICE: Sign in to continue
   PAIR_GETTING_CODE: Getting code…
   PAIR_GET_CODE: Get code
   PAIR_GET_NEW_CODE: Get new code
-  PAIR_HINT: Pair the device with your account on your phone.
+  PAIR_HINT: Sign in with Zalo on your phone to keep studying.
   PAIR_SCAN_WITH_PHONE: 'Scan with your phone · %d:%02d'
   PAIR_STEP_ID: Identify
   PAIR_STEP_ZALO: Activate warranty
-  PAIR_TO_STUDY: Pair the device to study
+  PAIR_TO_STUDY: Sign in to continue
+  WORD_TYPE: Word type
+  FILL_BLANK: Fill in the blank
+  DICTIONARY: Dictionary
+  POS_PROMPT: What type of word is this?
+  LOOKUP_HINT: Type an English word to look up
+  LOOKUP_HISTORY: Recent lookups
+  LOOKUP_ADDING: Adding to your study list…
+  LOOKUP_ADDED: Added to your study list
+  LOOKUP_QUEUED: Queued — will add when online
+  LOOKUP_NEED_WIFI: Wi-Fi needed to look up words
+  LOOKUP_NOT_FOUND: Word not found
+  LOOKUP_ERROR: Lookup failed
   PASSWORD: Password
   PIN_CODE: PIN code
   PIN_ENTER_CURRENT: Enter current PIN

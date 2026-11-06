@@ -44,6 +44,9 @@ static const struct {
     {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
     {&img_tile_study, "STUDY", FD_SCR_STUDY},          /* 2.3.0: "Quiz" (truoc la Hoc tap) */
     {&img_tile_sentence, "SENTENCE", FD_SCR_SENTENCE},
+    {&img_tile_study, "WORD_TYPE", FD_SCR_POS},        /* 2.3.5: Phan loai tu */
+    {&img_tile_sentence, "FILL_BLANK", FD_SCR_CLOZE},  /* 2.3.5: Dien tu */
+    {&img_tile_flashcard, "DICTIONARY", FD_SCR_DICT},  /* 2.3.5: Tu dien */
     {&img_tile_sync, "SYNC", FD_SCR_SYNC},
     {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
     {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},

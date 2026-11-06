@@ -47,6 +47,7 @@ typedef struct {
     uint16_t seen;
     uint32_t ca, off;
     char en[FD_FC_WORD_LEN], ipa[FD_FC_IPA_LEN], vi[FD_FC_MEAN_LEN];
+    char pos[24];   /* 2.3.5: loai tu (noun/verb/...) tu store.tsv */
 } word_t;
 
 static SemaphoreHandle_t s_mx;    /* kho (s_w, file store.tsv) + s_st */
@@ -229,6 +230,7 @@ static bool load_store_locked(void)
             ucpy(w->en, sizeof(w->en), fl[5]);
             ucpy(w->ipa, sizeof(w->ipa), fl[6]);
             ucpy(w->vi, sizeof(w->vi), fl[7]);
+            ucpy(w->pos, sizeof(w->pos), fl[8]);
             int k = atoi(fl[10]);
             if (k < 0) k = 0;
             if (k > (n - 11) / 2) k = (n - 11) / 2;
@@ -948,4 +950,197 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
     free(line);
     free(o);
     return got;
+}
+/* ---------- 2.3.5: phan loai tu + dien cho trong ---------- */
+typedef struct { const char *key; const char *vi; const char *en; } pos_map_t;
+static const pos_map_t POS_MAP[] = {
+    {"noun", "Danh từ", "Noun"}, {"n.", "Danh từ", "Noun"}, {"n", "Danh từ", "Noun"},
+    {"verb", "Động từ", "Verb"}, {"v.", "Động từ", "Verb"}, {"v", "Động từ", "Verb"},
+    {"adjective", "Tính từ", "Adjective"}, {"adj.", "Tính từ", "Adjective"}, {"adj", "Tính từ", "Adjective"},
+    {"adverb", "Trạng từ", "Adverb"}, {"adv.", "Trạng từ", "Adverb"}, {"adv", "Trạng từ", "Adverb"},
+    {"preposition", "Giới từ", "Preposition"}, {"prep.", "Giới từ", "Preposition"},
+    {"pronoun", "Đại từ", "Pronoun"}, {"pron.", "Đại từ", "Pronoun"},
+    {"conjunction", "Liên từ", "Conjunction"}, {"conj.", "Liên từ", "Conjunction"},
+    {"interjection", "Thán từ", "Interjection"},
+    {"determiner", "Hạn định từ", "Determiner"}, {"article", "Mạo từ", "Article"},
+    {"phrase", "Cụm từ", "Phrase"},
+};
+
+static const char *pos_label(const char *raw, bool vi)
+{
+    static char buf[24];
+    if (!raw || !raw[0]) return vi ? "Khác" : "Other";
+    size_t n = 0;
+    while (raw[n] && raw[n] != '/' && raw[n] != ',' && raw[n] != ';' && raw[n] != '|' && n + 1 < sizeof(buf)) {
+        buf[n] = raw[n];
+        n++;
+    }
+    while (n && buf[n - 1] == ' ') n--;
+    buf[n] = 0;
+    for (size_t i = 0; i < sizeof(POS_MAP) / sizeof(POS_MAP[0]); i++) {
+        if (!strcasecmp(buf, POS_MAP[i].key)) return vi ? POS_MAP[i].vi : POS_MAP[i].en;
+    }
+    return buf;
+}
+
+static bool pos_same(const char *a, const char *b)
+{
+    return a && b && !strcasecmp(a, b);
+}
+
+fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n)
+{
+    if (!s) return FD_STUDY_ERR_FORMAT;
+    memset(s, 0, sizeof(*s));
+    if (!fd_sync_ready()) return FD_STUDY_ERR_NO_DECK;
+    if (n <= 0 || n > FD_STUDY_MAX) n = FD_STUDY_MAX;
+    ord_t *o = ps_alloc(sizeof(ord_t) * FD_SYNC_MAX_WORDS);
+    if (!o) return FD_STUDY_ERR_NOMEM;
+    lock();
+    int m = order_words(o, n * 2, false);
+    static const char *FALLBACK_VI[] = {"Danh từ", "Động từ", "Tính từ", "Trạng từ"};
+    bool use_vi = true;
+    for (int q = 0; q < m && s->n < n; q++) {
+        word_t *w = &s_w[o[q].idx];
+        if (!w->pos[0]) continue;
+        const char *ans = pos_label(w->pos, use_vi);
+        fd_study_q_t *d = &s->q[s->n];
+        memset(d, 0, sizeof(*d));
+        ucpy(d->id, sizeof(d->id), w->id);
+        snprintf(d->prompt, sizeof(d->prompt), "%s", w->en);
+        if (w->ipa[0]) ucpy(d->ipa, sizeof(d->ipa), w->ipa);
+        int slot = rnd(4), got = 1;
+        d->answer = (int8_t)slot;
+        ucpy(d->choice[slot], sizeof(d->choice[slot]), ans);
+        for (int tries = 0; tries < 80 && got < 4; tries++) {
+            const word_t *x = &s_w[rnd(s_nw)];
+            const char *t = pos_label(x->pos, use_vi);
+            if (!x->pos[0] || pos_same(t, ans)) continue;
+            bool dup = false;
+            for (int k = 0; k < 4; k++) if (d->choice[k][0] && pos_same(d->choice[k], t)) dup = true;
+            if (dup) continue;
+            int i = 0; while (d->choice[i][0]) i++;
+            ucpy(d->choice[i], sizeof(d->choice[i]), t);
+            got++;
+        }
+        for (int f = 0; got < 4 && f < 4; f++) {
+            const char *t = FALLBACK_VI[f];
+            if (pos_same(t, ans)) continue;
+            bool dup = false;
+            for (int k = 0; k < 4; k++) if (d->choice[k][0] && pos_same(d->choice[k], t)) dup = true;
+            if (dup) continue;
+            int i = 0; while (d->choice[i][0]) i++;
+            ucpy(d->choice[i], sizeof(d->choice[i]), t);
+            got++;
+        }
+        if (got < 4) continue;
+        if (w->seen < 0xFFFF) w->seen++;
+        s->n++;
+    }
+    unlock();
+    free(o);
+    if (s->n == 0) return FD_STUDY_ERR_NO_DECK;
+    for (int i = s->n - 1; i > 0; i--) {
+        int j = rnd(i + 1);
+        fd_study_q_t t = s->q[i]; s->q[i] = s->q[j]; s->q[j] = t;
+    }
+    snprintf(s->session_id, sizeof(s->session_id), "lp-%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
+    s->offline = true;
+    return FD_STUDY_ERR_NONE;
+}
+
+static bool cloze_blank(const char *sentence, const char *word, char *out, size_t cap)
+{
+    if (!sentence || !word || !word[0] || !out || cap < 8) return false;
+    size_t wl = strlen(word);
+    const char *p = sentence;
+    const char *hit = NULL;
+    while (*p) {
+        while (*p == ' ') p++;
+        if (!*p) break;
+        const char *start = p;
+        while (*p && *p != ' ') p++;
+        size_t n = (size_t)(p - start);
+        size_t cmp = n;
+        while (cmp && strchr(".?!,;:\"'", start[cmp - 1])) cmp--;
+        if (cmp == wl && !strncasecmp(start, word, wl)) { hit = start; break; }
+    }
+    if (!hit) return false;
+    size_t pre = (size_t)(hit - sentence);
+    if (pre >= cap) return false;
+    memcpy(out, sentence, pre);
+    size_t o = pre;
+    const char *blank = "______";
+    size_t bl = strlen(blank);
+    if (o + bl + 1 >= cap) return false;
+    memcpy(out + o, blank, bl); o += bl;
+    const char *rest = hit;
+    while (*rest && *rest != ' ') rest++;
+    if (o + strlen(rest) + 1 >= cap) return false;
+    memcpy(out + o, rest, strlen(rest) + 1);
+    return true;
+}
+
+fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
+{
+    if (!s) return FD_STUDY_ERR_FORMAT;
+    memset(s, 0, sizeof(*s));
+    if (!fd_sync_ready()) return FD_STUDY_ERR_NO_DECK;
+    if (n <= 0 || n > FD_STUDY_MAX) n = FD_STUDY_MAX;
+    ord_t *o = ps_alloc(sizeof(ord_t) * FD_SYNC_MAX_WORDS);
+    char *line = ps_alloc(LINE_CAP);
+    if (!o || !line) { free(o); free(line); return FD_STUDY_ERR_NOMEM; }
+    lock();
+    int m = order_words(o, n * 3, true);
+    FILE *f = m ? fopen(STORE, "r") : NULL;
+    for (int i = 0; f && i < m && s->n < n; i++) {
+        word_t *w = &s_w[o[i].idx];
+        if (fseek(f, (long)w->off, SEEK_SET) || !fgets(line, LINE_CAP, f)) continue;
+        size_t L = strlen(line);
+        if (L && line[L - 1] == '\n') line[--L] = 0;
+        char *fl[32];
+        int nf = split_tabs(line, fl, 32);
+        int k = nf >= 11 ? atoi(fl[10]) : 0;
+        if (k <= 0 || 11 + 2 * k > nf) continue;
+        int pick = rnd(k);
+        bool ok = false;
+        fd_study_q_t *d = &s->q[s->n];
+        memset(d, 0, sizeof(*d));
+        for (int t = 0; t < k; t++) {
+            int j = (pick + t) % k;
+            const char *sen = fl[11 + 2 * j];
+            if (cloze_blank(sen, w->en, d->prompt, sizeof(d->prompt))) { ok = true; break; }
+        }
+        if (!ok) continue;
+        ucpy(d->id, sizeof(d->id), w->id);
+        if (w->ipa[0]) ucpy(d->ipa, sizeof(d->ipa), w->ipa);
+        int ans = rnd(4), got = 1;
+        d->answer = (int8_t)ans;
+        ucpy(d->choice[ans], sizeof(d->choice[ans]), w->en);
+        for (int tries = 0; tries < 60 && got < 4; tries++) {
+            const word_t *x = &s_w[rnd(s_nw)];
+            if (!x->en[0] || !strcasecmp(x->en, w->en)) continue;
+            bool dup = false;
+            for (int cidx = 0; cidx < 4; cidx++) if (d->choice[cidx][0] && !strcasecmp(d->choice[cidx], x->en)) dup = true;
+            if (dup) continue;
+            int slot = 0; while (d->choice[slot][0]) slot++;
+            ucpy(d->choice[slot], sizeof(d->choice[slot]), x->en);
+            got++;
+        }
+        if (got < 4) continue;
+        if (w->seen < 0xFFFF) w->seen++;
+        s->n++;
+    }
+    if (f) fclose(f);
+    unlock();
+    free(o);
+    free(line);
+    if (s->n == 0) return FD_STUDY_ERR_NO_DECK;
+    for (int i = s->n - 1; i > 0; i--) {
+        int j = rnd(i + 1);
+        fd_study_q_t t = s->q[i]; s->q[i] = s->q[j]; s->q[j] = t;
+    }
+    snprintf(s->session_id, sizeof(s->session_id), "lc-%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
+    s->offline = true;
+    return FD_STUDY_ERR_NONE;
 }

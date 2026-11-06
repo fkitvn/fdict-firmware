@@ -20,6 +20,9 @@ typedef enum {
     FD_SCR_VOLUME,      /* Cai dat > Am luong */
     FD_SCR_TIMEOUT,     /* Cai dat > Thoi gian cho man hinh */
     FD_SCR_PIN,         /* Cai dat > Ma PIN; xac nhan tat may */
+    FD_SCR_POS,         /* 2.3.5 Phan loai tu */
+    FD_SCR_CLOZE,       /* 2.3.5 Dien tu */
+    FD_SCR_DICT,        /* 2.3.5 Tu dien online */
     FD_SCR_PICWORD,     /* MOCKUP Doan tu qua hinh anh */
     FD_SCR_FILLCHAR,    /* MOCKUP Dien ky tu con thieu */
     FD_SCR_PRON,        /* MOCKUP Phat am */

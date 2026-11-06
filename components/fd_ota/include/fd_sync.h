@@ -55,6 +55,9 @@ void fd_sync_get(fd_sync_status_t *out);
 bool fd_sync_ready(void);                /* kho co >= 4 tu (du tao trac nghiem) */
 /* Tao phien Quiz tu kho (theo uu tien hoc). n <= FD_STUDY_MAX. session_id "lq-..." (ket qua = su kien fd_sync_event). */
 fd_study_err_t fd_sync_build_quiz(fd_study_session_t *s, bool vi_en, int n);
+/* Trac nghiem phan loai tu (POS) / dien tu cho trong tu kho dong bo (4 dap an). */
+fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n);
+fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n);
 int fd_sync_build_cards(fd_fc_card_t *out, int cap);
 /* Bai sap xep cau tu cau vi du trong kho: dien ans/n/end/sentence/hint (tok = ans, nguoi goi tu xao); wid = id tu. */
 int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int cap);

@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.5] - 2026-11-06
+
+- Đăng nhập: cổng học đổi nhãn thành "Đăng nhập để tiếp tục" (coi ghép thiết bị là bước đăng nhập).
+- Module mới: Phân loại từ và Điền từ (4 đáp án, offline từ kho đồng bộ, cần đăng nhập).
+- Từ điển online: tra qua dict.fkit.vn, lịch sử 30 từ, mặc động thêm vào từ cần học (hàng chờ khi lỗi mạng).
+- Trang chủ: thêm ô Phân loại từ, Điền từ, Từ điển.
+
 ## [2.3.4] - 2026-11-06
 
 - Sắp xếp câu: thêm cài đặt số câu mỗi lượt (5/10) và hướng dịch (Việt > Anh / Anh > Việt); giữ tùy chọn phát âm sau mỗi câu.

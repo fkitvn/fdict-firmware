@@ -51,6 +51,7 @@ vi:
   IN_ORDER: Theo danh sách
   LANGUAGE: Ngôn ngữ
   LATER: Để sau
+  LOADING: Đang tải...
   LOADING_QUESTIONS: Đang tải câu hỏi…
   MEANING: Nghĩa
   MEMORY: Bộ nhớ
@@ -72,7 +73,7 @@ vi:
   NEXT: Sau >
   NONE: Không có
   NOT_CONNECTED: Chưa kết nối
-  NOT_PAIRED: Chưa ghép
+  NOT_PAIRED: Chưa đăng nhập
   NOT_SET: Chưa đặt
   NO_NETWORKS_FOUND: Không tìm thấy mạng nào
   NO_OFFLINE_DATA_YET: Chưa có dữ liệu offline
@@ -100,16 +101,28 @@ vi:
   OTA_RESTARTING: Đang khởi động lại để cập nhật…
   OTA_UPDATE_ASK: Có phiên bản mới %s/%s (%u.%02u MB). Nâng cấp ngay?
   PAIRED_WITH_ACCOUNT: Đã ghép với tài khoản
-  PAIR_CONNECT_WIFI: Kết nối Wi-Fi để ghép
-  PAIR_DEVICE: Ghép thiết bị
+  PAIR_CONNECT_WIFI: Kết nối Wi-Fi để đăng nhập
+  PAIR_DEVICE: Đăng nhập để tiếp tục
   PAIR_GETTING_CODE: Đang lấy mã…
   PAIR_GET_CODE: Lấy mã
   PAIR_GET_NEW_CODE: Lấy mã mới
-  PAIR_HINT: Ghép máy với tài khoản trên điện thoại.
+  PAIR_HINT: Đăng nhập bằng Zalo trên điện thoại để tiếp tục học.
   PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
   PAIR_STEP_ID: Định danh
   PAIR_STEP_ZALO: Kích hoạt bảo hành
-  PAIR_TO_STUDY: Cần ghép thiết bị để học
+  PAIR_TO_STUDY: Đăng nhập để tiếp tục
+  WORD_TYPE: Phân loại từ
+  FILL_BLANK: Điền từ
+  DICTIONARY: Từ điển
+  POS_PROMPT: Từ này thuộc loại nào?
+  LOOKUP_HINT: Nhập từ tiếng Anh để tra
+  LOOKUP_HISTORY: Đã tra gần đây
+  LOOKUP_ADDING: Đang thêm vào từ cần học…
+  LOOKUP_ADDED: Đã thêm vào từ cần học
+  LOOKUP_QUEUED: Đã xếp hàng, sẽ thêm khi có mạng
+  LOOKUP_NEED_WIFI: Cần Wi-Fi để tra từ
+  LOOKUP_NOT_FOUND: Không tìm thấy từ này
+  LOOKUP_ERROR: Không tra được từ
   PASSWORD: Mật khẩu
   PIN_CODE: Mã PIN
   PIN_ENTER_CURRENT: Nhập mã PIN hiện tại

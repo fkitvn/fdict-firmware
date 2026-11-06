@@ -291,8 +291,8 @@ void ui_answer_cell_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m, uint3
     lv_obj_center(ic);
 }
 
-/* 2.3.0: cong "Can ghep thiet bi de hoc" dung chung cho MOI mo-dun hoc (giong man Quiz cu): chi kiem tra token cuc bo,
- * da ghep thi hoc offline tu kho dong bo. */
+/* 2.3.5: cong "Dang nhap de tiep tuc" dung chung cho MOI mo-dun hoc: chi kiem tra token cuc bo (buoc dang nhap = ghep thiet bi),
+ * da dang nhap thi hoc offline tu kho dong bo. */
 static void gate_home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
 static void gate_pair_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_PAIR); }
 
