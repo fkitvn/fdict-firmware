@@ -1,4 +1,5 @@
-/* 2.3.0 Man "Thong ke": LUON lay tu server (POST /api/study/stats, gui outbox truoc). Khong Wi-Fi -> bao can ket noi. */
+/* 2.3.0 Man "Thong ke": LUON lay tu server (POST /api/study/stats, gui outbox truoc). Khong Wi-Fi -> bao can ket noi.
+ * 2.3.4: noi dung trong vung cuon (s_list), nut Tro lai / Thu lai ghim day man; nhan thong ke can trai. */
 #include <stdio.h>
 #include <string.h>
 #include "fd_fonts.h"
@@ -8,7 +9,8 @@
 #include "ui_priv.h"
 
 static lv_obj_t *s_body;
-static bool s_gate, s_shown;
+static lv_obj_t *s_list;   /* vung noi dung cuon (tren thanh nut) */
+static bool s_gate, s_shown, s_left;
 
 static void home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
@@ -18,21 +20,22 @@ static void retry_cb(lv_event_t *e) { (void)e; lv_async_call(retry_async, NULL);
 
 static lv_obj_t *text(const char *t, const lv_font_t *f, uint32_t c)
 {
-    lv_obj_t *l = lv_label_create(s_body);
+    lv_obj_t *l = lv_label_create(s_list ? s_list : s_body);
     if (f) lv_obj_set_style_text_font(l, f, 0);
     lv_obj_set_style_text_color(l, lv_color_hex(c), 0);
     lv_obj_set_width(l, lv_pct(100));
     lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_align(l, s_left ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(l, t);
     return l;
 }
 
 static lv_obj_t *btn_row(void)
 {
-    lv_obj_t *r = lv_obj_create(s_body);
+    lv_obj_t *r = lv_obj_create(s_body);   /* con cuoi cua s_body, sau s_list (grow) -> ghim day */
     lv_obj_remove_style_all(r);
     lv_obj_set_size(r, lv_pct(100), 44);
+    lv_obj_set_scrollable(r, false);
     lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
     lv_obj_set_style_pad_column(r, 8, 0);
     return r;
@@ -40,9 +43,14 @@ static lv_obj_t *btn_row(void)
 
 static void kv(const char *k, const char *v)
 {
-    lv_obj_t *r = lv_obj_create(s_body);
+    lv_obj_t *r = lv_obj_create(s_list ? s_list : s_body);
     lv_obj_remove_style_all(r);
     lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(r, LV_OPA_COVER, 0);   /* 2.3.4: the trang bo goc */
+    lv_obj_set_style_bg_color(r, lv_color_white(), 0);
+    lv_obj_set_style_radius(r, 8, 0);
+    lv_obj_set_style_pad_hor(r, 10, 0);
+    lv_obj_set_style_pad_ver(r, 6, 0);
     lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *a = lv_label_create(r);
@@ -50,6 +58,7 @@ static void kv(const char *k, const char *v)
     lv_label_set_text(a, k);
     lv_obj_t *b = lv_label_create(r);
     lv_obj_set_style_text_color(b, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_style_text_font(b, &fd_font_noto_18, 0);
     lv_label_set_text(b, v);
 }
 
@@ -57,8 +66,18 @@ static void reset(lv_flex_align_t main)
 {
     lv_obj_clean(s_body);
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(s_body, main, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 6, 0);
+    lv_obj_set_scrollable(s_body, false);
+    s_left = false;
+    s_list = lv_obj_create(s_body);
+    lv_obj_remove_style_all(s_list);
+    lv_obj_set_width(s_list, lv_pct(100));
+    lv_obj_set_flex_grow(s_list, 1);
+    lv_obj_set_flex_flow(s_list, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(s_list, main, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_row(s_list, 6, 0);
+    lv_obj_set_scroll_dir(s_list, LV_DIR_VER);
 }
 
 static void show_no_wifi(void)
@@ -85,7 +104,7 @@ static void show(const fd_sync_stats_t *st)
     s_shown = true;
     if (st->state == FD_STATS_ERROR) {
         if (!strcmp(st->err, "no_wifi")) { show_no_wifi(); return; }
-        if (!strcmp(st->err, "unpaired")) { ui_pair_gate(s_body); return; }
+        if (!strcmp(st->err, "unpaired")) { lv_obj_clean(s_body); s_list = NULL; ui_pair_gate(s_body); return; }
         reset(LV_FLEX_ALIGN_CENTER);
         char m[64];
         snprintf(m, sizeof(m), _("ERROR_FMT"), st->err);
@@ -96,6 +115,7 @@ static void show(const fd_sync_stats_t *st)
         return;
     }
     reset(LV_FLEX_ALIGN_START);
+    s_left = true;
     text(_("STATISTICS"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
     char v[40];
     snprintf(v, sizeof(v), "%d", st->words); kv(_("STATS_WORDS"), v);
@@ -120,7 +140,7 @@ static void build(lv_obj_t *scr)
     load();
 }
 
-static void destroy(void) { s_body = NULL; }
+static void destroy(void) { s_body = s_list = NULL; }
 
 static void on_tick(void)
 {

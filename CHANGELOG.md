@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.4] - 2026-11-06
+
+- Sắp xếp câu: thêm cài đặt số câu mỗi lượt (5/10) và hướng dịch (Việt > Anh / Anh > Việt); giữ tùy chọn phát âm sau mỗi câu.
+- Sắp xếp câu: ghim nút ở đáy màn hình, bỏ dòng gợi ý “Chạm các từ theo đúng thứ tự”.
+- Trang chủ: khi có Wi-Fi hiển thị “Đã đồng bộ vào lúc” + giờ đồng bộ cuối thay cho “Đã kết nối”.
+- Thống kê: giao diện thẻ mới, căn trái nhãn, ghim nút Trở lại / Thử lại ở đáy màn hình.
+
 ## [2.3.3] - 2026-11-06
 
 - OTA: bỏ ngưỡng pin cứng trên firmware; chỉ dùng min_battery từ server.

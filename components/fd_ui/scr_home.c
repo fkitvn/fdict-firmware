@@ -9,12 +9,14 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "fd_batt.h"
 #include "fd_fonts.h"
 #include "esp_log.h"
 #include "fd_deck.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "ui_priv.h"
 
 static lv_obj_t *s_stat;   /* hang trang thai (chu + icon): vung cham + ext 10 px, clickable tru khi READY */
@@ -68,10 +70,21 @@ static void refresh(void)
     if (dk.outbox > 0) snprintf(syn, sizeof(syn), _("SYNC_PENDING_N"), dk.outbox);
     else snprintf(syn, sizeof(syn), "%s", dk.have ? _("OFFLINE_DATA_READY") : _("NO_OFFLINE_DATA_YET"));
     static char buf[96];
-    if (fd_net_is_connected()) {
+    if (fd_net_is_connected()) {   /* 2.3.4: bo CONNECTED / OFFLINE_DATA_READY; hien lan dong bo cuoi */
         bool paired = fd_ota_is_paired();
-        snprintf(buf, sizeof(buf), "%s · %s",
-                 paired ? _("CONNECTED") : _("NOT_PAIRED"), syn);
+        fd_sync_status_t ss;
+        fd_sync_get(&ss);
+        char at[48];
+        if (dk.outbox > 0 || !dk.have || ss.last_sync <= 0) snprintf(at, sizeof(at), "%s", syn);
+        else {
+            struct tm lt;
+            char t[24];
+            localtime_r(&ss.last_sync, &lt);
+            strftime(t, sizeof(t), "%H:%M %d/%m", &lt);
+            snprintf(at, sizeof(at), _("HOME_SYNCED_AT"), t);
+        }
+        if (paired) snprintf(buf, sizeof(buf), "%s", at);
+        else snprintf(buf, sizeof(buf), "%s · %s", _("NOT_PAIRED"), at);
         txt = buf;
         if (paired) col = lv_palette_darken(LV_PALETTE_GREEN, 2);
         tap = false;
