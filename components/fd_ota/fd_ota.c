@@ -56,7 +56,6 @@ uint32_t fd_ota_server_gen(void) { return s_srv_gen; }
 #define REPORT_TO_MS    6000
 #define RANGE_CHUNK     (64 * 1024)
 #define DL_ATTEMPTS     4
-#define MIN_BATT        5
 #define IDLE_POLL_MS    1000
 #define SELFTEST_WIFI_MS 60000
 #define CHECK_MIN_S     3600
@@ -700,7 +699,7 @@ static int do_check(bool manual)
         m.size = cJSON_IsNumber(v) && v->valuedouble > 0 ? (uint32_t)v->valuedouble : 0;
         m.mandatory = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(j, "mandatory"));
         v = cJSON_GetObjectItemCaseSensitive(j, "min_battery");
-        m.min_batt = cJSON_IsNumber(v) ? (int)v->valuedouble : MIN_BATT;
+        m.min_batt = cJSON_IsNumber(v) ? (int)v->valuedouble : 0;   /* 2.3.3: nguong pin chi do server quyet; thieu/sai -> 0 = khong chan */
     }
     cJSON_Delete(j);
     int next = jitter_s(m.again_s);
@@ -735,7 +734,7 @@ static int do_check(bool manual)
 /* ---------- tai + xac minh ---------- */
 static bool batt_ok(int need)
 {
-    if (need < MIN_BATT) need = MIN_BATT;
+    if (need <= 0) return true;   /* 2.3.3: khong co nguong cung tren firmware */
     int p = fd_batt_get_pct();
     if (p < 0) return true;   /* khong doc duoc pin (tat FD_BATTERY_ENABLE): khong chan */
     return p >= need;         /* fd_power chua co tin hieu dang sac */
@@ -804,7 +803,7 @@ static void do_update(bool manual)
     if (!s_have_man) { ESP_LOGI(TAG, "update: chua co manifest"); return; }
     if (!fd_net_is_connected()) { st_set(FD_OTA_ST_ERROR, 0, "no_wifi"); return; }
     if (!batt_ok(s_man.min_batt)) {
-        ESP_LOGI(TAG, "update: pin %d%% < %d%% -> cho", fd_batt_get_pct(), s_man.min_batt > MIN_BATT ? s_man.min_batt : MIN_BATT);
+        ESP_LOGI(TAG, "update: pin %d%% < %d%% -> cho", fd_batt_get_pct(), s_man.min_batt);
         if (manual) st_set(FD_OTA_ST_ERROR, 0, "batt_low");
         return;
     }
