@@ -263,43 +263,6 @@ static void show_card(void)
 enum { OPT_N, OPT_ORD, OPT_FRONT, OPT_REP };
 static void show_setup(void);
 
-static lv_obj_t *label(lv_obj_t *p, const char *t, const lv_font_t *f, uint32_t color)
-{
-    lv_obj_t *l = lv_label_create(p);
-    if (f) lv_obj_set_style_text_font(l, f, 0);
-    lv_obj_set_style_text_color(l, lv_color_hex(color), 0);
-    lv_label_set_text(l, t);
-    return l;
-}
-
-static lv_obj_t *hrow(lv_obj_t *p, int32_t h)
-{
-    lv_obj_t *r = lv_obj_create(p);
-    lv_obj_remove_style_all(r);
-    lv_obj_set_size(r, lv_pct(100), h);
-    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(r, 6, 0);
-    return r;
-}
-
-static lv_obj_t *btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb, intptr_t ud)
-{
-    lv_obj_t *b = lv_button_create(p);
-    lv_obj_set_height(b, 36);
-    lv_obj_set_style_radius(b, 10, 0);
-    lv_obj_set_style_shadow_width(b, 0, 0);
-    lv_obj_set_style_bg_color(b, primary ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
-    lv_obj_set_style_border_width(b, primary ? 0 : 1, 0);
-    lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
-    lv_obj_set_style_pad_hor(b, 6, 0);
-    lv_obj_t *l = lv_label_create(b);
-    lv_label_set_text(l, t);
-    lv_obj_center(l);
-    lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, (void *)ud);
-    return b;
-}
-
 /* Su kien nut -> lv_async_call: dung lai man (xoa nut dang xu ly) ngoai callback, khong chay sau trong ngan xep su kien */
 static void setup_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_setup(); }
 static void start_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_card(); }
