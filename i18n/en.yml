@@ -89,6 +89,7 @@ en:
   OPEN: Open
   OPEN_WIFI: Open Wi-Fi
   ORDER: Order
+  OTA_CONNECTING: Connecting...
   OTA_DOWNLOADING: Downloading %d%%
   OTA_ERR_BAD_IMAGE: invalid image
   OTA_ERR_BATT_LOW: low battery

@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.9] - 2026-11-06
+
+- i18n: thêm OTA_CONNECTING (Connecting... / Đang kết nối...) khi OTA thử lại kết nối.
+- Docs/CI: đổi URL nạp USB từ `firmware?product=fdictone` sang `firmware?spu=fdict`.
+
 ## [2.3.8] - 2026-11-06
 
 - CI: sửa cảnh báo biên dịch -Wunused-function trong scr_flashcard.c (xóa helper label/hrow/btn thừa sau khi dùng mẫu cài đặt chung ui_setup_*). Bản 2.3.6 và 2.3.7 không xuất OTA vì bước Build app firmware fail.

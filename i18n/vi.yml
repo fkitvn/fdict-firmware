@@ -89,6 +89,7 @@ vi:
   OPEN: Mở
   OPEN_WIFI: Mở Wi-Fi
   ORDER: Thứ tự
+  OTA_CONNECTING: Đang kết nối...
   OTA_DOWNLOADING: Đang tải %d%%
   OTA_ERR_BAD_IMAGE: ảnh không hợp lệ
   OTA_ERR_BATT_LOW: pin yếu
