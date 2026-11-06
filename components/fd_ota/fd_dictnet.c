@@ -239,8 +239,11 @@ static void flush_queue(void)
     if (!fd_net_is_connected() || !fd_ota_is_paired()) return;
     FILE *f = fopen(Q_PATH, "rb");
     if (!f) return;
-    char line[512];
-    char keep[64 * 1024];
+    /* 2.3.6 FIX: keep[64 KB] tren stack task fd_dict (6 KB) -> tran stack -> reset. Cap phat PSRAM. */
+    static char line[512];
+    const size_t KEEP_CAP = 64 * 1024;
+    char *keep = ps_alloc(KEEP_CAP);
+    if (!keep) { fclose(f); return; }
     size_t kn = 0;
     keep[0] = 0;
     while (fgets(line, sizeof(line), f)) {
@@ -251,15 +254,14 @@ static void flush_queue(void)
         cJSON_Delete(o);
         if (!ok) {
             size_t L = strlen(line);
-            if (kn + L + 1 < sizeof(keep)) { memcpy(keep + kn, line, L); kn += L; if (kn && keep[kn - 1] != '\n') keep[kn++] = '\n'; keep[kn] = 0; }
+            if (kn + L + 1 < KEEP_CAP) { memcpy(keep + kn, line, L); kn += L; if (kn && keep[kn - 1] != '\n') keep[kn++] = '\n'; keep[kn] = 0; }
         }
     }
     fclose(f);
-    if (kn == 0) unlink(Q_PATH);
-    else {
-        FILE *w = fopen(Q_PATH ".tmp", "wb");
-        if (w) { fwrite(keep, 1, kn, w); fclose(w); unlink(Q_PATH); rename(Q_PATH ".tmp", Q_PATH); }
-    }
+    if (kn == 0) { free(keep); unlink(Q_PATH); return; }
+    FILE *w = fopen(Q_PATH ".tmp", "wb");
+    if (w) { fwrite(keep, 1, kn, w); fclose(w); unlink(Q_PATH); rename(Q_PATH ".tmp", Q_PATH); }
+    free(keep);
 }
 
 static void do_lookup(const char *word)
@@ -344,7 +346,7 @@ void fd_dictnet_init(void)
     load_nvs();
     hist_load();
     mkdir("/data", 0755);
-    xTaskCreate(task, "fd_dict", 6144, NULL, 4, NULL);
+    xTaskCreate(task, "fd_dict", 8192, NULL, 4, NULL);   /* 2.3.6: HTTPS + cJSON can them stack */
 }
 
 bool fd_dictnet_lookup(const char *word)

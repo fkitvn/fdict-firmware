@@ -324,29 +324,9 @@ static void start_cb(lv_event_t *e)
 
 static void opt_row(lv_obj_t *p, const char *name, int grp, const char *const *opts, int n, int sel)
 {
-    /* hang cao theo noi dung (khong cat nut): ngang 34 px, doc 36 px */
-    bool por = lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL);
-    int32_t bh = por ? 36 : 34;
-    lv_obj_t *r = hrow(p, LV_SIZE_CONTENT);
-    lv_obj_set_scrollable(r, false);
-    lv_obj_t *l = label(r, name, NULL, FD_COLOR_TEXT_MUTED);
-    if (grp == OPT_REP || grp == OPT_FRONT) {   /* nhan dai: rong hon + xuong 2 dong khi doc */
-        lv_obj_set_width(l, por ? 56 : 92);
-        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_line_space(l, -3, 0);
-    } else lv_obj_set_width(l, por ? 48 : 62);
-    for (int i = 0; i < n; i++) {
-        lv_obj_t *b = btn(r, _(opts[i]), i == sel, opt_cb, (grp << 4) | i);
-        lv_obj_set_height(b, bh);
-        lv_obj_set_flex_grow(b, 1);
-        lv_obj_set_style_pad_hor(b, 2, 0);
-        lv_obj_t *bl = lv_obj_get_child(b, 0);
-        lv_obj_set_width(bl, lv_pct(100)); lv_obj_set_style_text_align(bl, LV_TEXT_ALIGN_CENTER, 0);
-        if (grp == OPT_ORD && por) {   /* doc: "Theo danh sach" xuong 2 dong trong nut 36 px */
-            lv_label_set_long_mode(bl, LV_LABEL_LONG_WRAP);
-            lv_obj_set_style_text_line_space(bl, -3, 0);
-        } else lv_label_set_long_mode(bl, LV_LABEL_LONG_DOT);
-    }
+    unsigned fl = (grp == OPT_REP || grp == OPT_FRONT) ? UI_OPT_WIDE : 0;   /* 2.3.6: mau chung */
+    if (grp == OPT_ORD) fl |= UI_OPT_WRAP;
+    ui_setup_opt_row(p, name, opts, n, sel, opt_cb, grp, fl);
 }
 
 static void show_setup(void)
@@ -360,18 +340,7 @@ static void show_setup(void)
     lv_obj_set_style_pad_hor(s_body, s_pad_hor0, 0);
     lv_obj_set_style_pad_row(s_body, 4, 0);
     /* cai dat trong vung cuon (flex_grow) phia tren; nut Bat dau ghim day man */
-    lv_obj_t *sc = lv_obj_create(s_body);
-    lv_obj_remove_style_all(sc);
-    lv_obj_set_width(sc, lv_pct(100));
-    lv_obj_set_flex_grow(sc, 1);
-    lv_obj_set_flex_flow(sc, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(sc, 6, 0);
-    lv_obj_set_style_pad_bottom(sc, 4, 0);
-    lv_obj_set_scroll_dir(sc, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(sc, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_t *tr = hrow(sc, 26);
-    lv_obj_set_flex_align(tr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    label(tr, "Flash card", &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_t *sc = ui_setup_begin(s_body, "Flash card");
 
     static const char *const NS[] = {"10", "20", "ALL"};
     static const char *const ORD[] = {"IN_ORDER", "RANDOM"};
@@ -382,17 +351,7 @@ static void show_setup(void)
     opt_row(sc, _("FRONT_SIDE"), OPT_FRONT, FR, 2, s_mfront);
     opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 3, s_reps);
 
-    lv_obj_t *b = btn(s_body, _("START"), true, start_cb, 0);
-    lv_obj_set_size(b, lv_pct(100), 46);
-    lv_obj_set_style_radius(b, 12, 0);
-    lv_obj_set_style_shadow_width(b, 6, 0);
-    lv_obj_set_style_shadow_offset_y(b, 2, 0);
-    lv_obj_set_style_shadow_opa(b, LV_OPA_30, 0);
-    lv_obj_set_style_shadow_color(b, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    lv_obj_t *bl = lv_obj_get_child(b, 0);
-    lv_obj_set_style_text_font(bl, &fd_font_noto_18, 0);
-    lv_obj_set_style_text_color(bl, lv_color_white(), 0);
-    lv_obj_set_style_text_letter_space(bl, 1, 0);
+    ui_setup_start(s_body, start_cb);
 }
 
 static bool s_gate;

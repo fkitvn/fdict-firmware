@@ -341,3 +341,96 @@ void ui_pair_gate(lv_obj_t *body)
     ui_gate_btn(r, _("BACK"), false, gate_home_cb);
     ui_gate_btn(r, _("PAIR_DEVICE"), true, gate_pair_cb);
 }
+
+/* ---------- 2.3.6: mau man cai dat truoc khi hoc (dung chung moi module) ---------- */
+static bool setup_portrait(void)
+{
+    return lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL);
+}
+
+lv_obj_t *ui_setup_begin(lv_obj_t *body, const char *title)
+{
+    lv_obj_set_scrollable(body, false);
+    lv_obj_set_flex_flow(body, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(body, 4, 0);
+    lv_obj_t *sc = lv_obj_create(body);
+    lv_obj_remove_style_all(sc);
+    lv_obj_set_width(sc, lv_pct(100));
+    lv_obj_set_flex_grow(sc, 1);
+    lv_obj_set_flex_flow(sc, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(sc, 6, 0);
+    lv_obj_set_style_pad_bottom(sc, 4, 0);
+    lv_obj_set_scroll_dir(sc, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(sc, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_t *t = lv_label_create(sc);
+    lv_obj_set_width(t, lv_pct(100));
+    lv_obj_set_height(t, 26);
+    lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_color(t, lv_color_hex(FD_COLOR_PRIMARY_TEXT), 0);
+    lv_label_set_long_mode(t, LV_LABEL_LONG_DOT);
+    lv_label_set_text(t, title ? title : "");
+    return sc;
+}
+
+void ui_setup_opt_row(lv_obj_t *sc, const char *name, const char *const *opts, int n, int sel,
+                      lv_event_cb_t cb, int grp, unsigned flags)
+{
+    bool por = setup_portrait();
+    int32_t bh = por ? 36 : 34;
+    lv_obj_t *r = lv_obj_create(sc);
+    lv_obj_remove_style_all(r);
+    lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(r, 6, 0);
+    lv_obj_set_scrollable(r, false);
+    lv_obj_t *l = lv_label_create(r);
+    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
+    lv_label_set_text(l, name ? name : "");
+    if (flags & UI_OPT_WIDE) {
+        lv_obj_set_width(l, por ? 56 : 92);
+        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_line_space(l, -3, 0);
+    } else lv_obj_set_width(l, por ? 48 : 62);
+    for (int i = 0; i < n; i++) {
+        bool on = i == sel;
+        lv_obj_t *b = lv_button_create(r);
+        lv_obj_set_height(b, bh);
+        lv_obj_set_flex_grow(b, 1);
+        lv_obj_set_style_radius(b, 10, 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
+        lv_obj_set_style_border_width(b, on ? 0 : 1, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
+        lv_obj_set_style_pad_hor(b, 2, 0);
+        lv_obj_t *bl = lv_label_create(b);
+        lv_obj_set_style_text_color(bl, on ? lv_color_white() : lv_color_hex(FD_COLOR_TEXT), 0);
+        lv_label_set_text(bl, _(opts[i]));
+        lv_obj_set_width(bl, lv_pct(100));
+        lv_obj_set_style_text_align(bl, LV_TEXT_ALIGN_CENTER, 0);
+        if ((flags & UI_OPT_WRAP) && por) {
+            lv_label_set_long_mode(bl, LV_LABEL_LONG_WRAP);
+            lv_obj_set_style_text_line_space(bl, -3, 0);
+        } else lv_label_set_long_mode(bl, LV_LABEL_LONG_DOT);
+        lv_obj_center(bl);
+        if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, (void *)(intptr_t)((grp << 4) | i));
+    }
+}
+
+lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb)
+{
+    lv_obj_t *b = lv_button_create(body);
+    lv_obj_set_size(b, lv_pct(60), 36);
+    lv_obj_set_style_radius(b, 18, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_border_width(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(l, lv_color_white(), 0);
+    lv_label_set_text(l, _("START"));
+    lv_obj_center(l);
+    if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
+    return b;
+}

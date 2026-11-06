@@ -7,6 +7,7 @@
 #include "fd_ota.h"
 #include "fd_sync.h"
 #include "lvgl.h"
+#include "nvs.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,6 +23,30 @@ static fd_study_session_t *s_sess;
 static int s_pos, s_score, s_done, s_ncfg;
 static bool s_answered, s_gate;
 static const int NOPT[3] = {10, 20, 0};
+static uint8_t s_reps;    /* 2.3.6: tu dong phat nhu Quiz: 0 Tat (mac dinh) / 1 / 2 lan; NVS fd/pos_rep | fd/clz_rep */
+static int s_said_pos = -1;
+static const char *rep_key(void);
+static void reps_load(void)
+{
+    nvs_handle_t h;
+    uint8_t v = 0;
+    if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) { nvs_get_u8(h, rep_key(), &v); nvs_close(h); }
+    s_reps = v <= 2 ? v : 0;
+}
+static void reps_save(void)
+{
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_u8(h, rep_key(), s_reps);
+    nvs_commit(h);
+    nvs_close(h);
+}
+static void mcq_say(const char *t)
+{
+    if (!s_reps || !t || !t[0]) return;
+    const fd_pron_cfg_t c = {FD_PRON_PICO_ONLY, s_reps, false};   /* nhu Quiz */
+    ui_pron_say_cfg(t, &c);
+}
 
 static void show_setup(void);
 static void show_quiz(void);
@@ -77,35 +102,17 @@ static lv_obj_t *btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb,
 
 static const char *title_key(void) { return s_kind == MCQ_POS ? "WORD_TYPE" : "FILL_BLANK"; }
 static const char *ev_kind(void) { return s_kind == MCQ_POS ? "pos" : "cloze"; }
+static const char *rep_key(void) { return s_kind == MCQ_POS ? "pos_rep" : "clz_rep"; }
 
+enum { OPT_N, OPT_REP };
+static void setup_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_setup(); }
 static void opt_cb(lv_event_t *e)
 {
-    int *slot = (int *)lv_event_get_user_data(e);
-    if (!slot) return;
-    *slot = (int)(intptr_t)lv_obj_get_user_data(lv_event_get_target(e));
-    show_setup();
-}
-
-static void opt_row(lv_obj_t *p, const char *name, int *slot, const char *const *opts, int n, int sel)
-{
-    label(p, _(name), NULL, FD_COLOR_TEXT_MUTED);
-    lv_obj_t *r = hrow(p, 36);
-    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(r, 6, 0);
-    for (int i = 0; i < n; i++) {
-        lv_obj_t *b = lv_button_create(r);
-        lv_obj_set_height(b, 36);
-        lv_obj_set_flex_grow(b, 1);
-        lv_obj_set_style_radius(b, 10, 0);
-        lv_obj_set_style_shadow_width(b, 0, 0);
-        lv_obj_set_style_bg_color(b, lv_color_hex(i == sel ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
-        lv_obj_t *l = lv_label_create(b);
-        lv_obj_set_style_text_color(l, lv_color_hex(i == sel ? 0xFFFFFF : FD_COLOR_TEXT), 0);
-        lv_label_set_text(l, _(opts[i]));
-        lv_obj_center(l);
-        lv_obj_set_user_data(b, (void *)(intptr_t)i);
-        lv_obj_add_event_cb(b, opt_cb, LV_EVENT_CLICKED, slot);
-    }
+    intptr_t ud = (intptr_t)lv_event_get_user_data(e);
+    int grp = (int)(ud >> 4), v = (int)(ud & 0xF);
+    if (grp == OPT_N) s_ncfg = v;
+    else if (grp == OPT_REP) { s_reps = (uint8_t)v; reps_save(); }
+    lv_async_call(setup_async, NULL);   /* dung lai man ngoai callback nut */
 }
 
 static bool build_session(void)
@@ -136,6 +143,7 @@ static void start_cb(lv_event_t *e)
     (void)e;
     if (!fd_sync_ready() || !build_session()) { show_msg_no_data(); return; }
     s_pos = s_score = s_done = 0;
+    s_said_pos = -1;
     s_answered = false;
     show_quiz();
 }
@@ -148,15 +156,12 @@ static void show_setup(void)
 {
     s_view = V_SETUP;
     body_reset();
-    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_row(s_body, 6, 0);
-    label(s_body, _(title_key()), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    if (s_kind == MCQ_POS) label(s_body, _("POS_PROMPT"), NULL, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *sc = ui_setup_begin(s_body, _(title_key()));   /* 2.3.6: mau cai dat chung (nhu Quiz) */
     static const char *const NS[] = {"10", "20", "ENDLESS"};
-    opt_row(s_body, "QUESTIONS", &s_ncfg, NS, 3, s_ncfg);
-    lv_obj_t *b = btn(s_body, _("START"), true, start_cb, 0);
-    lv_obj_set_width(b, lv_pct(100));
-    lv_obj_set_height(b, 46);
+    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    ui_setup_opt_row(sc, _("QUESTIONS"), NS, 3, s_ncfg, opt_cb, OPT_N, 0);
+    ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 3, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
+    ui_setup_start(s_body, start_cb);
 }
 
 static void show_result(void)
@@ -198,6 +203,7 @@ static void answer(int i)
         ui_answer_cell_mark(s_ans[k], s_lbl[k], k == c ? UI_ANS_CORRECT : (k == i ? UI_ANS_WRONG : UI_ANS_OTHER), gl);
     }
     fd_audio_feedback(i == c);
+    if (s_kind == MCQ_CLOZE && c >= 0 && c < 4) mcq_say(q->choice[c]);   /* Dien tu: doc tu dung SAU khi tra loi */
     fd_sync_event(ev_kind(), q->id, i == c);
     s_next_t = lv_timer_create(next_cb, i == c ? 900 : 1500, NULL);
     lv_timer_set_repeat_count(s_next_t, 1);
@@ -233,6 +239,7 @@ static void show_quiz(void)
     lv_obj_set_style_text_align(pl, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(pl, LV_LABEL_LONG_WRAP);
     if (s_kind == MCQ_POS && q->ipa[0]) label(pr, q->ipa, NULL, FD_COLOR_PRIMARY_TEXT);
+    if (s_kind == MCQ_POS && s_said_pos != s_pos) { s_said_pos = s_pos; mcq_say(q->prompt); }   /* Phan loai tu: doc tu de bai */
 
     bool por = (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL));
     lv_obj_t *g = lv_obj_create(s_body);
@@ -291,6 +298,7 @@ static void dlg_open(void)
 static void build_common(lv_obj_t *scr, mcq_kind_t kind)
 {
     s_kind = kind;
+    reps_load();
     s_body = ui_page_create(scr);
     s_gate = !fd_ota_is_paired();
     if (s_gate) { ui_pair_gate(s_body); return; }

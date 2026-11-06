@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.6] - 2026-11-06
+
+- Sửa lỗi: mở Từ điển làm máy khởi động lại (tràn stack task LVGL do lịch sử 30 từ ~8,4 KB trên stack; hàng chờ thêm từ 64 KB trên stack task fd_dict). Chuyển sang bộ đệm tĩnh/PSRAM, tăng stack fd_dict lên 8 KB.
+- Trang chủ: icon riêng cho Phân loại từ (nhãn), Điền từ (bút chì), Từ điển (sách mở) — không còn trùng Quiz / Sắp xếp câu / Flash card.
+- Màn cài đặt trước khi học dùng chung một mẫu cho Flash card, Quiz, Sắp xếp câu, Phân loại từ, Điền từ; nút Bắt đầu gọn hơn (36 px, giữa màn).
+- Tự động phát (Tắt / 1 lần / 2 lần) cho mọi module như Quiz; mặc định Tắt. Sắp xếp câu thay công tắc "Phát âm sau mỗi câu" bằng Tự động phát.
+
 ## [2.3.5] - 2026-11-06
 
 - Đăng nhập: cổng học đổi nhãn thành "Đăng nhập để tiếp tục" (coi ghép thiết bị là bước đăng nhập).

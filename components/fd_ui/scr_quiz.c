@@ -265,26 +265,7 @@ static void opt_cb(lv_event_t *e)
 
 static void opt_row(lv_obj_t *p, const char *name, int grp, const char *const *opts, int n, int sel)
 {
-    /* 4 hang lua chon: ngang (240 cao) 32 px, doc 38 px */
-    /* 23/10: hang cao theo noi dung (truoc: 32 px ngang < nut 36 px -> nut bi cat vi hang clip con) */
-    int32_t bh = lv_display_get_horizontal_resolution(NULL) > lv_display_get_vertical_resolution(NULL) ? 34 : 36;
-    lv_obj_t *r = hrow(p, LV_SIZE_CONTENT);
-    lv_obj_set_scrollable(r, false);
-    lv_obj_t *l = label(r, name, NULL, FD_COLOR_TEXT_MUTED);
-    bool por = lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL);
-    if (grp == OPT_REP) {   /* "Tu dong phat" dai: rong hon + xuong 2 dong khi doc */
-        lv_obj_set_width(l, por ? 56 : 92);
-        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_line_space(l, -3, 0);
-    } else lv_obj_set_width(l, por ? 48 : 62);   /* doc: nhuong cho 3 nut lua chon */
-    for (int i = 0; i < n; i++) {
-        lv_obj_t *b = btn(r, _(opts[i]), i == sel, opt_cb, (grp << 4) | i);
-        lv_obj_set_height(b, bh);
-        lv_obj_set_flex_grow(b, 1);
-        lv_obj_set_style_pad_hor(b, 2, 0);   /* doc: "Offline"/"Bo the" vua nut */
-        lv_obj_t *bl = lv_obj_get_child(b, 0);
-        lv_obj_set_width(bl, lv_pct(100)); lv_label_set_long_mode(bl, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(bl, LV_TEXT_ALIGN_CENTER, 0);
-    }
+    ui_setup_opt_row(p, name, opts, n, sel, opt_cb, grp, grp == OPT_REP ? UI_OPT_WIDE : 0);   /* 2.3.6: mau chung */
 }
 
 static void poll_cb(lv_timer_t *t);
@@ -336,18 +317,7 @@ static void show_setup(void)
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 4, 0);
     /* 23/10: cai dat trong vung cuon (flex_grow) phia tren; nut Bat dau ghim day man, khong de len hang cuoi */
-    lv_obj_t *sc = lv_obj_create(s_body);
-    lv_obj_remove_style_all(sc);
-    lv_obj_set_width(sc, lv_pct(100));
-    lv_obj_set_flex_grow(sc, 1);
-    lv_obj_set_flex_flow(sc, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(sc, 6, 0);
-    lv_obj_set_style_pad_bottom(sc, 4, 0);
-    lv_obj_set_scroll_dir(sc, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(sc, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_t *tr = hrow(sc, 26);
-    lv_obj_set_flex_align(tr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    label(tr, _("STUDY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_t *sc = ui_setup_begin(s_body, _("STUDY"));
 
     static const char *const DIR[] = {"EN_VI", "VI_EN"};
     static const char *const NS[] = {"10", "20", "ENDLESS"};
@@ -355,17 +325,7 @@ static void show_setup(void)
     static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
     opt_row(sc, _("QUESTIONS"), OPT_N, NS, 3, s_ncfg);
     opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 3, s_reps);
-    lv_obj_t *b = btn(s_body, _("START"), true, start_cb, 0);
-    lv_obj_set_size(b, lv_pct(100), 46);
-    lv_obj_set_style_radius(b, 12, 0);
-    lv_obj_set_style_shadow_width(b, 6, 0);
-    lv_obj_set_style_shadow_offset_y(b, 2, 0);
-    lv_obj_set_style_shadow_opa(b, LV_OPA_30, 0);
-    lv_obj_set_style_shadow_color(b, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    lv_obj_t *bl = lv_obj_get_child(b, 0);
-    lv_obj_set_style_text_font(bl, &fd_font_noto_18, 0);
-    lv_obj_set_style_text_color(bl, lv_color_white(), 0);
-    lv_obj_set_style_text_letter_space(bl, 1, 0);
+    ui_setup_start(s_body, start_cb);
 }
 
 /* ---------- MSG (chua ghep / chua Wi-Fi / loi) ---------- */

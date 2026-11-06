@@ -173,7 +173,9 @@ static void show_home(void)
 
     fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
 
-    fd_dictnet_entry_t hist[FD_DICTNET_HIST_MAX];
+    /* 2.3.6 FIX reboot: truoc day hist[30] (30 x 280 B = 8.4 KB) nam tren stack task LVGL (8 KB) -> tran stack -> reset.
+     * Nay dung bo dem tinh (BSS), khong ton stack. */
+    static fd_dictnet_entry_t hist[FD_DICTNET_HIST_MAX];
     int n = fd_dictnet_history(hist, FD_DICTNET_HIST_MAX);
     if (n > 0) {
         label(s_body, _("LOOKUP_HISTORY"), NULL, FD_COLOR_TEXT_MUTED);
@@ -191,7 +193,7 @@ static void show_home(void)
             lv_obj_set_style_bg_color(b, lv_color_white(), 0);
             lv_obj_set_style_shadow_width(b, 0, 0);
             lv_obj_set_style_radius(b, 8, 0);
-            char line[FD_DICTNET_WORD_LEN + FD_DICTNET_MEAN_LEN + 8];
+            static char line[FD_DICTNET_WORD_LEN + FD_DICTNET_MEAN_LEN + 8];
             snprintf(line, sizeof(line), "%.*s - %.*s", FD_DICTNET_WORD_LEN - 1, hist[i].en, FD_DICTNET_MEAN_LEN - 1, hist[i].vi);
             lv_obj_t *l = lv_label_create(b);
             lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);

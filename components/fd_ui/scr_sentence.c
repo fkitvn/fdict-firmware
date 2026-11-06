@@ -21,7 +21,7 @@
 
 #define C_OK  0x16A34A
 #define C_BAD 0xDC2626
-#define SEN_SND_KEY "sen_snd"   /* NVS fd: 1 = phat am cau dung sau moi cau */
+#define SEN_REP_KEY "sen_rep"   /* 2.3.6 NVS fd: tu dong phat cau dung 0 Tat (mac dinh) / 1 / 2 lan (thay sen_snd) */
 #define SEN_CNT_KEY "sen_cnt"   /* NVS fd: so cau/phien 5|10 */
 #define SEN_DIR_KEY "sen_dir"   /* NVS fd: 0 = Viet>Anh, 1 = Anh>Viet */
 
@@ -37,7 +37,7 @@ static int s_pick[FD_SEN_TOK], s_npick, s_cur;
 static bool s_used[FD_SEN_TOK];
 static int64_t s_t0, s_t_all;
 static bool s_waiting;              /* dang cho /start */
-static bool s_snd;                  /* phat am cau dung sau moi cau (NVS) */
+static uint8_t s_reps;               /* 2.3.6: tu dong phat cau dung sau moi cau: 0 Tat / 1 / 2 lan (NVS) */
 static int s_cnt = 10;              /* so cau/phien (NVS) */
 static bool s_vi;                   /* huong Anh>Viet (NVS) */
 static bool s_loc;                  /* cau hien tai: the tieng Viet tach tai may */
@@ -49,14 +49,14 @@ static lv_obj_t *s_cnt_lbl, *s_dir_lbl;
 static void prefs_load(void)
 {
     nvs_handle_t h;
-    uint8_t v = 1, c = 10, d = 0;   /* mac dinh: phat am BAT, 10 cau, Viet>Anh */
+    uint8_t v = 0, c = 10, d = 0;   /* 2.3.6 mac dinh: tu dong phat TAT, 10 cau, Viet>Anh */
     if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) {
-        nvs_get_u8(h, SEN_SND_KEY, &v);
+        nvs_get_u8(h, SEN_REP_KEY, &v);
         nvs_get_u8(h, SEN_CNT_KEY, &c);
         nvs_get_u8(h, SEN_DIR_KEY, &d);
         nvs_close(h);
     }
-    s_snd = v != 0;
+    s_reps = v <= 2 ? v : 0;
     s_cnt = c == 5 ? 5 : 10;
     s_vi = d == 1;
 }
@@ -161,55 +161,16 @@ static void retry_cb(lv_event_t *e) { (void)e; show_setup(); }
 static void home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
 static void pair_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_PAIR); }
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
-static void snd_cb(lv_event_t *e)
+static void setup_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_setup(); }
+enum { OPT_CNT, OPT_DIR, OPT_REP };
+static void opt_cb(lv_event_t *e)
 {
-    s_snd = lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED);
-    pref_save(SEN_SND_KEY, s_snd ? 1 : 0);
-}
-static void cnt_text(void)
-{
-    if (s_cnt_lbl) lv_label_set_text_fmt(s_cnt_lbl, "%d", s_cnt);
-}
-static void dir_text(void)
-{
-    if (s_dir_lbl) lv_label_set_text(s_dir_lbl, s_vi ? _("SEN_DIR_EN_VI") : _("SEN_DIR_VI_EN"));
-}
-static void cnt_cb(lv_event_t *e)
-{
-    (void)e;
-    s_cnt = s_cnt == 5 ? 10 : 5;
-    pref_save(SEN_CNT_KEY, (uint8_t)s_cnt);
-    cnt_text();
-}
-static void dir_cb(lv_event_t *e)
-{
-    (void)e;
-    s_vi = !s_vi;
-    pref_save(SEN_DIR_KEY, s_vi ? 1 : 0);
-    dir_text();
-}
-
-/* hang cai dat: nhan trai (gian), dieu khien phai */
-static lv_obj_t *set_row(lv_obj_t *p, const char *t)
-{
-    lv_obj_t *r = lv_obj_create(p);
-    lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(r, lv_color_white(), 0);
-    lv_obj_set_style_border_width(r, 0, 0);
-    lv_obj_set_style_radius(r, 10, 0);
-    lv_obj_set_style_pad_hor(r, 12, 0);
-    lv_obj_set_style_pad_ver(r, 8, 0);
-    lv_obj_set_scrollable(r, false);
-    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(r, 10, 0);
-    lv_obj_t *l = lv_label_create(r);
-    lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
-    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
-    lv_label_set_text(l, t);
-    lv_obj_set_flex_grow(l, 1);
-    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-    return r;
+    intptr_t ud = (intptr_t)lv_event_get_user_data(e);
+    int grp = (int)(ud >> 4), v = (int)(ud & 0xF);
+    if (grp == OPT_CNT) { s_cnt = v ? 10 : 5; pref_save(SEN_CNT_KEY, (uint8_t)s_cnt); }
+    else if (grp == OPT_DIR) { s_vi = v == 1; pref_save(SEN_DIR_KEY, s_vi ? 1 : 0); }
+    else if (grp == OPT_REP) { s_reps = (uint8_t)v; pref_save(SEN_REP_KEY, s_reps); }
+    lv_async_call(setup_async, NULL);   /* dung lai man ngoai callback nut */
 }
 static void begin_cb(lv_event_t *e) { (void)e; start(); }
 
@@ -217,23 +178,14 @@ static void show_setup(void)
 {
     s_view = V_SETUP;
     body_reset();
-    lv_obj_t *c = content();
-    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(s_body, 8, 0);
-    label(c, _("SENTENCE"), &fd_font_noto_18, FD_COLOR_TEXT);
-    lv_obj_t *r = set_row(c, _("SEN_COUNT"));
-    s_cnt_lbl = lv_obj_get_child(button(r, "10", cnt_cb), 0);
-    cnt_text();
-    r = set_row(c, _("SEN_DIR"));
-    s_dir_lbl = lv_obj_get_child(button(r, "", dir_cb), 0);
-    dir_text();
-    r = set_row(c, _("SEN_PLAY_AUDIO"));
-    lv_obj_t *sw = lv_switch_create(r);
-    lv_obj_set_size(sw, 46, 24);
-    lv_obj_set_state(sw, LV_STATE_CHECKED, s_snd);
-    lv_obj_add_event_cb(sw, snd_cb, LV_EVENT_VALUE_CHANGED, NULL);
-    lv_obj_t *bar = row(s_body, false);
-    button(bar, _("START"), begin_cb);
+    lv_obj_t *sc = ui_setup_begin(s_body, _("SENTENCE"));   /* 2.3.6: mau cai dat chung */
+    static const char *const CNT[] = {"5", "10"};
+    static const char *const DIR[] = {"SEN_DIR_VI_EN", "SEN_DIR_EN_VI"};
+    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    ui_setup_opt_row(sc, _("SEN_COUNT"), CNT, 2, s_cnt == 10 ? 1 : 0, opt_cb, OPT_CNT, UI_OPT_WIDE);
+    ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 2, s_vi ? 1 : 0, opt_cb, OPT_DIR, UI_OPT_WIDE);
+    ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 3, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
+    ui_setup_start(s_body, begin_cb);
 }
 
 static void show_msg(const fd_sen_status_t *st)
@@ -520,7 +472,10 @@ static void show_feed(bool ok)
     label(c, s_loc ? s_ex.hint : s_ex.sentence, &fd_font_noto_18, FD_COLOR_TEXT);
     const char *sub = s_loc ? s_ex.sentence : s_ex.hint;
     if (sub[0]) label(c, sub, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
-    if (s_snd && s_ex.sentence[0]) fd_pron_say(s_ex.sentence);   /* cum tu: Pico (fd_pron), toi da ~39 ky tu */
+    if (s_reps && s_ex.sentence[0]) {   /* 2.3.6: tu dong phat nhu Quiz (Tat/1/2 lan) */
+        const fd_pron_cfg_t pc = {FD_PRON_AUTO, s_reps, false};
+        ui_pron_say_cfg(s_ex.sentence, &pc);
+    }
     lv_obj_t *r = row(s_body, false);
     button(r, _("SEN_CONTINUE"), next_cb);
 }

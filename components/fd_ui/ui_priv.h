@@ -97,4 +97,15 @@ lv_obj_t *ui_batt_label_create_ex(lv_obj_t *parent, bool always);
 /* 2.3.0 (ui_widgets.c): cong chua ghep dung chung cho moi mo-dun hoc: "Can ghep thiet bi de hoc" + [Quay lai][Ghep thiet bi].
  * Xoa noi dung body. Nut kieu chung (primary = nen amber). */
 void ui_pair_gate(lv_obj_t *body);
+
+/* 2.3.6: mau man cai dat truoc khi hoc DUNG CHUNG (Flash card, Quiz, Sap xep cau, Phan loai tu, Dien tu).
+ * ui_setup_begin: dat bo cuc body (cot, khong cuon) + tieu de; tra ve vung cuon chua cac hang lua chon.
+ * ui_setup_opt_row: [nhan] [nut 1][nut 2]..., user_data nut = (grp << 4) | i; opts la khoa i18n.
+ * ui_setup_start: nut [Bat dau] gon (36 px, ~60% rong, giua) ghim day man. */
+#define UI_OPT_WIDE 1u   /* nhan dai (Tu dong phat...) */
+#define UI_OPT_WRAP 2u   /* chu trong nut xuong dong (doc) */
+lv_obj_t *ui_setup_begin(lv_obj_t *body, const char *title);
+void ui_setup_opt_row(lv_obj_t *sc, const char *name, const char *const *opts, int n, int sel,
+                      lv_event_cb_t cb, int grp, unsigned flags);
+lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb);
 lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb);
