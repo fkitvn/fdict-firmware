@@ -3,10 +3,15 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
-## [2.3.9] - 2026-11-06
+## [2.3.10] - 2026-11-06
 
 - i18n: thêm OTA_CONNECTING (Connecting... / Đang kết nối...) khi OTA thử lại kết nối.
-- Docs/CI: đổi URL nạp USB từ `firmware?product=fdictone` sang `firmware?spu=fdictone`.
+- Docs/CI: URL nạp USB chuẩn https://fkit.vn/firmware?spu=fdictone (thôi dùng product=fdictone).
+- CI: sửa mục CHANGELOG để script lấy ghi chú không còn hiểu nhầm dấu hỏi trên query string.
+
+## [2.3.9] - 2026-11-06
+
+- Không phát hành OTA: đã thêm OTA_CONNECTING; CI fail vì ghi chú CHANGELOG dạng firmware?spu=... bị parser coi là lỗi mã hóa.
 
 ## [2.3.8] - 2026-11-06
 
