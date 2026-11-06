@@ -100,7 +100,7 @@ Máy mới, hoặc máy đang chạy bảng phân vùng cũ (trước 1.0.0, ch�
 esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>-<build>-full.bin
 ```
 
-Cách dễ nhất: mở <https://fkit.vn/firmware?spu=fdict> bằng Chrome/Edge và bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)). Hoặc dùng <https://espressif.github.io/esptool-js/>: chọn cổng, thêm file `-full.bin` ở địa chỉ `0x0`, bấm Program.
+Cách dễ nhất: mở <https://fkit.vn/firmware?spu=fdictone> bằng Chrome/Edge và bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)). Hoặc dùng <https://espressif.github.io/esptool-js/>: chọn cổng, thêm file `-full.bin` ở địa chỉ `0x0`, bấm Program.
 
 Khi đổi bảng phân vùng, phân vùng `/data` (LittleFS) bị định dạng lại: mất cache bài học và kết quả chưa gửi. NVS giữ nguyên, không cần ghép lại.
 
@@ -179,7 +179,7 @@ Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `
 
 ### Nạp firmware qua USB từ trình duyệt
 
-Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/firmware?spu=fdict> bằng Chrome hoặc Edge, bấm *Nạp firmware*, chọn cổng của máy rồi làm theo hướng dẫn để nạp bản mới nhất. Không cần cài ESP-IDF.
+Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/firmware?spu=fdictone> bằng Chrome hoặc Edge, bấm *Nạp firmware*, chọn cổng của máy rồi làm theo hướng dẫn để nạp bản mới nhất. Không cần cài ESP-IDF.
 
 ## Phát hành OTA qua GitHub Actions
 
