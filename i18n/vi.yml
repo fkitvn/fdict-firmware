@@ -41,6 +41,7 @@ vi:
   FORGET: Quên
   FORGET_THIS_NETWORK: Quên mạng này
   FRONT_SIDE: Mặt trước
+  GRAYSCALE_MODE: 'Chế độ đen trắng'
   GRAYSCALE_OFF: 'Đã tắt chế độ đen trắng'
   GRAYSCALE_ON: 'Đã bật chế độ đen trắng'
   HELLO: Xin chào!
@@ -53,6 +54,7 @@ vi:
   LATER: Để sau
   LOADING: Đang tải...
   LOADING_QUESTIONS: Đang tải câu hỏi…
+  LOGOUT: 'Đăng xuất'
   MEANING: Nghĩa
   MEMORY: Bộ nhớ
   MIC_DELETE: Xóa
@@ -108,7 +110,7 @@ vi:
   PAIR_GET_NEW_CODE: Lấy mã mới
   PAIR_HINT: Đăng nhập bằng Zalo trên điện thoại để tiếp tục học.
   PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
-  PAIR_STEP_ID: Định danh
+  PAIR_STEP_ID: 'Đăng nhập'
   PAIR_STEP_ZALO: Kích hoạt bảo hành
   PAIR_TO_STUDY: Đăng nhập để tiếp tục
   WORD_TYPE: Phân loại từ

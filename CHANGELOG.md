@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.7] - 2026-11-06
+
+- Cài đặt: thêm bản dịch GRAYSCALE_MODE (Black & white / Chế độ đen trắng).
+- Màn đăng nhập: đổi nhãn bước "Định danh" thành "Đăng nhập" (en: Sign in).
+- Màn đăng nhập: nút đỏ đổi thành "Đăng xuất" / Log out (cùng luồng hủy ghép: xóa device_token + user_name).
+
 ## [2.3.6] - 2026-11-06
 
 - Sửa lỗi: mở Từ điển làm máy khởi động lại (tràn stack task LVGL do lịch sử 30 từ ~8,4 KB trên stack; hàng chờ thêm từ 64 KB trên stack task fd_dict). Chuyển sang bộ đệm tĩnh/PSRAM, tăng stack fd_dict lên 8 KB.

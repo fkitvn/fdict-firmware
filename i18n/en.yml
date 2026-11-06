@@ -41,6 +41,7 @@ en:
   FORGET: Forget
   FORGET_THIS_NETWORK: Forget this network
   FRONT_SIDE: Front side
+  GRAYSCALE_MODE: 'Black & white'
   GRAYSCALE_OFF: 'Black & white off'
   GRAYSCALE_ON: 'Black & white on'
   HELLO: Hello!
@@ -53,6 +54,7 @@ en:
   LATER: Later
   LOADING: Loading...
   LOADING_QUESTIONS: Loading questions…
+  LOGOUT: Log out
   MEANING: Meaning
   MEMORY: Memory
   MIC_DELETE: Delete
@@ -108,7 +110,7 @@ en:
   PAIR_GET_NEW_CODE: Get new code
   PAIR_HINT: Sign in with Zalo on your phone to keep studying.
   PAIR_SCAN_WITH_PHONE: 'Scan with your phone · %d:%02d'
-  PAIR_STEP_ID: Identify
+  PAIR_STEP_ID: Sign in
   PAIR_STEP_ZALO: Activate warranty
   PAIR_TO_STUDY: Sign in to continue
   WORD_TYPE: Word type

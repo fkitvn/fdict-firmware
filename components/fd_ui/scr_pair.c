@@ -501,7 +501,7 @@ static void build(lv_obj_t *scr)
     s_back_lbl = bl;   /* Buoc 2: "De sau" (cung hanh vi Tro lai) */
     s_btn = btn(row, FD_COLOR_PRIMARY, &s_btn_lbl, pair_cb);
     s_un_btn = btn(row, 0xDC2626, &s_un_lbl, unpair_cb);
-    lv_label_set_text(s_un_lbl, _("UNPAIR_DEVICE"));
+    lv_label_set_text(s_un_lbl, _("LOGOUT"));
     lv_obj_t *bs[3] = {bb, s_btn, s_un_btn};
     for (int i = 0; i < 3; i++) { lv_obj_set_width(bs[i], 0); lv_obj_set_flex_grow(bs[i], 1); }
     s_shown_name[0] = 1; s_shown_name[1] = 0;
