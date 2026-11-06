@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.2] - 2026-11-06
+
+- Thử nút bấm: đảo thứ tự vòng tròn 1..4 khớp nút vật lý (trái → phải: IO21, IO14, IO3, IO2).
+
 ## [2.3.1] - 2026-11-06
 
 - Cập nhật firmware: hạ ngưỡng pin tối thiểu từ 10% xuống 5%.

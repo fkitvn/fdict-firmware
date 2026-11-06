@@ -231,7 +231,7 @@ vi:
   BTN_TEST_KEY: 'Nút %d'
   BTN_TEST_PROGRESS: 'Đã nhận %d/4 nút'
   BTN_TEST_PASS: 'Tất cả nút hoạt động tốt'
-  BTN_TEST_EXIT_HINT: 'Giữ Nút 4 để thoát'
+  BTN_TEST_EXIT_HINT: 'Giữ Nút 1 để thoát'
   BTN_TEST_RESET: 'Làm lại'
   WIFI_TEST: 'Thử Wi-Fi'
   WT_START: 'Bắt đầu (60 s)'

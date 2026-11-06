@@ -233,7 +233,7 @@ en:
   BTN_TEST_KEY: 'Button %d'
   BTN_TEST_PROGRESS: 'Received %d/4 buttons'
   BTN_TEST_PASS: 'All buttons work well'
-  BTN_TEST_EXIT_HINT: 'Hold Button 4 to exit'
+  BTN_TEST_EXIT_HINT: 'Hold Button 1 to exit'
   BTN_TEST_RESET: 'Reset'
   WIFI_TEST: 'Wi-Fi test'
   WT_START: 'Start (60 s)'

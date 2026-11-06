@@ -1,10 +1,11 @@
 /* Che do nha phat trien > Thu nut bam (2.2.10: tieu de + huong dan + trang thai, giong Wi-Fi / loa & micro).
- * 4 vong tron so 1..4 o day man hinh, dung vi tri nut vat ly (trai -> phai: IO2, IO3, IO14, IO21).
+ * 4 vong tron so 1..4 o day man hinh, dung vi tri nut vat ly (2.3.2 dao lai: trai -> phai = IO21, IO14, IO3, IO2;
+ * nut vat ly ngoai cung ben trai sang vong 1).
  * Anh xa: board_buttons.c dang ky nut chi so i tren chan s_pins[i] = {BOARD_BTN1..4} = {21, 2, 3, 14}
- * -> vong tim chi so nut theo GPIO (Nut 4 = IO21 = chi so 0, nut "giu de quay lai" toan cuc).
+ * -> vong tim chi so nut theo GPIO (Nut 1 = IO21 = chi so 0, nut "giu de quay lai" toan cuc).
  * Moi lan bam (khong gioi han): vong to day ~250 ms + tieng bip ngan (ui_vol_beep, bo qua neu am thanh dang ban ->
  * khong chong/xep hang). Nut da bam: vien xanh; du 4 -> dong trang thai pass.
- * Thoat: nut [<] / vuot mep luon dung; giu Nut 4 chi quay lai SAU KHI du 4 nut (truoc do giu = danh dau Nut 4). */
+ * Thoat: nut [<] / vuot mep luon dung; giu Nut 1 (IO21) chi quay lai SAU KHI du 4 nut (truoc do giu = danh dau Nut 1). */
 #include "board_pins.h"
 #include "fd_audio.h"
 #include "fd_fonts.h"
@@ -12,7 +13,7 @@
 
 #define FLASH_MS 250
 static const int s_gpio[4] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};   /* theo chi so nut (driver) */
-static const int s_pos_gpio[4] = {2, 3, 14, 21};   /* vong trai -> phai = vi tri nut vat ly */
+static const int s_pos_gpio[4] = {21, 14, 3, 2};   /* vong 1..4 trai -> phai = vi tri nut vat ly (trai -> phai) */
 static lv_obj_t *s_cell[4], *s_num[4], *s_status, *s_hint;
 static lv_timer_t *s_flash_tm[4];
 static uint8_t s_done;   /* bit i = da bam nut chi so i */
@@ -58,7 +59,7 @@ static void flash_end_cb(lv_timer_t *t)
 static bool on_button(const fd_evt_button_t *b)
 {
     if (!b || b->index < 0 || b->index >= 4) return true;
-    if (done_count() == 4 && b->index == 0 && b->action == FD_BTN_LONG_PRESS) return false;   /* da du: giu Nut 4 = quay lai */
+    if (done_count() == 4 && b->index == 0 && b->action == FD_BTN_LONG_PRESS) return false;   /* da du: giu Nut 1 (IO21) = quay lai */
     int i = b->index;
     s_done |= 1u << i;
     style_cell(i, true);
