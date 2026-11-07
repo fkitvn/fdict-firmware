@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [2.3.11] - 2026-11-07
+
+- Cài đặt: Khôi phục cài đặt gốc. Hỏi xác nhận, rồi đăng xuất, xoá Wi-Fi, mã PIN, cài đặt và dữ liệu học trên máy, khởi động lại về mặc định.
+
 ## [2.3.10] - 2026-11-06
 
 - i18n: thêm OTA_CONNECTING (Connecting... / Đang kết nối...) khi OTA thử lại kết nối.

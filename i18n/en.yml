@@ -38,6 +38,13 @@ en:
   ERROR_FMT: 'Error: %s'
   FLASH_CARD: Flash card
   FLASH_MEMORY: Flash memory
+  FACTORY_RESET: Factory reset
+  FACTORY_RESET_BUSY: Firmware update in progress
+  FACTORY_RESET_CONFIRM: Factory reset?
+  FACTORY_RESET_DO: Reset
+  FACTORY_RESET_FAIL: Could not reset
+  FACTORY_RESET_MSG: 'Signs out and erases Wi-Fi, PIN and data on this device, then restarts. Account words stay. Unsynced results are lost.'
+  FACTORY_RESET_WORKING: Resetting…
   FORGET: Forget
   FORGET_THIS_NETWORK: Forget this network
   FRONT_SIDE: Front side

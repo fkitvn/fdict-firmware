@@ -32,6 +32,11 @@ esp_err_t fd_store_info(size_t *total, size_t *used)
     return esp_littlefs_info(FD_STORE_PARTITION, total, used);
 }
 
+esp_err_t fd_store_format(void)
+{
+    return esp_littlefs_format(FD_STORE_PARTITION);
+}
+
 esp_err_t fd_store_selftest(void)
 {
     const char *path = FD_STORE_BASE_PATH "/.selftest";

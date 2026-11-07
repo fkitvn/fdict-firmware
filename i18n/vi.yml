@@ -38,6 +38,13 @@ vi:
   ERROR_FMT: 'Lỗi: %s'
   FLASH_CARD: Flash card
   FLASH_MEMORY: Bộ nhớ flash
+  FACTORY_RESET: Khôi phục cài đặt gốc
+  FACTORY_RESET_BUSY: Đang cập nhật firmware
+  FACTORY_RESET_CONFIRM: Khôi phục cài đặt gốc?
+  FACTORY_RESET_DO: Khôi phục
+  FACTORY_RESET_FAIL: Không khôi phục được
+  FACTORY_RESET_MSG: 'Đăng xuất, xoá Wi-Fi, PIN và dữ liệu trên máy rồi khởi động lại. Từ trên tài khoản vẫn còn. Kết quả chưa đồng bộ sẽ mất.'
+  FACTORY_RESET_WORKING: Đang khôi phục…
   FORGET: Quên
   FORGET_THIS_NETWORK: Quên mạng này
   FRONT_SIDE: Mặt trước

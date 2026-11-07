@@ -95,6 +95,7 @@ void app_main(void)
         ESP_LOGI(TAG, "efuse optional_unique_id: %s, %s, %s", esp_err_to_name(ue), nz ? "da ghi" : "chua ghi (toan 0)", hx);
     }
     nvs_init();
+    fd_factory_boot();   /* co khoi phuc: format /data + xoa NVS truoc khi ai doc cai dat cu */
     fd_i18n_init();   /* ngon ngu giao dien (NVS fd/lang, mac dinh vi) truoc khi UI chay */
     sys_info_print();
 

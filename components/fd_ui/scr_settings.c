@@ -1,10 +1,12 @@
-/* Cai dat (khong header): [the lon Ghep thiet bi] | WiFi | Do sang | Am luong | Thoi gian cho | Huong xoay | Thong tin phien ban | Che do nha phat trien. */
+/* Cai dat (khong header): [the lon Ghep thiet bi] | WiFi | Do sang | Am luong | Thoi gian cho | Huong xoay | Thong tin phien ban | Che do nha phat trien | Khoi phuc cai dat goc. */
 #include <stdio.h>
+#include "esp_system.h"
 #include "fd_audio.h"
 #include "fd_display.h"
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_store.h"
 #include "fd_zlink.h"
 #include "fd_pin.h"
 #include "fd_study.h"
@@ -173,6 +175,113 @@ static void gray_cb(lv_event_t *e)
     fd_display_set_grayscale(lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED), true);
 }
 
+/* ---- Khoi phuc cai dat goc: hop thoai xac nhan, roi co + khoi dong lai ---- */
+static lv_obj_t *s_dlg, *s_dlg_msg, *s_dlg_row;
+static bool s_resetting;
+
+static void dlg_dismiss(void)
+{
+    if (s_dlg) { lv_obj_delete(s_dlg); s_dlg = NULL; }
+    s_dlg_msg = s_dlg_row = NULL;
+}
+
+static void dlg_close(bool ok)
+{
+    if (!ok) { dlg_dismiss(); return; }
+    if (s_resetting) return;
+    s_resetting = true;
+    if (s_dlg_msg) lv_label_set_text(s_dlg_msg, _("FACTORY_RESET_WORKING"));
+    if (s_dlg_row) lv_obj_set_hidden(s_dlg_row, true);
+    lv_refr_now(NULL);
+    if (!fd_factory_arm()) {
+        s_resetting = false;
+        dlg_dismiss();
+        fd_ui_toast(_("FACTORY_RESET_FAIL"));
+        return;
+    }
+    esp_restart();
+}
+
+static void dlg_btn_cb(lv_event_t *e) { dlg_close((bool)(intptr_t)lv_event_get_user_data(e)); }
+
+static void dlg_btn(lv_obj_t *row, const char *txt, bool danger)
+{
+    lv_obj_t *b = lv_button_create(row);
+    lv_obj_set_height(b, 40);
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_radius(b, 10, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(danger ? 0xDC2626 : 0xE5E7EB), 0);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_color(l, danger ? lv_color_white() : lv_color_hex(0x111827), 0);
+    lv_obj_set_width(l, lv_pct(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(l, txt);
+    lv_obj_center(l);
+    lv_obj_add_event_cb(b, dlg_btn_cb, LV_EVENT_CLICKED, (void *)(intptr_t)danger);
+}
+
+static void factory_cb(lv_event_t *e)
+{
+    (void)e;
+    if (s_dlg || s_resetting) return;
+    fd_ota_status_t st;
+    fd_ota_get_status(&st);
+    if (st.state == FD_OTA_ST_DOWNLOADING || st.state == FD_OTA_ST_REBOOT_PENDING) {
+        fd_ui_toast(_("FACTORY_RESET_BUSY"));
+        return;
+    }
+    s_dlg = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(s_dlg);
+    lv_obj_set_size(s_dlg, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_color(s_dlg, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_dlg, LV_OPA_40, 0);
+    lv_obj_set_clickable(s_dlg, true);
+    lv_obj_t *box = lv_obj_create(s_dlg);
+    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
+    lv_obj_center(box);
+    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
+    lv_obj_set_style_border_width(box, 0, 0);
+    lv_obj_set_style_radius(box, 14, 0);
+    lv_obj_set_style_pad_all(box, 14, 0);
+    lv_obj_set_style_pad_row(box, 8, 0);
+    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(box, lv_color_hex(0x111827), 0);
+    lv_obj_set_scrollable(box, false);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t *t = lv_label_create(box);
+    lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
+    lv_obj_set_width(t, lv_pct(100));
+    lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(t, _("FACTORY_RESET_CONFIRM"));
+    s_dlg_msg = lv_label_create(box);
+    lv_obj_set_width(s_dlg_msg, lv_pct(100));
+    lv_obj_set_style_text_align(s_dlg_msg, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(s_dlg_msg, lv_color_hex(0x6B7280), 0);
+    lv_label_set_long_mode(s_dlg_msg, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(s_dlg_msg, _("FACTORY_RESET_MSG"));
+    s_dlg_row = lv_obj_create(box);
+    lv_obj_t *row = s_dlg_row;
+    lv_obj_remove_style_all(row);
+    lv_obj_set_size(row, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(row, 10, 0);
+    lv_obj_set_style_pad_top(row, 4, 0);
+    dlg_btn(row, _("CANCEL"), false);
+    dlg_btn(row, _("FACTORY_RESET_DO"), true);
+}
+
+static bool on_back(void)
+{
+    if (s_resetting) return true;
+    if (!s_dlg) return false;
+    dlg_close(false);
+    return true;
+}
+
 static void refresh(void)
 {
     char ssid[33];
@@ -213,15 +322,18 @@ static void build(lv_obj_t *scr)
     item(body, LV_SYMBOL_EYE_CLOSE, _("PIN_CODE"), go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
     item(body, LV_SYMBOL_LIST, _("ABOUT"), go_cb, (void *)(intptr_t)FD_SCR_ABOUT, NULL);
     item(body, LV_SYMBOL_WARNING, _("DEV_SECTION"), go_cb, (void *)(intptr_t)FD_SCR_DEVMODE, &s_dev_sub);   /* 2.2.2: man rieng */
+    lv_obj_t *rst = item(body, LV_SYMBOL_TRASH, _("FACTORY_RESET"), factory_cb, NULL, NULL);
+    lv_obj_set_style_text_color(rst, lv_color_hex(0xDC2626), 0);
     refresh();
 }
 
 static void destroy(void) {
     if (s_zl_tm) { lv_timer_delete(s_zl_tm); s_zl_tm = NULL; }
+    if (!s_resetting) dlg_dismiss();
     s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
 }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
 
 const ui_screen_t g_scr_settings = {
-    .name = "settings", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_event = on_event,
+    .name = "settings", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_event = on_event, .on_back = on_back,
 };
