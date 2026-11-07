@@ -177,6 +177,8 @@ static const char *reason_name(int r)
     }
 }
 
+static void schedule_ms(retry_kind_t kind, uint32_t ms);
+
 static void worker(void *arg)
 {
     (void)arg;
