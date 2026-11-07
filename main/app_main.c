@@ -8,6 +8,7 @@
 #include "esp_efuse.h"
 #include "esp_efuse_table.h"
 #include "esp_ota_ops.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "fd_i18n.h"
@@ -22,7 +23,6 @@
 #include "fd_events.h"
 #include "fd_net.h"
 #include "fd_ota.h"
-#include "fd_zlink.h"
 #include "fd_store.h"
 #include "fd_ui.h"
 #include "sys_info.h"
@@ -46,6 +46,14 @@ static void on_board_button(int index, board_btn_evt_t evt, void *ctx)
     fd_events_post(FD_EVT_BUTTON, &e, sizeof(e));
 }
 
+#if CONFIG_FD_HEAP_LOG_PERIOD_S > 0
+static void heap_timer_cb(void *arg)
+{
+    (void)arg;
+    sys_info_log_heap();
+}
+#endif
+
 static void run_app(void)
 {
     ESP_ERROR_CHECK(fd_events_init());
@@ -61,23 +69,33 @@ static void run_app(void)
     ESP_ERROR_CHECK(fd_display_init());
     ESP_ERROR_CHECK(fd_net_init());          /* tu ket noi mang da luu (neu co) */
 #endif
+    ESP_LOGI(TAG, "heap checkpoint: display + Wi-Fi ready");
+    sys_info_log_heap();
     ESP_ERROR_CHECK(fd_ui_start(FD_SCR_HOME)); /* luon vao Home; WiFi nam trong Cai dat */
     board_rgb_off(false);   /* WS2812 co y luon tat (ca khi thuc tu deep sleep): xoa mau rac chot luc cap nguon */
     ESP_ERROR_CHECK(board_buttons_init(on_board_button, NULL));
     if (fd_batt_init() != ESP_OK) ESP_LOGW("main", "fd_batt_init loi -> an % pin");
 
+    ESP_LOGI(TAG, "heap checkpoint: UI/audio ready");
+    sys_info_log_heap();
+
     /* OTA: neu PENDING_VERIFY -> tu kiem tra (display + storage + WiFi trong 60 s) roi mark valid / rollback
      * (thay mark_app_valid() vo dieu kien truoc day). Display loi da abort o tren -> bootloader rollback. */
     if (fd_ota_start(true, storage_ok) != ESP_OK) ESP_LOGW(TAG, "fd_ota_start loi");
-    fd_zlink_refresh();   /* Buoc 2: trang thai lien ket Zalo (async, cho WiFi) */
     if (storage_ok) fd_sync_init();   /* 2.3.0: kho tu + cai dat dong bo tu cloud, outbox ket qua hoc */
     if (storage_ok) fd_deck_init();   /* 23/10: task bo tu offline chay tu boot -> tu dong bo khi WiFi len, gui outbox */
+    ESP_LOGI(TAG, "heap checkpoint: background workers ready");
     sys_info_log_heap();
 
 #if CONFIG_FD_HEAP_LOG_PERIOD_S > 0
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(CONFIG_FD_HEAP_LOG_PERIOD_S * 1000));
-        sys_info_log_heap();
+    /* Reuse esp_timer's task instead of retaining the 6 KB main stack only to log once/minute. */
+    const esp_timer_create_args_t args = {.callback = heap_timer_cb, .name = "heap_log"};
+    esp_timer_handle_t timer = NULL;
+    esp_err_t err = esp_timer_create(&args, &timer);
+    if (err == ESP_OK) err = esp_timer_start_periodic(timer, (uint64_t)CONFIG_FD_HEAP_LOG_PERIOD_S * 1000000ULL);
+    if (err != ESP_OK) {
+        if (timer) esp_timer_delete(timer);
+        ESP_LOGW(TAG, "heap log timer: %s", esp_err_to_name(err));
     }
 #endif
 }

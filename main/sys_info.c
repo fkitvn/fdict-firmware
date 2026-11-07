@@ -36,10 +36,10 @@ void sys_info_print(void)
 
 void sys_info_log_heap(void)
 {
-    ESP_LOGD(TAG, "Heap: internal free %u KB (min %u KB, largest %u KB) | DMA free %u KB | PSRAM free %u KB | min ever %u KB",
-             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
-             (unsigned)(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
-             (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024),
+    ESP_LOGI(TAG, "Heap: internal free %u KB (min %u KB, largest %u KB) | DMA free %u KB | PSRAM free %u KB | min ever %u KB",
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) / 1024),
+             (unsigned)(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) / 1024),
+             (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) / 1024),
              (unsigned)(heap_caps_get_free_size(MALLOC_CAP_DMA) / 1024),
              (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024),
              (unsigned)(esp_get_minimum_free_heap_size() / 1024));

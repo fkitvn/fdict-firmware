@@ -59,7 +59,7 @@
 #endif
 #endif
 
-#define BOARD_DRAW_BUF_LINES 40
+#define BOARD_DRAW_BUF_LINES 16   /* 2 x 10 KB internal DMA; keep RAM for Wi-Fi/RTOS */
 
 /* ---------- Xoay luc chay (Cai dat > Huong xoay man hinh; lcd_test B4) ----------
  * Chi so xoay tinh theo chieu B4: 0 = ngang, 1 = doc, 2 = ngang 180, 3 = doc 180.

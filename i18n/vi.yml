@@ -17,7 +17,6 @@ vi:
   CHECK_WIFI_RETRY: Kiểm tra Wi-Fi rồi thử lại.
   CHIP_INFO: '%s v%u.%u, %u nhân, N%uR%u'
   CLOSE: Đóng
-  COMING_SOON: Sắp có
   CONNECT: Kết nối
   CONNECTED: Đã kết nối
   CONNECTING: Đang kết nối
@@ -113,13 +112,12 @@ vi:
   PAIRED_WITH_ACCOUNT: Đã đăng nhập tài khoản
   PAIR_CONNECT_WIFI: Kết nối Wi-Fi để đăng nhập
   PAIR_DEVICE: Đăng nhập để tiếp tục
-  PAIR_GETTING_CODE: Đang lấy mã…
+  PAIR_GETTING_CODE: Đang lấy mã đăng nhập…
   PAIR_GET_CODE: Lấy mã
   PAIR_GET_NEW_CODE: Lấy mã mới
   PAIR_HINT: Đăng nhập để tiếp tục sử dụng
-  PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
+  PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại để đăng nhập · %d:%02d'
   PAIR_STEP_ID: 'Đăng nhập'
-  PAIR_STEP_ZALO: Kích hoạt bảo hành
   POLICY_QR: Chính sách đổi trả
   PAIR_TO_STUDY: Bạn chưa đăng nhập
   WORD_TYPE: Phân loại từ
@@ -209,6 +207,7 @@ vi:
   WIFI_AUTH_FAILED: Không xác thực được với router “%s” (mã %d). Thử lại sau.
   WIFI_CONNECTING_TO: Đang kết nối %s…
   WIFI_FORGET_ASK: Quên mạng %s?
+  WIFI_LOCAL_ERROR: 'Lỗi Wi-Fi: %s. Chọn mạng để thử lại.'
   WIFI_LOST_RETRYING: Mất kết nối – đang thử lại…
   WIFI_LOST_TAP_TO_OPEN: Mất WiFi - chạm để mở
   WIFI_NETWORK_NAME: 'Mạng: %s'
@@ -222,9 +221,12 @@ vi:
   WIFI_SECTION_AVAILABLE: MẠNG KHẢ DỤNG
   WIFI_SECTION_SAVED: ĐÃ LƯU
   WARRANTY: Bảo hành
+  WARRANTY_EXPIRED_ON: 'Đã hết hạn ngày %s'
+  WARRANTY_INFO: 'Thông tin bảo hành'
   WARRANTY_NEEDED: Chưa kích hoạt
+  WARRANTY_STATUS_ERROR: 'Không lấy được thông tin bảo hành (%s).'
   WARRANTY_UNTIL: 'Đến %s'
-  WARRANTY_ZALO_HINT: Mở Fdict trên mini app zalo để kích hoạt bảo hành
+  WARRANTY_ZALO_HINT: 'Truy cập Mini App Zalo: Fdict - Học từ vựng'
   WIFI_WRONG_PASSWORD: Sai mật khẩu cho “%s”. Chọn mạng để nhập lại.
   WILL_RESTART_WHEN_IDLE: Sẽ khởi động lại khi rảnh
   WORD: Từ

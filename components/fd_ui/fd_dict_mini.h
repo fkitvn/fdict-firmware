@@ -7,10 +7,5 @@ struct fd_fc_item {
     const char *word;      /* tieng Anh, chu thuong */
     const char *ipa;
     const char *meaning;   /* nghia tieng Viet ngan */
-    const char *audio;     /* TODO: duong dan / id am thanh phat am that (NULL = chua co, phat chuong mockup) */
+    const char *audio;     /* Optional audio asset (NULL: TTS/cache fallback). */
 };
-
-/* Tra cuu khong phan biet hoa thuong, bo khoang trang dau/cuoi. NULL neu khong co. */
-const struct fd_fc_item *fd_dict_lookup(const char *word);
-size_t fd_dict_count(void);
-const struct fd_fc_item *fd_dict_at(size_t i);

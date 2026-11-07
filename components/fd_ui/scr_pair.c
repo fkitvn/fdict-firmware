@@ -8,7 +8,6 @@
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_ota.h"
-#include "fd_zlink.h"
 #include "sdkconfig.h"
 #include "esp_app_desc.h"
 #include "esp_mac.h"
@@ -28,7 +27,6 @@ static char s_shown_name[64] = "\x01";
 static uint32_t s_srv_seen;   /* fd_ota_server_gen da xu ly */
 /* 2 buoc */
 static lv_obj_t *s_back_lbl;
-static bool s_seen_unpaired;
 
 /* Ma thiet bi co dinh = MAC goc eFuse (12 hex thuong), vd 84c7bb78c178. Khong doi khi build/OTA/xoa NVS. */
 void ui_device_ident(char *out, size_t n)
@@ -124,8 +122,6 @@ static void show(void)
     bool has_name = fd_ota_get_user_name(name, sizeof(name));
     bool busy = p.state == FD_PAIR_REQUESTING || p.state == FD_PAIR_CODE;
     bool done = p.paired && !busy;
-    if (!done) s_seen_unpaired = true;
-    else s_seen_unpaired = false;
     set_txt(s_back_lbl, _("BACK"));
     /* ---- da ghep: avatar + loi chao + Huy ghep doi ---- */
     const char *nk = done ? (has_name ? name : "") : "\x02";
@@ -163,7 +159,7 @@ static void show(void)
         s_nowifi = false;
         if (s_want && !busy) { s_want = false; fd_ota_pair_start(); busy = true; p.state = FD_PAIR_REQUESTING; }
     }
-    char b[48];
+    char b[128];   /* UTF-8 login instruction + countdown; never truncate at 48 bytes */
     uint32_t col = 0x6B7280;
     const char *help = "", *bt = _("PAIR_GET_NEW_CODE");
     if (s_nowifi) {
@@ -174,7 +170,7 @@ static void show(void)
     } else switch (p.state) {
     case FD_PAIR_REQUESTING: snprintf(b, sizeof(b), _("PAIR_GETTING_CODE")); break;
     case FD_PAIR_CODE:
-        snprintf(b, sizeof(b), _("PAIR_SCAN_WITH_PHONE"), p.expires_s / 60, p.expires_s % 60);   /* 1 dong: huong dan + dem nguoc */
+        snprintf(b, sizeof(b), _("PAIR_SCAN_WITH_PHONE"), p.expires_s / 60, p.expires_s % 60);   /* wraps instruction + countdown within the content width */
         break;
     case FD_PAIR_ERROR:
         col = 0xDC2626;
@@ -210,8 +206,11 @@ static void pair_cb(lv_event_t *e)   /* Mo Wi-Fi / Lay ma / Lay ma moi / Thu lai
     (void)e;
     if (s_nowifi || !fd_net_is_connected()) { fd_ui_show(FD_SCR_WIFI); return; }   /* mo man WiFi co san */
     if (fd_ota_is_paired()) return;
-    fd_ota_pair_stop();
-    fd_ota_pair_start();
+    if (lv_obj_has_state(s_btn, LV_STATE_DISABLED)) return;
+    lv_obj_add_state(s_btn, LV_STATE_DISABLED);   /* immediate: before enqueue/network request */
+    set_txt(s_msg, _("PAIR_GETTING_CODE"));
+    fd_ota_pair_start();   /* restart handled by worker; no intermediate STOP/IDLE state */
+    show();
 }
 
 /* ---- hop thoai xac nhan Huy ghep doi (lv_layer_top) ---- */
@@ -328,8 +327,9 @@ static void build(lv_obj_t *scr)
     lv_obj_t *col = ui_page_create(scr);
     lv_obj_set_style_bg_color(scr, lv_color_white(), 0);
     lv_obj_set_style_text_color(scr, lv_color_hex(0x111827), 0);
-    /* Vua 1 man, khong cuon. Doc 240x320: 6 + tieu de 25 + 4 + QR 159 + 4 + dong 20 + (dem) + nut 44 + 6 = 268 <= 320.
-     * Ngang 320x240: an tieu de -> 4 + 159 + 4 + 20 + 4 + 44 + 4 = 239 <= 240. Da ghep: 25+4+84+4+25+4+20+(dem)+44+12 = 222. */
+    /* Wrapped UTF-8 login text uses the full content width (296 px in 320px landscape).
+     * Short landscape: QR 100 + 26 quiet/border + up to 2 text lines (~40) + 44 buttons
+     * + 12 row gaps + 8 padding = 230 px. Portrait keeps the larger 135px QR. */
     bool low = lv_display_get_vertical_resolution(lv_obj_get_display(scr)) < 300;
     lv_obj_set_style_pad_hor(col, 12, 0);
     lv_obj_set_style_pad_ver(col, low ? 4 : 6, 0);
@@ -357,7 +357,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_radius(s_qr_wrap, 12, 0);
     lv_obj_set_clickable(s_qr_wrap, false);
     s_qr = lv_qrcode_create(s_qr_wrap);
-    lv_qrcode_set_size(s_qr, QR_PX);
+    lv_qrcode_set_size(s_qr, low ? 100 : QR_PX);   /* 2 px/module + quiet zone: room for wrapped login text */
     lv_qrcode_set_dark_color(s_qr, lv_color_black());
     lv_qrcode_set_light_color(s_qr, lv_color_white());
     lv_obj_set_hidden(s_qr_wrap, true);
@@ -389,8 +389,6 @@ static void build(lv_obj_t *scr)
     s_want = !fd_ota_is_paired();   /* chua ghep: lay ma QR khi co WiFi */
     s_nowifi = s_stop_sent = false;
     s_srv_seen = fd_ota_server_gen();
-    s_seen_unpaired = !fd_ota_is_paired();
-    if (!s_seen_unpaired) fd_zlink_refresh();
     show();
     s_tm = lv_timer_create(tm_cb, 300, NULL);
 }

@@ -1,36 +1,20 @@
 #pragma once
-/* Buoc 2: Lien ket Zalo (sau Buoc 1 Dinh danh = ghep thiet bi).
- * Trang thai: POST {base}/api/devices/zalo-link/status (Bearer device_token) luc khoi dong + khi ve lai Cai dat.
- * Ma 6 so: POST /zalo-link/start -> hien ma (5 phut), poll /zalo-link/poll moi 4 s. Ma KHONG log, chi o RAM.
- * Moi viec mang chay trong task "fd_zlink" (khong chan UI). */
+/* On-demand warranty lookup. Only the Warranty information screen requests it.
+ * No boot/status-row fetch, activation-code creation or background polling. */
 #include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef enum { FD_ZL_UNKNOWN = -1, FD_ZL_NO = 0, FD_ZL_YES = 1 } fd_zlink_linked_t;
-typedef enum { FD_ZLC_IDLE = 0, FD_ZLC_REQUESTING, FD_ZLC_CODE, FD_ZLC_DONE, FD_ZLC_EXPIRED, FD_ZLC_ERROR } fd_zlink_code_state_t;
-
+typedef enum { FD_WARR_IDLE, FD_WARR_LOADING, FD_WARR_READY, FD_WARR_ERROR } fd_warranty_state_t;
 typedef struct {
-    fd_zlink_code_state_t state;
-    char code[8];      /* 6 so khi CODE */
-    int expires_s;     /* con lai */
-    char err[20];
-} fd_zlink_code_t;
-
-void fd_zlink_refresh(void);               /* hoi trang thai (cho WiFi toi 90 s); bo qua neu chua ghep */
-fd_zlink_linked_t fd_zlink_linked(void);   /* UNKNOWN khi chua ghep / chua hoi duoc */
-uint32_t fd_zlink_gen(void);               /* tang moi khi trang thai doi (UI ve lai) */
-void fd_zlink_code_start(void);            /* xin ma moi (huy ma cu) + poll */
-void fd_zlink_code_ensure(void);           /* 2.1.2: dung lai ma con han (>= 60 s) hoac xin ma moi */
-void fd_zlink_code_stop(void);             /* dong hop ma: dung poll, xoa ma */
-void fd_zlink_code_get(fd_zlink_code_t *out);
-/* Buoc 3 (bao hanh, chi doc): -1 chua biet, 0 chua kich hoat, 1 da kich hoat (out = "dd/mm/yyyy" gio VN, co the NULL) */
-int fd_zlink_warranty(char *out, size_t n);
-
+    fd_warranty_state_t state;
+    bool activated;
+    bool active;
+    char expires[16]; /* dd/mm/yyyy, UTC+7 */
+    char err[24];
+} fd_warranty_status_t;
+void fd_zlink_refresh(void); /* async, duplicates coalesced; worker frees itself after response */
+void fd_zlink_status_get(fd_warranty_status_t *out);
 #ifdef __cplusplus
 }
 #endif

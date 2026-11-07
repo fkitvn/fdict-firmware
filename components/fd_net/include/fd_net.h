@@ -16,6 +16,7 @@ typedef enum {
     FD_NET_CONNECTING,
     FD_NET_CONNECTED,
     FD_NET_WAIT_RETRY,      /* mat ket noi, cho backoff */
+    FD_NET_ERROR,           /* local driver failure; user can retry */
 } fd_net_state_t;
 
 typedef struct {
@@ -42,6 +43,7 @@ bool fd_net_is_saved(const char *ssid);
 int fd_net_saved_count(void);
 
 fd_net_state_t fd_net_state(void);
+esp_err_t fd_net_last_error(void); /* local API error, not Wi-Fi reason code */
 bool fd_net_is_connected(void);
 bool fd_net_wait_connected(uint32_t timeout_ms);
 int fd_net_rssi(void);

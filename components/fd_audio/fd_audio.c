@@ -15,8 +15,6 @@
 #include <stdlib.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
-#include "freertos/stream_buffer.h"
-#include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "nvs.h"
 
@@ -30,7 +28,6 @@ static const char *TAG = "fd_audio";
 #define PA_TAIL_MS    40   /* truoc: 30 ms sau 1 khoi 0 -> cat mat ~60-90 ms cuoi */
 #define PA_HOLD_OFF_MS 50  /* reset: giu PA tat truoc khi reset codec */
 #define REQ_RESET     SIZE_MAX   /* req_t.count: yeu cau reset codec+PA (thuc) */
-#define REQ_STREAM    (SIZE_MAX - 1)   /* 2.0.1: phat luong PCM tu s_sb (2.2.4: dung cho thu loa) */
 #define REQ_REC       (SIZE_MAX - 2)   /* 2.1.8: ghi am thu tu mic (I2S RX) */
 #define REQ_WAV       (SIZE_MAX - 3)   /* 2.1.8: phat file WAV ghi am (req_t.path) */
 #define WAV_HDR       44
@@ -245,52 +242,6 @@ static void say_word(const req_t *r)
     if (!(r->flags & FD_SAY_NO_DL) && r->path[0] && s_miss_cb) s_miss_cb(r->text);   /* vd: xep tai giong tot cho lan sau */
 }
 
-/* 2.0.1 luong PCM (2.2.4: thu loa, Shadowing da go): 1 nguoi ghi (task mang) -> StreamBuffer PSRAM -> audio_task. Dong ho = so mau da ghi I2S. */
-static StreamBufferHandle_t s_sb;
-static volatile bool s_st_on, s_st_end, s_st_abort;
-static volatile uint32_t s_st_played;
-static size_t s_st_pre;
-
-static void stream_run(void)
-{
-    int v = fd_audio_get_volume();
-    bool muted = !s_hw_ok || v == 0;   /* khong phat duoc: van tieu thu dung nhip thoi gian thuc de video chay */
-    if (!muted && v != s_vol_applied) {
-        int got = -1;
-        if (fd_es8311_voice_volume_set(s_es, v, &got) == ESP_OK) s_vol_applied = v;
-    }
-    while (!s_st_abort && !s_st_end && xStreamBufferBytesAvailable(s_sb) < s_st_pre * 2) vTaskDelay(pdMS_TO_TICKS(10));
-    s_playing = true;
-    if (!muted) { amp(true); vTaskDelay(pdMS_TO_TICKS(PA_STARTUP_MS)); }
-    static const int16_t z[CHUNK] = {0};
-    int16_t buf[CHUNK];
-    s_quiet = true;
-    while (!s_st_abort) {
-        size_t got = xStreamBufferReceive(s_sb, buf, sizeof(buf), pdMS_TO_TICKS(20));
-        size_t n = got / 2;
-        if (n) {
-            if (muted) vTaskDelay(pdMS_TO_TICKS(n / 16 ? n / 16 : 1));
-            else write_mono(buf, n);
-            s_st_played += n;
-        } else if (s_st_end) {
-            break;
-        } else if (!muted) {
-            write_mono(z, CHUNK);   /* thieu du lieu (mang cham): im lang, dong ho khong tang */
-        }
-    }
-    s_quiet = false;
-    if (!muted) {
-        for (int i = 0; i < DRAIN_CHUNKS; i++) write_mono(z, CHUNK);
-        vTaskDelay(pdMS_TO_TICKS(PA_TAIL_MS));
-        amp(false);
-    }
-    s_playing = false;
-    vStreamBufferDeleteWithCaps(s_sb);
-    s_sb = NULL;
-    ESP_LOGI(TAG, "stream: ket thuc, %u mau%s", (unsigned)s_st_played, s_st_abort ? " (huy)" : "");
-    s_st_on = false;
-}
-
 /* 2.1.8 Ghi am thu: mic analog ES8311 -> ADC -> I2S RX (16 kHz, khe trai/phai: chon khe co nang luong lon hon).
  * Ghi vao bo dem PSRAM (khong ghi flash trong luc doc DMA -> khong tran), het gio/dung -> luu WAV 16-bit mono.
  * PA tat suot luc ghi (khong hu loa / hoi tiep). */
@@ -425,7 +376,6 @@ static void audio_task(void *arg)
             }
             continue;
         }
-        if (!r.pcm && r.count == REQ_STREAM) { stream_run(); continue; }
         if (!r.pcm && r.count == REQ_REC) { rec_run(); continue; }
         ESP_LOGD(TAG, "dequeue: %s %u B", r.text[0] ? r.text : (r.pcm ? "pcm" : "chime"), (unsigned)(r.count * 2));
         if (!s_hw_ok) { ESP_LOGD(TAG, "skip: hw not ok"); continue; }
@@ -465,8 +415,12 @@ static esp_err_t start_task(void)   /* lan dau: tao task -> hw_init (reset codec
     if (!s_q) {
         s_q = xQueueCreate(4, sizeof(req_t));
         ESP_RETURN_ON_FALSE(s_q, ESP_ERR_NO_MEM, TAG, "queue");
-        ESP_RETURN_ON_FALSE(xTaskCreate(audio_task, "fd_audio", 12288, NULL, 5, NULL) == pdPASS, ESP_ERR_NO_MEM, TAG,
-                            "task");
+        if (xTaskCreate(audio_task, "fd_audio", 12288, NULL, 5, NULL) != pdPASS) {
+            vQueueDelete(s_q);
+            s_q = NULL;
+            ESP_LOGE(TAG, "audio task: no internal RAM");
+            return ESP_ERR_NO_MEM;
+        }
     }
     return ESP_OK;
 }
@@ -502,42 +456,6 @@ void fd_audio_power_off(void)
 }
 
 
-esp_err_t fd_audio_stream_begin(size_t buf_samples, size_t prebuffer_samples)
-{
-    if (s_st_on) return ESP_ERR_INVALID_STATE;
-    ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
-    if (buf_samples < CHUNK * 4) buf_samples = CHUNK * 4;
-    if (prebuffer_samples > buf_samples / 2) prebuffer_samples = buf_samples / 2;
-    s_sb = xStreamBufferCreateWithCaps(buf_samples * 2, 2, MALLOC_CAP_SPIRAM);
-    ESP_RETURN_ON_FALSE(s_sb, ESP_ERR_NO_MEM, TAG, "stream buf");
-    s_st_pre = prebuffer_samples;
-    s_st_end = s_st_abort = false;
-    s_st_played = 0;
-    s_st_on = true;
-    req_t r = {.pcm = NULL, .count = REQ_STREAM};
-    if (xQueueSend(s_q, &r, pdMS_TO_TICKS(100)) != pdTRUE) {
-        s_st_on = false;
-        vStreamBufferDeleteWithCaps(s_sb);
-        s_sb = NULL;
-        return ESP_ERR_TIMEOUT;
-    }
-    return ESP_OK;
-}
-
-size_t fd_audio_stream_write(const int16_t *pcm, size_t n, uint32_t timeout_ms)
-{
-    if (!s_st_on || s_st_end || !s_sb || !pcm || !n) return 0;
-    return xStreamBufferSend(s_sb, pcm, n * 2, pdMS_TO_TICKS(timeout_ms)) / 2;
-}
-
-void fd_audio_stream_end(bool abort)
-{
-    if (abort) s_st_abort = true;
-    s_st_end = true;
-}
-
-uint32_t fd_audio_stream_played(void) { return s_st_played; }
-bool fd_audio_stream_active(void) { return s_st_on; }
 esp_err_t fd_audio_beep(void) { return post(NULL, 0); }
 esp_err_t fd_audio_play_pcm(const int16_t *samples, size_t count)
 {
@@ -575,7 +493,7 @@ esp_err_t fd_audio_rec_start(const char *path, uint32_t max_ms)
 {
     ESP_RETURN_ON_FALSE(path && path[0] && strlen(path) < sizeof(s_rec_path) && max_ms >= 200 && max_ms <= 30000,
                         ESP_ERR_INVALID_ARG, TAG, "rec arg");
-    if (s_rec_on || s_st_on) return ESP_ERR_INVALID_STATE;
+    if (s_rec_on) return ESP_ERR_INVALID_STATE;
     ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
     strlcpy(s_rec_path, path, sizeof(s_rec_path));
     s_rec_max = max_ms * (SAMPLE_RATE / 1000);

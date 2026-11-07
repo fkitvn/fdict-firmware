@@ -3,6 +3,8 @@
  * Mat khau KHONG bao gio duoc log.
  */
 #include "esp_mac.h"
+#include "esp_heap_caps.h"
+#include "wifi_retry.h"
 #include <string.h>
 #include "esp_event.h"
 #include "esp_log.h"
@@ -46,9 +48,12 @@ typedef struct {
     bool drop;
     bool stop_scan;
     wifi_config_t cfg;
+    unsigned generation;
 } wifi_job_t;
 static wifi_job_t s_job;
 static TaskHandle_t s_worker;
+static unsigned s_generation, s_api_failures;
+static volatile esp_err_t s_last_error;
 static esp_netif_t *s_netif;
 static esp_timer_handle_t s_retry_timer;
 
@@ -202,15 +207,43 @@ static void worker(void *arg)
         }
         if (job.run) {
             ESP_LOGI(TAG, "Bat dau ket noi \"%s\"", (const char *)job.cfg.sta.ssid);
+            const char *stage = "set_config";
             esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &job.cfg);
-            if (err == ESP_OK) err = esp_wifi_connect();
+            if (err == ESP_OK) { stage = "connect"; err = esp_wifi_connect(); }
             if (err != ESP_OK) {
-                ESP_LOGW(TAG, "connect: %s", esp_err_to_name(err));
+                ESP_LOGW(TAG, "%s: %s; internal free=%u largest=%u min=%u DMA=%u PSRAM=%u stack_hwm=%u",
+                         stage, esp_err_to_name(err),
+                         (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                         (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                         (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                         (unsigned)heap_caps_get_free_size(MALLOC_CAP_DMA),
+                         (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+                         (unsigned)uxTaskGetStackHighWaterMark(NULL));
                 xSemaphoreTake(s_mtx, portMAX_DELAY);
-                if (s_target.ssid[0] && s_state != FD_NET_CONNECTED) schedule_ms(RETRY_TARGET, 800);
+                bool current = job.generation == s_generation && s_target.ssid[0] && s_state == FD_NET_CONNECTING;
+                fd_evt_wifi_disc_t ev = {0};
+                if (current) {
+                    s_last_error = err;
+                    unsigned ms = wifi_api_retry_ms(++s_api_failures);
+                    strlcpy(ev.ssid, s_target.ssid, sizeof(ev.ssid));
+                    if (ms) {
+                        ESP_LOGW(TAG, "local API failure %u/%u: retry in %u ms", s_api_failures, WIFI_API_MAX_FAILURES, ms);
+                        schedule_ms(RETRY_TARGET, ms);
+                    } else {
+                        esp_timer_stop(s_retry_timer);
+                        s_dbg_next_retry_us = 0;
+                        s_state = FD_NET_ERROR;
+                        ESP_LOGE(TAG, "local API retries exhausted; select network to retry");
+                    }
+                }
                 xSemaphoreGive(s_mtx);
+                if (current) fd_events_post(FD_EVT_WIFI_DISCONNECTED, &ev, sizeof(ev));
             } else {
-                fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
+                xSemaphoreTake(s_mtx, portMAX_DELAY);
+                bool current = job.generation == s_generation;
+                if (current) { s_api_failures = 0; s_last_error = ESP_OK; }
+                xSemaphoreGive(s_mtx);
+                if (current) fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
             }
         }
     }
@@ -351,7 +384,6 @@ static void do_connect(const saved_net_t *n)
     {
         int bi = -1;
         for (int i = 0; i < s_scan_n; i++) if (strcmp(s_scan[i].ssid, n->ssid) == 0) { bi = i; break; }
-        log_sta_mac("truoc ket noi");
         if (bi >= 0) {
             ESP_LOGD(TAG, "Lan thu %d mode=%s muc tieu(quet) bssid=" MACSTR " ch=%u rssi=%d authmode=%u | pmf_cap=%d pmf_req=%d h2e=%d(%s)",
                      s_target_new ? s_new_attempts + 1 : s_backoff_n + 1, mode_name(s_compat), MAC2STR(s_scan_bssid[bi]),
@@ -369,6 +401,7 @@ static void do_connect(const saved_net_t *n)
              cfg.sta.sae_pwe_h2e, cfg.sta.scan_method, cfg.sta.sort_method);
     ESP_LOGD(TAG, "Ket noi toi \"%s\"%s (mat khau %u ky tu)", n->ssid, s_target_new ? " (mang moi)" : "",
              (unsigned)strlen(n->pass));
+    s_job.generation = ++s_generation;
     s_job.cfg = cfg;
     s_job.run = true;
     job_kick();   /* worker doi mutex; nguoi goi phai xSemaphoreGive ngay sau do_connect */
@@ -514,6 +547,11 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
             xEventGroupSetBits(s_eg, BIT_STA_DOWN);
             return;
         }
+        if (s_state == FD_NET_ERROR) {
+            xSemaphoreGive(s_mtx);
+            xEventGroupSetBits(s_eg, BIT_STA_DOWN);
+            return;
+        }
         s_dbg_disc_n++;
         s_dbg_last_reason = d->reason;
         s_dbg_last_us = esp_timer_get_time();
@@ -599,6 +637,8 @@ static void ip_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         s_target_new = false;
         s_rr = 1;
     }
+    s_api_failures = 0;
+    s_last_error = ESP_OK;
     s_backoff_n = 0;
     s_state = FD_NET_CONNECTED;
     if (s_target.pass[0]) {
@@ -619,6 +659,12 @@ esp_err_t fd_net_init(void)
 {
     s_mtx = xSemaphoreCreateMutex();
     s_eg = xEventGroupCreate();
+    if (!s_mtx || !s_eg) {
+        if (s_mtx) vSemaphoreDelete(s_mtx);
+        if (s_eg) vEventGroupDelete(s_eg);
+        s_mtx = NULL; s_eg = NULL;
+        return ESP_ERR_NO_MEM;
+    }
     ESP_ERROR_CHECK(esp_netif_init());
     s_netif = esp_netif_create_default_wifi_sta();
     esp_netif_set_hostname(s_netif, "fdict");
@@ -654,6 +700,7 @@ esp_err_t fd_net_init(void)
     if (xTaskCreate(worker, "wifi_job", 6144, NULL, 3, &s_worker) != pdPASS) {
         ESP_LOGE(TAG, "khong tao duoc wifi_job");
         s_worker = NULL;
+        return ESP_ERR_NO_MEM;
     }
     xSemaphoreTake(s_mtx, portMAX_DELAY);
     connect_next_saved();
@@ -663,7 +710,7 @@ esp_err_t fd_net_init(void)
 
 esp_err_t fd_net_scan_start(void)
 {
-    if (!s_mtx) return ESP_ERR_INVALID_STATE;
+    if (!s_mtx || !s_worker) return ESP_ERR_INVALID_STATE;
     xSemaphoreTake(s_mtx, portMAX_DELAY);
     if (s_scanning) {
         xSemaphoreGive(s_mtx);
@@ -678,6 +725,7 @@ esp_err_t fd_net_scan_start(void)
             s_self_disconnect = true;
             s_job.drop = true;
             s_job.run = false;
+            ++s_generation;   /* invalidate an in-flight job after cancel/forget */
             job_kick();
         }
         s_state = FD_NET_IDLE;
@@ -718,7 +766,7 @@ static void wait_scan_stopped(void)
 
 esp_err_t fd_net_connect(const char *ssid, const char *pass)
 {
-    if (!s_mtx) return ESP_ERR_INVALID_STATE;
+    if (!s_mtx || !s_worker) return ESP_ERR_INVALID_STATE;
     /* passphrase WPA2 8..63 ky tu (khong ho tro PSK hex 64 ky tu; cfg.sta.password chi 64 byte gom NUL) */
     if (!ssid || !ssid[0] || strlen(ssid) > 32 || (pass && strlen(pass) > 63)) {
         return ESP_ERR_INVALID_ARG;
@@ -733,6 +781,8 @@ esp_err_t fd_net_connect(const char *ssid, const char *pass)
         s_self_disconnect = true;
         s_job.drop = true;
     }
+    s_api_failures = 0;
+    s_last_error = ESP_OK;
     s_target_new = true;
     s_new_attempts = 0;
     { int m = mode_slot(n.ssid, false); if (m >= 0 && !s_mode[m].ok) s_mode[m].compat = false; }
@@ -743,7 +793,7 @@ esp_err_t fd_net_connect(const char *ssid, const char *pass)
 
 esp_err_t fd_net_connect_saved(const char *ssid)
 {
-    if (!s_mtx) return ESP_ERR_INVALID_STATE;
+    if (!s_mtx || !s_worker) return ESP_ERR_INVALID_STATE;
     wait_scan_stopped();
     xSemaphoreTake(s_mtx, portMAX_DELAY);
     int i = saved_find(ssid);
@@ -757,6 +807,8 @@ esp_err_t fd_net_connect_saved(const char *ssid)
         s_self_disconnect = true;
         s_job.drop = true;
     }
+    s_api_failures = 0;
+    s_last_error = ESP_OK;
     s_target_new = false;
     s_backoff_n = 0;
     do_connect(&n);
@@ -766,7 +818,7 @@ esp_err_t fd_net_connect_saved(const char *ssid)
 
 esp_err_t fd_net_forget(const char *ssid)
 {
-    if (!s_mtx) return ESP_ERR_INVALID_STATE;
+    if (!s_mtx || !s_worker) return ESP_ERR_INVALID_STATE;
     xSemaphoreTake(s_mtx, portMAX_DELAY);
     int i = saved_find(ssid);
     if (i >= 0) {
@@ -779,6 +831,7 @@ esp_err_t fd_net_forget(const char *ssid)
             s_self_disconnect = (s_state == FD_NET_CONNECTED || s_state == FD_NET_CONNECTING);
             s_job.drop = true;
             s_job.run = false;
+            ++s_generation;   /* invalidate an in-flight job after cancel/forget */
             job_kick();
             xEventGroupClearBits(s_eg, BIT_CONNECTED);
             s_state = FD_NET_IDLE;
@@ -804,6 +857,7 @@ bool fd_net_is_saved(const char *ssid)
 
 int fd_net_saved_count(void) { return s_saved_n; }
 fd_net_state_t fd_net_state(void) { return s_state; }
+esp_err_t fd_net_last_error(void) { return s_last_error; }
 bool fd_net_is_connected(void) { return s_eg && (xEventGroupGetBits(s_eg) & BIT_CONNECTED) != 0; }
 
 bool fd_net_wait_connected(uint32_t timeout_ms)

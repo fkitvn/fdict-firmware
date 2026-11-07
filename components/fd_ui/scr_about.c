@@ -24,7 +24,6 @@
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_ota.h"
-#include "fd_zlink.h"
 #include "ui_priv.h"
 
 #ifndef FD_FW_NAME
@@ -34,13 +33,13 @@
 #define ROW_H   24
 #define LABEL_W 96
 
-enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_WARR, R_COUNT };
+enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_COUNT };
 static const char *const LABELS[R_COUNT] = {"Firmware", "DEVICE_ID", "Build", "BUILD_DATE", "SIZE",
                                             "FLASH_MEMORY", "DATA", "VOICE", "ESP-IDF", "MAC",
-                                            "IP", "Chip", "INTERNAL_RAM", "PSRAM", "DISPLAY", "SERVER", "WARRANTY"};
+                                            "IP", "Chip", "INTERNAL_RAM", "PSRAM", "DISPLAY", "SERVER"};
 /* Thu tu hien thi theo nhom (so am = tieu de nhom SECT[-n-1]) */
 static const char *const SECT[] = {"DEVICE", "SOFTWARE", "MEMORY", "CONNECTIVITY"};
-static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_LCD, R_WARR,
+static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_LCD,
                                -2, R_FW, R_BUILD, R_DATE, R_SIZE, R_IDF, R_VOICE,
                                -3, R_FLASH, R_DATA, R_RAM, R_PSRAM,
                                -4, R_IP, R_MAC, R_OTA};
@@ -234,29 +233,9 @@ static void auto_check(void)   /* khi mo man / khi WiFi vua co */
     fd_ota_check_now();   /* duong kiem tra thu cong co san */
 }
 
-static uint32_t s_warr_gen = UINT32_MAX;
-static lv_obj_t *s_warr_lbl;
-static void warr_text(char *out, size_t n)
-{
-    char ex[16];
-    int w = fd_zlink_warranty(ex, sizeof(ex));
-    if (w == 1) snprintf(out, n, _("WARRANTY_UNTIL"), ex[0] ? ex : "-");
-    else snprintf(out, n, "%s", w == 0 ? _("WARRANTY_NEEDED") : "-");
-}
-static void warr_fill(void)
-{
-    if (s_warr_gen == fd_zlink_gen()) return;
-    s_warr_gen = fd_zlink_gen();
-    char t[48];
-    warr_text(t, sizeof(t));
-    if (s_val[R_WARR]) lv_label_set_text(s_val[R_WARR], t);
-    if (s_warr_lbl) lv_label_set_text(s_warr_lbl, t);
-}
-
 static void ota_timer_cb(lv_timer_t *t)
 {
     (void)t;
-    warr_fill();
     if (s_auto_wait && fd_net_is_connected()) auto_check();
     ota_show();
     {   /* 4/11: kiem tra loi -> hen kiem tra lai 60..120 s; roi man (destroy) -> huy */
@@ -477,12 +456,6 @@ static void build(lv_obj_t *scr)
     lv_obj_set_clickable(s_ota_msg, false);
     ota_show();
 
-    s_warr_lbl = lv_label_create(col);
-    lv_obj_set_width(s_warr_lbl, lv_pct(100));
-    lv_obj_set_style_text_font(s_warr_lbl, &fd_font_noto_18, 0);
-    lv_obj_set_style_text_align(s_warr_lbl, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_long_mode(s_warr_lbl, LV_LABEL_LONG_WRAP);
-    lv_label_set_text(s_warr_lbl, "-");
 
     s_popup_pending = true;
     auto_check();
@@ -522,9 +495,6 @@ static void build(lv_obj_t *scr)
 
     refresh();
     mem_rows();
-    s_warr_gen = UINT32_MAX;
-    warr_fill();
-    fd_zlink_refresh();
 }
 
 static void destroy(void)
@@ -534,7 +504,7 @@ static void destroy(void)
         lv_timer_delete(s_ota_timer);
         s_ota_timer = NULL;
     }
-    s_ota_msg = s_ota_spin = s_ota_btn_lbl = s_warr_lbl = NULL;
+    s_ota_msg = s_ota_spin = s_ota_btn_lbl = NULL;
     dlg_close();
     s_auto_wait = s_popup_pending = false;
     s_recheck_us = 0;

@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [3.4.6] - 2026-11-08
+
+- Giảm dùng RAM nội, bổ sung thử lại Wi-Fi có giới hạn và log chẩn đoán.
+- Làm rõ hướng dẫn đăng nhập, khóa nút lấy mã trong lúc xử lý.
+- Thêm Thông tin bảo hành riêng với QR Mini App; chỉ tải khi mở, bỏ khỏi màn phiên bản.
+- Dọn mã thử nghiệm và phần Shadowing không còn sử dụng.
+
 ## [3.4.5] - 2026-11-08
 
 - Sửa kết nối Wi-Fi: đợi ngắt mạng cũ xong rồi mới kết nối mạng mới.

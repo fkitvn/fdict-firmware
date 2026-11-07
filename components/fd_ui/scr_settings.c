@@ -1,4 +1,4 @@
-/* Cai dat (khong header): Dang nhap | Kich hoat bao hanh | WiFi | Do sang | Am luong | Thoi gian cho | Huong xoay | Thong tin phien ban | Che do nha phat trien | Khoi phuc cai dat goc. */
+/* Cai dat (khong header): Dang nhap | Thong tin bao hanh | WiFi | Do sang | Am luong | Thoi gian cho | Huong xoay | Thong tin phien ban | Che do nha phat trien | Khoi phuc cai dat goc. */
 #include <stdio.h>
 #include "esp_system.h"
 #include "fd_audio.h"
@@ -7,7 +7,6 @@
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "fd_store.h"
-#include "fd_zlink.h"
 #include "fd_pin.h"
 #include "fd_study.h"
 #include "ui_priv.h"
@@ -20,7 +19,7 @@ static lv_obj_t *s_to_sub;
 static lv_obj_t *s_pin_sub;
 static lv_obj_t *s_dev_sub;   /* 2.2.2: Che do nha phat trien -> man rieng */
 static lv_obj_t *s_lang_sub;   /* 1.3.0: Ngon ngu / Language */
-static lv_obj_t *s_pair_card, *s_pair_sub, *s_warr_sub;
+static lv_obj_t *s_pair_card, *s_pair_sub;
 
 static void go_cb(lv_event_t *e)
 {
@@ -104,28 +103,6 @@ static void pair_icon_fill(void)
         lv_label_set_text(s_pair_title, _("PAIR_STEP_ID"));
         lv_label_set_text(s_pair_sub, paired ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
     }
-}
-
-static lv_timer_t *s_zl_tm;
-static uint32_t s_zl_gen;
-static void warr_sub_fill(void)
-{
-    if (!s_warr_sub) return;
-    char ex[16], b[48];
-    int w = fd_zlink_warranty(ex, sizeof(ex));
-    if (w == 1) snprintf(b, sizeof(b), _("WARRANTY_UNTIL"), ex[0] ? ex : "-");
-    else snprintf(b, sizeof(b), "%s", w == 0 ? _("WARRANTY_NEEDED") : "-");
-    lv_label_set_text(s_warr_sub, b);
-    lv_obj_set_style_text_color(s_warr_sub, w == 1 ? lv_color_hex(0x16A34A) : lv_palette_darken(LV_PALETTE_GREY, 1), 0);
-}
-
-static void zl_tm_cb(lv_timer_t *t)   /* trang thai Zalo tra ve bat dong bo -> ve lai hai hang */
-{
-    (void)t;
-    if (s_zl_gen == fd_zlink_gen()) return;
-    s_zl_gen = fd_zlink_gen();
-    if (s_pair_card) pair_icon_fill();
-    warr_sub_fill();
 }
 
 static void pair_card(lv_obj_t *parent)
@@ -322,7 +299,6 @@ static void refresh(void)
     lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
     lv_label_set_text(s_dev_sub, fd_ui_devmode_get() ? _("ON") : _("OFF"));
     if (s_pair_card) pair_icon_fill();
-    warr_sub_fill();
     lv_label_set_text_fmt(s_rot_sub, "%d°", fd_display_rotation_deg(fd_display_get_rotation()));
 }
 
@@ -335,11 +311,7 @@ static void build(lv_obj_t *scr)
     /* Tieu de lon can giua (font subset 32 px co dau, chi dung o day) */
     ui_screen_title(body, _("SETTINGS"));
     pair_card(body);
-    item(body, LV_SYMBOL_OK, _("PAIR_STEP_ZALO"), warr_cb, NULL, &s_warr_sub);
-    lv_obj_set_style_text_font(s_warr_sub, &fd_font_noto_14, 0);
-    s_zl_gen = fd_zlink_gen();
-    s_zl_tm = lv_timer_create(zl_tm_cb, 1000, NULL);
-    fd_zlink_refresh();
+    item(body, LV_SYMBOL_OK, _("WARRANTY_INFO"), warr_cb, NULL, NULL);
     item(body, LV_SYMBOL_WIFI, "WiFi", go_cb, (void *)(intptr_t)FD_SCR_WIFI, &s_wifi_sub);
     item(body, LV_SYMBOL_KEYBOARD, _("LANGUAGE"), go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
@@ -356,9 +328,8 @@ static void build(lv_obj_t *scr)
 }
 
 static void destroy(void) {
-    if (s_zl_tm) { lv_timer_delete(s_zl_tm); s_zl_tm = NULL; }
     if (!s_resetting) dlg_dismiss();
-    s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = s_warr_sub = NULL;
+    s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
 }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
 

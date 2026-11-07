@@ -497,9 +497,18 @@ void fd_deck_init(void)
     if (s_q) return;
     if (!s_mx) s_mx = xSemaphoreCreateMutex();
     QueueHandle_t q = xQueueCreate(4, sizeof(int));
-    if (!s_mx || !q) { ESP_LOGI(TAG, "init: het bo nho"); return; }
+    if (!s_mx || !q) {
+        if (q) vQueueDelete(q);
+        if (s_mx) vSemaphoreDelete(s_mx);
+        s_mx = NULL;
+        ESP_LOGI(TAG, "init: het bo nho"); return;
+    }
     s_q = q;
-    if (xTaskCreate(task, "fd_deck", 8192, NULL, 2, NULL) != pdPASS) ESP_LOGI(TAG, "init: khong tao duoc task");
+    if (xTaskCreate(task, "fd_deck", 8192, NULL, 2, NULL) != pdPASS) {
+        vQueueDelete(s_q); vSemaphoreDelete(s_mx);
+        s_q = NULL; s_mx = NULL;
+        ESP_LOGI(TAG, "init: khong tao duoc task");
+    }
 }
 
 void fd_deck_download(void)   /* khong con tai bo tu: chi quet lai cache + gui outbox */

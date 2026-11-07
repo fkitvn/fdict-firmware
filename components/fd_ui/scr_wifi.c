@@ -44,6 +44,10 @@ static void status_from_state(void)
         snprintf(buf, sizeof(buf), _("WIFI_CONNECTING_TO"), ssid);
         set_status(buf, lv_palette_darken(LV_PALETTE_AMBER, 3));
         break;
+    case FD_NET_ERROR:
+        snprintf(buf, sizeof(buf), _("WIFI_LOCAL_ERROR"), esp_err_to_name(fd_net_last_error()));
+        set_status(buf, lv_palette_main(LV_PALETTE_RED));
+        break;
     case FD_NET_WAIT_RETRY:
         set_status(_("WIFI_LOST_RETRYING"), lv_palette_darken(LV_PALETTE_AMBER, 3));
         break;

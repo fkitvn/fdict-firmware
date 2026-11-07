@@ -749,7 +749,14 @@ void fd_sync_init(void)
     s_evmx = xSemaphoreCreateMutex();
     s_w = heap_caps_calloc(FD_SYNC_MAX_WORDS, sizeof(word_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     s_q = xQueueCreate(4, sizeof(int));
-    if (!s_mx || !s_evmx || !s_w || !s_q) { ESP_LOGE(TAG, "init: het bo nho"); return; }
+    if (!s_mx || !s_evmx || !s_w || !s_q) {
+        if (s_q) vQueueDelete(s_q);
+        if (s_mx) vSemaphoreDelete(s_mx);
+        if (s_evmx) vSemaphoreDelete(s_evmx);
+        heap_caps_free(s_w);
+        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL;
+        ESP_LOGE(TAG, "init: het bo nho"); return;
+    }
     mkdir(SDIR, 0775);
     unlink(STORE_TMP);   /* ban tai do (mat dien giua chung) */
     unlink(EVLOG_TMP);
@@ -759,7 +766,11 @@ void fd_sync_init(void)
     unlock();
     int p = count_events();
     lock(); s_st.pending = p; unlock();
-    if (xTaskCreate(task, "fd_sync", 8192, NULL, 2, NULL) != pdPASS) ESP_LOGE(TAG, "init: khong tao duoc task");
+    if (xTaskCreate(task, "fd_sync", 8192, NULL, 2, NULL) != pdPASS) {
+        vQueueDelete(s_q); vSemaphoreDelete(s_mx); vSemaphoreDelete(s_evmx); heap_caps_free(s_w);
+        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL;
+        ESP_LOGE(TAG, "init: khong tao duoc task");
+    }
 }
 
 static void send_cmd(int c)

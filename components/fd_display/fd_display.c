@@ -169,7 +169,7 @@ esp_err_t fd_display_init(void)
     lvgl_port_display_cfg_t disp_cfg = {
         .io_handle = io,
         .panel_handle = s_panel,
-        /* Cap cho dong dai nhat (320 px) -> du cho ca ngang va doc: 2 x 25.6KB internal DMA */
+        /* Cap cho dong dai nhat (320 px) -> du cho ca ngang va doc: 2 x 10KB internal DMA (16 lines) */
         .buffer_size = BOARD_DISP_MAX_LINE_PX * DRAW_BUF_LINES,
         .double_buffer = true,
         .hres = o->h_res,

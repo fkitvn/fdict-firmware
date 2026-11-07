@@ -1,3 +1,4 @@
+#include "esp_attr.h"
 /* Tra tu proxy + lich su LittleFS + hang cho words/add. KHONG log token. */
 #include "fd_dictnet.h"
 #include <stdio.h>
@@ -26,7 +27,7 @@ static const char *TAG = "fd_dict";
 static SemaphoreHandle_t s_mx;
 static QueueHandle_t s_q;
 static fd_dictnet_status_t s_st;
-static fd_dictnet_entry_t s_hist[FD_DICTNET_HIST_MAX];
+static EXT_RAM_BSS_ATTR fd_dictnet_entry_t s_hist[FD_DICTNET_HIST_MAX];
 static int s_nh;
 static char s_last_cid[25];
 

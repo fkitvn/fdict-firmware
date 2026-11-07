@@ -21,11 +21,7 @@ static lv_obj_t *s_status, *s_bar, *s_rec_btn, *s_rec_ico, *s_rec_txt, *s_play_b
 static lv_timer_t *s_tm;
 static bool s_was_rec;
 
-/* ---------- Thu loa ----------
- * 2.2.7: KHONG dung luong fd_audio_stream_* nua. Thiet bi 2.2.3 bi reset khi het am thu: "assert failed" trong tlsf_free
- * <- heap_caps_free <- vStreamBufferGenericDeleteWithCaps <- stream_run (fd_audio.c), tuc hong heap PSRAM khi xoa
- * StreamBuffer luc ket thuc luong. Thay bang PCM sinh san 1 lan vao PSRAM (khong bao gio giai phong) va phat qua
- * fd_audio_play_pcm (cung duong da on dinh voi tieng bip/phat am). Am ngan nen khong can nut Dung. */
+/* Speaker diagnostics use persistent PSRAM PCM, queued through fd_audio_play_pcm. */
 #define SPK_RATE   16000
 #define SPK_AMP    4000.0f            /* ~ -18 dBFS */
 #define SPK_FADE   480                /* 30 ms vao/ra */

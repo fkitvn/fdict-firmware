@@ -17,7 +17,6 @@ en:
   CHECK_WIFI_RETRY: Check Wi-Fi and try again.
   CHIP_INFO: '%s v%u.%u, %u cores, N%uR%u'
   CLOSE: Close
-  COMING_SOON: Coming soon
   CONNECT: Connect
   CONNECTED: Connected
   CONNECTING: Connecting
@@ -113,13 +112,12 @@ en:
   PAIRED_WITH_ACCOUNT: Signed in to account
   PAIR_CONNECT_WIFI: Connect to Wi-Fi to sign in
   PAIR_DEVICE: Sign in to continue
-  PAIR_GETTING_CODE: Getting code…
+  PAIR_GETTING_CODE: Getting login code…
   PAIR_GET_CODE: Get code
   PAIR_GET_NEW_CODE: Get new code
   PAIR_HINT: Sign in to continue
-  PAIR_SCAN_WITH_PHONE: 'Scan with your phone · %d:%02d'
+  PAIR_SCAN_WITH_PHONE: 'Scan with your phone to sign in · %d:%02d'
   PAIR_STEP_ID: Sign in
-  PAIR_STEP_ZALO: Activate warranty
   POLICY_QR: Return policy
   PAIR_TO_STUDY: You are not signed in
   WORD_TYPE: Word type
@@ -209,6 +207,7 @@ en:
   WIFI_AUTH_FAILED: Could not authenticate with router “%s” (code %d). Try again later.
   WIFI_CONNECTING_TO: Connecting to %s…
   WIFI_FORGET_ASK: Forget network %s?
+  WIFI_LOCAL_ERROR: 'Wi-Fi error: %s. Select network to retry.'
   WIFI_LOST_RETRYING: Connection lost – retrying…
   WIFI_LOST_TAP_TO_OPEN: WiFi lost - tap to open
   WIFI_NETWORK_NAME: 'Network: %s'
@@ -222,9 +221,12 @@ en:
   WIFI_SECTION_AVAILABLE: AVAILABLE NETWORKS
   WIFI_SECTION_SAVED: SAVED
   WARRANTY: Warranty
+  WARRANTY_EXPIRED_ON: 'Expired on %s'
+  WARRANTY_INFO: 'Warranty information'
   WARRANTY_NEEDED: Not activated
+  WARRANTY_STATUS_ERROR: 'Could not load warranty (%s).'
   WARRANTY_UNTIL: 'Until %s'
-  WARRANTY_ZALO_HINT: Open FDict in the Zalo Mini App to activate warranty
+  WARRANTY_ZALO_HINT: 'Open Zalo Mini App: Fdict - Học từ vựng'
   WIFI_WRONG_PASSWORD: Wrong password for “%s”. Select the network to re-enter it.
   WILL_RESTART_WHEN_IDLE: Will restart when idle
   WORD: Word

@@ -983,6 +983,7 @@ void fd_ota_selftest_wait(uint32_t timeout_ms)
 /* ---------- ghep doi (POST /api/devices/pair/start, /poll moi 5 s, 410 -> phien moi) ---------- */
 static fd_pair_status_t s_pair;      /* doc qua fd_ota_pair_get (s_mx) */
 static bool s_pair_active;
+static bool s_pair_start_pending;   /* guarded by s_mx; queued or running pair/start */
 static int64_t s_pair_exp_us, s_pair_next_us;
 
 static void pair_set(fd_pair_state_t st, bool new_session, int exp_s, const char *err)
@@ -1001,6 +1002,7 @@ void fd_ota_pair_get(fd_pair_status_t *out)
     if (!s_mx) { memset(out, 0, sizeof(*out)); return; }
     xSemaphoreTake(s_mx, portMAX_DELAY);
     *out = s_pair;
+    if (s_pair_start_pending) out->state = FD_PAIR_REQUESTING;
     if (out->state == FD_PAIR_CODE) {
         int64_t left = (s_pair_exp_us - esp_timer_get_time()) / 1000000;
         out->expires_s = left < 0 ? 0 : (int)left;
@@ -1008,7 +1010,22 @@ void fd_ota_pair_get(fd_pair_status_t *out)
     xSemaphoreGive(s_mx);
     out->paired = fd_ota_is_paired();
 }
-void fd_ota_pair_start(void) { send_cmd(CMD_PAIR_START); }
+void fd_ota_pair_start(void)
+{
+    if (!s_mx || !s_cmd) return;
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (s_pair_start_pending) { xSemaphoreGive(s_mx); return; }
+    s_pair_start_pending = true;
+    xSemaphoreGive(s_mx);
+    int cmd = CMD_PAIR_START;
+    if (xQueueSend(s_cmd, &cmd, 0) != pdTRUE) {
+        xSemaphoreTake(s_mx, portMAX_DELAY);
+        s_pair_start_pending = false;
+        s_pair.state = FD_PAIR_ERROR;
+        strlcpy(s_pair.err, "busy", sizeof(s_pair.err));
+        xSemaphoreGive(s_mx);
+    }
+}
 void fd_ota_pair_stop(void) { send_cmd(CMD_PAIR_STOP); }
 void fd_ota_unpair(void) { send_cmd(CMD_UNPAIR); }
 
@@ -1385,7 +1402,14 @@ static void ota_task(void *arg)
     for (;;) {
         int cmd = 0;
         xQueueReceive(s_cmd, &cmd, pdMS_TO_TICKS(s_pair_active ? 250 : IDLE_POLL_MS));
-        if (cmd == CMD_PAIR_START) { s_pair_active = true; s_pair_retry_us = 0; pair_request(); cmd = 0; }
+        if (cmd == CMD_PAIR_START) {
+            s_pair_active = true; s_pair_retry_us = 0;
+            pair_request();
+            xSemaphoreTake(s_mx, portMAX_DELAY);
+            s_pair_start_pending = false;
+            xSemaphoreGive(s_mx);
+            cmd = 0;
+        }
         else if (cmd == CMD_UNPAIR) {   /* huy ghep: dung poll + xoa NVS fdict/device_token */
             s_pair_active = false;
             bool ok = token_save(NULL);

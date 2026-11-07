@@ -1,4 +1,4 @@
-/* Flash card (mockup, khong header, nen sang). 23/10: vao man -> CAI DAT truoc phien (cung kieu Hoc tap/scr_quiz):
+/* Flash card (synced deck, khong header, nen sang). 23/10: vao man -> CAI DAT truoc phien (cung kieu Hoc tap/scr_quiz):
  *   SETUP: So the (10/20/Tat ca), Thu tu (Theo danh sach/Ngau nhien), Mat truoc (Tu/Nghia), Tu dong phat (Tat/1/2 lan);
  *          cac lua chon trong vung cuon, nut [Bat dau] 46 px ghim day man. Nho trong NVS fd/fc_cfg.
  *   CARD : the hai mat (cham de lat, < Truoc / Sau >, bo dem); thu tu ngau nhien them nut Tron.

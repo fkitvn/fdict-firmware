@@ -1,3 +1,4 @@
+#include "esp_attr.h"
 /* 2.3.5: Tu dien online qua dict.fkit.vn; lich su 30; auto-add + hang cho. */
 #include "ui_priv.h"
 #include "fd_dictnet.h"
@@ -174,8 +175,8 @@ static void show_home(void)
     fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
 
     /* 2.3.6 FIX reboot: truoc day hist[30] (30 x 280 B = 8.4 KB) nam tren stack task LVGL (8 KB) -> tran stack -> reset.
-     * Nay dung bo dem tinh (BSS), khong ton stack. */
-    static fd_dictnet_entry_t hist[FD_DICTNET_HIST_MAX];
+     * Bo dem tinh trong PSRAM: khong ton stack hoac RAM noi. */
+    static EXT_RAM_BSS_ATTR fd_dictnet_entry_t hist[FD_DICTNET_HIST_MAX];
     int n = fd_dictnet_history(hist, FD_DICTNET_HIST_MAX);
     if (n > 0) {
         label(s_body, _("LOOKUP_HISTORY"), NULL, FD_COLOR_TEXT_MUTED);

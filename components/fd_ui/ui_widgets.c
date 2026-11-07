@@ -1,3 +1,4 @@
+#include "esp_attr.h"
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
@@ -41,7 +42,7 @@ lv_obj_t *ui_screen_title(lv_obj_t *parent, const char *txt)
 #define VB_TONE   (VB_RATE * 70 / 1000)
 #define VB_GAP    (VB_RATE * 60 / 1000)
 #define VB_RAMP   (VB_RATE * 5 / 1000)
-static int16_t s_vb_pcm[2 * VB_TONE + VB_GAP];
+static EXT_RAM_BSS_ATTR int16_t s_vb_pcm[2 * VB_TONE + VB_GAP];
 static bool s_vb_ready;
 
 void ui_vol_beep(void)
