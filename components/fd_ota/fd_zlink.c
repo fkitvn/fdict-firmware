@@ -130,13 +130,23 @@ static bool wait_wifi(int sec)
 
 static void do_status(void)
 {
-    if (!fd_ota_is_paired()) { set_linked(FD_ZL_UNKNOWN); return; }
     if (!wait_wifi(90)) return;
     char *resp = malloc(RESP_CAP);
     if (!resp) return;
+    /* Chua dang nhap (ke ca sau khoi phuc cai dat goc): van doc han bao hanh theo MAC. Ban ghi nam o may chu. */
+    if (!fd_ota_is_paired()) {
+        set_linked(FD_ZL_UNKNOWN);
+        int code = call("/api/devices/warranty/lookup", resp);
+        if (code == 200) set_warranty(json_true(resp, "warranty_activated") ? 1 : 0, resp);
+        ESP_LOGI(TAG, "lookup -> %d", code);
+        free(resp);
+        return;
+    }
     int code = call("/api/devices/zalo-link/status", resp);
-    if (code == 200) { set_linked(json_true(resp, "warranty_activated") ? FD_ZL_YES : FD_ZL_NO);   /* 2.1.1: Buoc 2 xong = bao hanh da kich hoat (device_warranties) */ set_warranty(json_true(resp, "warranty_activated") ? 1 : 0, resp); }
-    else if (code == 401) { set_linked(FD_ZL_UNKNOWN); set_warranty(-1, NULL); }
+    if (code == 200) {
+        set_linked(json_true(resp, "zalo_linked") ? FD_ZL_YES : FD_ZL_NO);
+        set_warranty(json_true(resp, "warranty_activated") ? 1 : 0, resp);
+    } else if (code == 401) { set_linked(FD_ZL_UNKNOWN); set_warranty(-1, NULL); }
     ESP_LOGI(TAG, "status -> %d", code);
     free(resp);
 }
@@ -227,8 +237,7 @@ static void kick(uint32_t bit)
 
 void fd_zlink_refresh(void)
 {
-    if (s_srv_gen != fd_ota_server_gen()) { s_srv_gen = fd_ota_server_gen(); set_linked(FD_ZL_UNKNOWN); }
-    if (!fd_ota_is_paired()) { set_linked(FD_ZL_UNKNOWN); return; }
+    if (s_srv_gen != fd_ota_server_gen()) { s_srv_gen = fd_ota_server_gen(); set_linked(FD_ZL_UNKNOWN); set_warranty(-1, NULL); }
     kick(BIT_STATUS);
 }
 
@@ -242,7 +251,7 @@ uint32_t fd_zlink_gen(void) { return s_gen; }
 
 int fd_zlink_warranty(char *out, size_t n)
 {
-    if (!fd_ota_is_paired() || s_srv_gen != fd_ota_server_gen()) return -1;
+    if (s_srv_gen != fd_ota_server_gen()) return -1;
     taskENTER_CRITICAL(&s_mux);
     int v = s_warr;
     if (out && n) { strncpy(out, s_warr_exp, n - 1); out[n - 1] = 0; }

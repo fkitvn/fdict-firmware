@@ -13,41 +13,29 @@
 #include "fd_audio.h"
 #include "fd_flashcard.h"
 #include "fd_ota.h"
-#include "fd_dict_mini.h"   /* struct fd_fc_item (word, ipa, meaning, audio TODO) */
+#include "fd_sync.h"
+#include "fd_dict_mini.h"   /* struct fd_fc_item (word, ipa, meaning) */
 #include "nvs.h"
 #include "ui_priv.h"
 
 
-static const struct fd_fc_item ITEMS[] = {
-    {"apple", "/ˈæp.əl/", "quả táo", NULL},
-    {"beautiful", "/ˈbjuː.tɪ.fəl/", "đẹp", NULL},
-    {"journey", "/ˈdʒɜː.ni/", "chuyến đi, hành trình", NULL},
-    {"knowledge", "/ˈnɒl.ɪdʒ/", "kiến thức", NULL},
-    {"thought", "/θɔːt/", "suy nghĩ, ý nghĩ", NULL},
-    {"weather", "/ˈweð.ər/", "thời tiết", NULL},
-    {"measure", "/ˈmeʒ.ər/", "đo lường", NULL},
-    {"curious", "/ˈkjʊə.ri.əs/", "tò mò", NULL},
-    {"improve", "/ɪmˈpruːv/", "cải thiện", NULL},
-    {"language", "/ˈlæŋ.ɡwɪdʒ/", "ngôn ngữ", NULL},
-};
-#define N_ITEMS ((int)(sizeof(ITEMS) / sizeof(ITEMS[0])))
-
-/* bo the dang dung: server/cache (s_net) hoac ITEMS */
-static fd_fc_card_t *s_buf;                 /* FD_FC_MAX, PSRAM (chup tu fd_flashcard) */
+/* Bo the chup tu kho dong bo luc bam Bat dau. Khong goi API, khong co tu mau. */
+static fd_fc_card_t *s_buf;                 /* FD_FC_MAX, PSRAM */
 static struct fd_fc_item s_net[FD_FC_MAX];
-static const struct fd_fc_item *s_items = ITEMS;
-static int s_nitems = N_ITEMS;
+static const struct fd_fc_item *s_items;
+static int s_nitems;
 
-static void pick_items(void)
+static int load_cards(void)
 {
-    s_items = ITEMS;
-    s_nitems = N_ITEMS;
+    s_items = NULL;
+    s_nitems = 0;
     if (!s_buf) s_buf = heap_caps_calloc(FD_FC_MAX, sizeof(fd_fc_card_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    int n = s_buf ? fd_fc_copy(s_buf, FD_FC_MAX) : 0;
-    if (n <= 0) return;
+    int n = s_buf ? fd_sync_build_cards(s_buf, FD_FC_MAX) : 0;
+    if (n <= 0) return 0;
     for (int i = 0; i < n; i++) s_net[i] = (struct fd_fc_item){s_buf[i].word, s_buf[i].ipa, s_buf[i].meaning, NULL};
     s_items = s_net;
     s_nitems = n;
+    return n;
 }
 
 typedef enum { V_SETUP, V_CARD } view_t;
@@ -94,8 +82,13 @@ static void cfg_save(void)
 static void card_say(void)
 {
     if (s_reps == 0) return;   /* Tat: chi nut loa */
-    const fd_pron_cfg_t c = {FD_PRON_AUTO, s_reps, true};   /* nhu ui_pron_say (cache -> Pico + tai nen), lap 1/2 lan */
+    const fd_pron_cfg_t c = {FD_PRON_PICO_ONLY, s_reps, false};
     ui_pron_say_cfg(s_items[s_order[s_pos]].word, &c);
+}
+
+static void note_seen(void)
+{
+    if (s_buf && s_pos >= 0 && s_pos < s_n) fd_sync_card_seen(s_buf[s_order[s_pos]].id);
 }
 
 static void card_refresh(void)
@@ -120,16 +113,38 @@ static void shuffle(void)
     s_flipped = false;
 }
 
-static void flip_cb(lv_event_t *e) { (void)e; s_flipped = !s_flipped; card_refresh(); }
+static uint8_t s_tap;   /* 1 lat, 2 up, 3 sang the */
+
+static void show_pos(bool say)
+{
+    s_flipped = false;
+    s_tap = 0;
+    card_refresh();
+    if (say) card_say();
+    note_seen();
+}
+
+static void go_next(void)
+{
+    s_pos = (s_pos + 1) % s_n;
+    show_pos(true);
+}
+
+static void flip_cb(lv_event_t *e)
+{
+    (void)e;
+    if (s_tap >= 2) { go_next(); return; }
+    s_tap++;
+    s_flipped = s_tap == 1;
+    card_refresh();
+}
 static void step_cb(lv_event_t *e)
 {
     int d = (int)(intptr_t)lv_event_get_user_data(e);
     s_pos = (s_pos + d + s_n) % s_n;
-    s_flipped = false;
-    card_refresh();
-    card_say();
+    show_pos(true);
 }
-static void shuffle_cb(lv_event_t *e) { (void)e; shuffle(); card_refresh(); card_say(); }
+static void shuffle_cb(lv_event_t *e) { (void)e; shuffle(); show_pos(true); }
 /* Phat am tu hien tai (task fd_audio, khong chan LVGL): co cache /data/voice/<tu>.pcm -> giong tot; khong -> Pico ngay +
  * xep tai nen (fd_voice, neu WiFi + da ghep) cho lan sau. Loi xep hang -> bip; loi tong hop ->
  * task am thanh phat chuong. Am luong 0 = im. Nut loa luon doc 1 lan. */
@@ -137,7 +152,8 @@ static void speak_cb(lv_event_t *e)
 {
     (void)e;
     const struct fd_fc_item *c = &s_items[s_order[s_pos]];
-    ui_pron_say(c->word);   /* duong chung: cache -> Pico + tai nen */
+    const fd_pron_cfg_t cfg = {FD_PRON_PICO_ONLY, 1, false};
+    ui_pron_say_cfg(c->word, &cfg);
 }
 
 static lv_obj_t *face(lv_obj_t *card)
@@ -183,7 +199,27 @@ static void nav_btn(lv_obj_t *row, const char *txt, lv_event_cb_t cb, intptr_t u
 static void show_card(void)
 {
     s_view = V_CARD;
-    pick_items();
+    if (load_cards() <= 0) {
+        lv_obj_clean(s_body);
+        lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_row(s_body, 8, 0);
+        lv_obj_t *a = lv_label_create(s_body);
+        lv_obj_set_width(a, lv_pct(100));
+        lv_label_set_long_mode(a, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(a, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_font(a, &fd_font_noto_18, 0);
+        lv_label_set_text(a, _("NO_OFFLINE_DATA_YET"));
+        lv_obj_t *b = lv_label_create(s_body);
+        lv_obj_set_width(b, lv_pct(100));
+        lv_label_set_long_mode(b, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(b, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_font(b, &fd_font_noto_14, 0);
+        lv_obj_set_style_text_color(b, lv_color_hex(0x6B7280), 0);
+        lv_label_set_text(b, _("SYNC_AUTO_HINT"));
+        s_n = 0;
+        return;
+    }
     s_n = NOPT[s_ncfg] && NOPT[s_ncfg] < s_nitems ? NOPT[s_ncfg] : s_nitems;
     for (int i = 0; i < s_nitems; i++) s_order[i] = (uint8_t)i;
     if (s_rnd) {   /* ngau nhien: tron toan bo roi lay s_n the dau */
@@ -255,8 +291,7 @@ static void show_card(void)
     lv_obj_set_style_text_color(s_count, lv_color_hex(0x6B7280), 0);
     if (s_rnd) nav_btn(row, _("SHUFFLE"), shuffle_cb, 0);
     nav_btn(row, _("NEXT"), step_cb, 1);
-    card_refresh();
-    card_say();
+    show_pos(true);
 }
 
 /* ---------- SETUP (cung kieu man cai dat Hoc tap, scr_quiz.c) ---------- */
@@ -275,6 +310,7 @@ static void opt_cb(lv_event_t *e)
     else if (grp == OPT_ORD) s_rnd = (uint8_t)v;
     else if (grp == OPT_FRONT) s_mfront = (uint8_t)v;
     else if (grp == OPT_REP) s_reps = (uint8_t)v;
+    cfg_save();
     lv_async_call(setup_async, NULL);
 }
 
@@ -303,7 +339,7 @@ static void show_setup(void)
     lv_obj_set_style_pad_hor(s_body, s_pad_hor0, 0);
     lv_obj_set_style_pad_row(s_body, 4, 0);
     /* cai dat trong vung cuon (flex_grow) phia tren; nut Bat dau ghim day man */
-    lv_obj_t *sc = ui_setup_begin(s_body, "Flash card");
+    lv_obj_t *sc = ui_setup_begin(s_body, _("FLASH_CARD"));
 
     static const char *const NS[] = {"10", "20", "ALL"};
     static const char *const ORD[] = {"IN_ORDER", "RANDOM"};
@@ -327,7 +363,6 @@ static void build(lv_obj_t *scr)
     s_gate = !fd_ota_is_paired();   /* 2.3.0: can ghep (nhu Quiz) */
     if (s_gate) { ui_pair_gate(s_body); return; }
     cfg_load();
-    fd_fc_refresh();   /* tai the nen (da ghep + WiFi); khong chan */
     show_setup();
 }
 

@@ -377,7 +377,7 @@ static void srv_msg_poll(void)
     lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
     lv_obj_set_style_text_color(l, lv_color_white(), 0);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(l, m);
+    lv_label_set_text(l, code == 401 ? _("PAIR_TO_STUDY") : m);
     lv_obj_add_event_cb(s_srv_box, srv_close_cb, LV_EVENT_CLICKED, NULL);
     s_srv_t = lv_timer_create(srv_timer_cb, 6000, NULL);
     lv_timer_set_repeat_count(s_srv_t, 1);

@@ -28,15 +28,15 @@ vi:
   DEVELOPER_MODE: Chế độ nhà phát triển
   DEVICE: Thiết bị
   DEVICE_ID: Mã thiết bị
-  DEVICE_PAIRED: Đã ghép thiết bị
-  DEVMODE_UNPAIR_WARN: 'Thiết bị sẽ huỷ ghép nối với tài khoản, bạn sẽ cần đăng nhập lại'
+  DEVICE_PAIRED: Đã đăng nhập
+  DEVMODE_UNPAIR_WARN: 'Thiết bị sẽ đăng xuất khỏi tài khoản, bạn sẽ cần đăng nhập lại'
   DIRECTION: Chiều
   DISPLAY: Màn hình
   DISPLAY_INFO: '%dx%d, xoay %d°'
   ENDLESS: Vô tận
   EN_VI: Anh-Việt
   ERROR_FMT: 'Lỗi: %s'
-  FLASH_CARD: Flash card
+  FLASH_CARD: Lật từ
   FLASH_MEMORY: Bộ nhớ flash
   FACTORY_RESET: Khôi phục cài đặt gốc
   FACTORY_RESET_BUSY: Đang cập nhật firmware
@@ -110,7 +110,7 @@ vi:
   OTA_NEW_VERSION: Có bản mới %s (%u.%02u MB)
   OTA_RESTARTING: Đang khởi động lại để cập nhật…
   OTA_UPDATE_ASK: Có phiên bản mới %s/%s (%u.%02u MB). Nâng cấp ngay?
-  PAIRED_WITH_ACCOUNT: Đã ghép với tài khoản
+  PAIRED_WITH_ACCOUNT: Đã đăng nhập tài khoản
   PAIR_CONNECT_WIFI: Kết nối Wi-Fi để đăng nhập
   PAIR_DEVICE: Đăng nhập để tiếp tục
   PAIR_GETTING_CODE: Đang lấy mã…
@@ -120,6 +120,7 @@ vi:
   PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
   PAIR_STEP_ID: 'Đăng nhập'
   PAIR_STEP_ZALO: Kích hoạt bảo hành
+  POLICY_QR: Chính sách đổi trả
   PAIR_TO_STUDY: Đăng nhập để tiếp tục
   WORD_TYPE: Phân loại từ
   FILL_BLANK: Điền từ
@@ -187,17 +188,17 @@ vi:
   SWIPE_BACK_HINT: Vuốt từ mép trái/phải để quay lại
   SYNC: Đồng bộ
   SYNC_PENDING_N: Chờ đồng bộ %d
-  TAP_TO_FLIP: Chạm để lật thẻ
+  TAP_TO_FLIP: '1 lật, 2 úp, 3 sang thẻ'
   TAP_TO_SETUP_WIFI: Chạm để cài Wi-Fi
   TIMEOUT_WAKE_HINT: Chạm màn hình hoặc bấm nút để bật lại
   TURN_OFF_DEVELOPER_MODE: Tắt chế độ nhà phát triển?
   TURN_ON_DEVELOPER_MODE: Bật chế độ nhà phát triển?
-  UNPAIR: Huỷ ghép
-  UNPAIRED_LAB: Server Lab · đã huỷ ghép
-  UNPAIRED_OFFICIAL: Server chính thức · đã huỷ ghép
-  UNPAIR_CONFIRM: Huỷ ghép đôi?
-  UNPAIR_DEVICE: Huỷ ghép đôi
-  UNPAIR_MSG: Máy sẽ ngắt khỏi tài khoản này.
+  UNPAIR: Đăng xuất
+  UNPAIRED_LAB: Server Lab · đã đăng xuất
+  UNPAIRED_OFFICIAL: Server chính thức · đã đăng xuất
+  UNPAIR_CONFIRM: Đăng xuất?
+  UNPAIR_DEVICE: Đăng xuất
+  UNPAIR_MSG: Máy sẽ đăng xuất khỏi tài khoản này.
   UNREADABLE: Không đọc được
   UPDATE: Cập nhật
   UPGRADE: Nâng cấp
@@ -220,6 +221,9 @@ vi:
   WIFI_SAVED_NOT_CONNECTED: Đã lưu · Chưa kết nối
   WIFI_SECTION_AVAILABLE: MẠNG KHẢ DỤNG
   WIFI_SECTION_SAVED: ĐÃ LƯU
+  WARRANTY: Bảo hành
+  WARRANTY_NEEDED: Chưa kích hoạt
+  WARRANTY_UNTIL: 'Đến %s'
   WIFI_WRONG_PASSWORD: Sai mật khẩu cho “%s”. Chọn mạng để nhập lại.
   WILL_RESTART_WHEN_IDLE: Sẽ khởi động lại khi rảnh
   WORD: Từ
@@ -228,9 +232,9 @@ vi:
   ZALO_CODE_EXPIRES: 'Hết hạn sau %d:%02d'
   ZALO_CODE_HINT: Nhập mã này trong Mini App FDict trên Zalo để kích hoạt bảo hành
   ZALO_GETTING_CODE: Đang lấy mã...
-  ZALO_LINKED: Đã kích hoạt bảo hành
+  ZALO_LINKED: Đã liên kết Zalo
   ZALO_NEW_CODE: Lấy mã mới
-  ZALO_WAITING: Chưa kích hoạt bảo hành
+  ZALO_WAITING: Chưa liên kết Zalo
   SENTENCE: 'Sắp xếp câu'
   SEN_LOADING: 'Đang tải câu…'
   SEN_PROGRESS: 'Câu %d/%d'

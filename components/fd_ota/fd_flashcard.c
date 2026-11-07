@@ -73,6 +73,7 @@ fd_study_err_t fd_fc_parse(const char *body, fd_fc_card_t *out, int cap, int *n)
             const char *wd = jstr(c, "word"), *mn = jstr(c, "meaning");
             if (!wd || !wd[0] || !mn || !mn[0]) continue;   /* bo the thieu truong */
             fd_fc_card_t *d = &out[*n];
+            memset(d, 0, sizeof(*d));
             ucpy(d->word, sizeof(d->word), wd);
             ucpy(d->ipa, sizeof(d->ipa), jstr(c, "ipa"));
             ucpy(d->meaning, sizeof(d->meaning), mn);

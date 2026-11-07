@@ -13,6 +13,7 @@
 #define FD_FC_MEAN_LEN 128
 
 typedef struct {
+    char id[25];
     char word[FD_FC_WORD_LEN];
     char ipa[FD_FC_IPA_LEN];
     char meaning[FD_FC_MEAN_LEN];

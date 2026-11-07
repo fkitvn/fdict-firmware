@@ -59,6 +59,8 @@ fd_study_err_t fd_sync_build_quiz(fd_study_session_t *s, bool vi_en, int n);
 fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n);
 fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n);
 int fd_sync_build_cards(fd_fc_card_t *out, int cap);
+/* Ghi 1 lan tu duoc hien tren Lat tu. Dem nam trong kho RAM va /data/sync/card_seen.log (con sau khi dong bo lai). */
+void fd_sync_card_seen(const char *wid);
 /* Bai sap xep cau tu cau vi du trong kho: dien ans/n/end/sentence/hint (tok = ans, nguoi goi tu xao); wid = id tu. */
 int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int cap);
 /* Ghi 1 ket qua hoc (kind "quiz" | "card" | "sen") vao outbox ben vung. */

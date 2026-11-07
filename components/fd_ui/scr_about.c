@@ -235,14 +235,22 @@ static void auto_check(void)   /* khi mo man / khi WiFi vua co */
 }
 
 static uint32_t s_warr_gen = UINT32_MAX;
-static void warr_fill(void)
+static lv_obj_t *s_warr_lbl;
+static void warr_text(char *out, size_t n)
 {
-    if (!s_val[R_WARR] || s_warr_gen == fd_zlink_gen()) return;
-    s_warr_gen = fd_zlink_gen();
     char ex[16];
     int w = fd_zlink_warranty(ex, sizeof(ex));
-    if (w == 1) lv_label_set_text_fmt(s_val[R_WARR], _("WARRANTY_UNTIL"), ex[0] ? ex : "-");
-    else lv_label_set_text(s_val[R_WARR], w == 0 ? _("WARRANTY_NEEDED") : "-");
+    if (w == 1) snprintf(out, n, _("WARRANTY_UNTIL"), ex[0] ? ex : "-");
+    else snprintf(out, n, "%s", w == 0 ? _("WARRANTY_NEEDED") : "-");
+}
+static void warr_fill(void)
+{
+    if (s_warr_gen == fd_zlink_gen()) return;
+    s_warr_gen = fd_zlink_gen();
+    char t[48];
+    warr_text(t, sizeof(t));
+    if (s_val[R_WARR]) lv_label_set_text(s_val[R_WARR], t);
+    if (s_warr_lbl) lv_label_set_text(s_warr_lbl, t);
 }
 
 static void ota_timer_cb(lv_timer_t *t)
@@ -469,6 +477,36 @@ static void build(lv_obj_t *scr)
     lv_obj_set_clickable(s_ota_msg, false);
     ota_show();
 
+    s_warr_lbl = lv_label_create(col);
+    lv_obj_set_width(s_warr_lbl, lv_pct(100));
+    lv_obj_set_style_text_font(s_warr_lbl, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_align(s_warr_lbl, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(s_warr_lbl, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(s_warr_lbl, "-");
+    lv_obj_t *qw = lv_obj_create(col);
+    lv_obj_remove_style_all(qw);
+    lv_obj_set_size(qw, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(qw, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(qw, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(qw, 8, 0);
+    lv_obj_set_style_border_width(qw, 1, 0);
+    lv_obj_set_style_border_color(qw, lv_color_hex(0xE5E7EB), 0);
+    lv_obj_set_style_radius(qw, 8, 0);
+    lv_obj_set_clickable(qw, false);
+    lv_obj_t *qr = lv_qrcode_create(qw);
+    lv_qrcode_set_size(qr, 108);
+    lv_qrcode_set_dark_color(qr, lv_color_black());
+    lv_qrcode_set_light_color(qr, lv_color_white());
+    {
+        const char *url = "https://fkit.vn/chinh-sach-doi-tra";
+        lv_qrcode_update(qr, url, strlen(url));
+    }
+    lv_obj_t *cap = lv_label_create(col);
+    lv_obj_set_width(cap, lv_pct(100));
+    lv_obj_set_style_text_align(cap, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(cap, lv_color_hex(0x6B7280), 0);
+    lv_label_set_text(cap, _("POLICY_QR"));
+
     s_popup_pending = true;
     auto_check();
     s_ota_timer = lv_timer_create(ota_timer_cb, 300, NULL);   /* trang thai / % tai */
@@ -519,7 +557,7 @@ static void destroy(void)
         lv_timer_delete(s_ota_timer);
         s_ota_timer = NULL;
     }
-    s_ota_msg = s_ota_spin = s_ota_btn_lbl = NULL;
+    s_ota_msg = s_ota_spin = s_ota_btn_lbl = s_warr_lbl = NULL;
     dlg_close();
     s_auto_wait = s_popup_pending = false;
     s_recheck_us = 0;

@@ -56,12 +56,6 @@ static bool init(void)
     return s_mx && s_seg;
 }
 
-static void *rx_alloc(void)
-{
-    void *p = heap_caps_malloc(RESP_CAP, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    return p ? p : malloc(RESP_CAP);
-}
-
 /* sao chep chuoi UTF-8 an toan (khong cat giua ky tu nhieu byte) */
 static void ucpy(char *out, size_t cap, const char *in)
 {
@@ -138,51 +132,15 @@ out:
     return err;
 }
 
-static fd_study_err_t http_err(int code)
-{
-    if (code == 401) return FD_STUDY_ERR_UNPAIRED;   /* fd_ota da xoa token + ten */
-    if (code < 0) return FD_STUDY_ERR_NET;
-    return FD_STUDY_ERR_SERVER;
-}
-
-/* nap 1 phien: cache chua dung -> study/start (online) -> cache bat ky (hoc vong lai). Goi tu task. */
+/* Nap 1 phien tu kho tu tren may. Khong goi API: may chu chi dua tu qua dong bo. */
 static fd_study_err_t fetch_one(const char *dir, bool local, fd_study_session_t *out, bool *from_cache, int *http)
 {
+    (void)local;
     bool vi = !strcmp(dir, "vi-en");
     *http = 0;
-    *from_cache = true;
-    /* 2.3.0: kho dong bo (bo tu that cua nguoi dung) la nguon chinh, hoc 100% offline; ket qua = su kien fd_sync */
-    if (fd_sync_ready() && fd_sync_build_quiz(out, vi, 10) == FD_STUDY_ERR_NONE) { *from_cache = false; return FD_STUDY_ERR_NONE; }
-    if (fd_deck_has_fresh(vi) && fd_deck_build_session(out, vi, true) == FD_STUDY_ERR_NONE) return FD_STUDY_ERR_NONE;
-    fd_study_err_t err = FD_STUDY_ERR_NO_DECK;
-    if (!local) {
-        if (!fd_ota_is_paired()) err = FD_STUDY_ERR_UNPAIRED;
-        else if (!fd_net_is_connected()) err = FD_STUDY_ERR_NO_WIFI;
-        else {
-            char id[16], *body = NULL, *rx = rx_alloc();
-            fd_ota_get_device_id(id, sizeof(id));
-            cJSON *b = cJSON_CreateObject();
-            if (b) {
-                cJSON_AddStringToObject(b, "device_id", id);
-                cJSON_AddStringToObject(b, "direction", dir);
-                cJSON_AddNumberToObject(b, "count", 10);
-                cJSON_AddStringToObject(b, "source", "deck");
-                body = cJSON_PrintUnformatted(b);
-                cJSON_Delete(b);
-            }
-            if (!body || !rx) err = FD_STUDY_ERR_NOMEM;
-            else {
-                int code = fd_ota_api_post_ex("/api/study/start", body, rx, RESP_CAP, false);   /* tuong tac: khong cho 429 */
-                *http = code;
-                err = code == 200 ? fd_study_parse_start(rx, out) : http_err(code);
-            }
-            free(body);
-            free(rx);
-            if (!err) { *from_cache = false; return err; }
-        }
-    }
-    if (fd_deck_ready() && fd_deck_build_session(out, vi, false) == FD_STUDY_ERR_NONE) return FD_STUDY_ERR_NONE;
-    return err;
+    *from_cache = false;
+    if (fd_sync_build_quiz(out, vi, 10) == FD_STUDY_ERR_NONE) return FD_STUDY_ERR_NONE;
+    return FD_STUDY_ERR_NO_DECK;
 }
 
 /* con can nap? (khoa) */

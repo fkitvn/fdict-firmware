@@ -199,10 +199,7 @@ static void show(void)
     bool done = p.paired && !busy;
     /* ---- 2 buoc ---- */
     if (!done) { s_seen_unpaired = true; s_step2 = false; zl_stop(); }
-    else if (s_seen_unpaired) {   /* Buoc 1 vua xong tren man nay -> chuyen thang Buoc 2 */
-        s_seen_unpaired = false;
-        s_step2 = true;   /* 2.1.2: vao Buoc 2 ngay, xin ma luon (start tra linked neu da kich hoat), khong hoi status truoc */
-    } else if (!s_step2 && !s_zl_started && fd_zlink_linked() == FD_ZL_NO) s_step2 = true;   /* mo lai: tiep tuc Buoc 2 */
+    else s_seen_unpaired = false;   /* dang nhap xong: khong mo ma bao hanh */
     if (done && show_step2()) return;
     lv_obj_set_hidden(s_zl_code, true);
     lv_obj_set_hidden(s_zl_hint, true);
@@ -229,7 +226,9 @@ static void show(void)
         lv_obj_set_hidden(s_qr_wrap, true);
         lv_obj_set_hidden(s_msg, true);
         lv_obj_set_hidden(s_help, true);
-        lv_obj_set_hidden(s_btn, true);
+        bool need_link = fd_zlink_linked() == FD_ZL_NO;
+        lv_obj_set_hidden(s_btn, !need_link);
+        if (need_link) set_txt(s_btn_lbl, _("PAIR_STEP_ZALO"));
         s_qr_sess = 0;
         return;
     }
@@ -292,7 +291,13 @@ static void pair_cb(lv_event_t *e)   /* Mo Wi-Fi / Lay ma / Lay ma moi / Thu lai
 {
     (void)e;
     if (s_nowifi || !fd_net_is_connected()) { fd_ui_show(FD_SCR_WIFI); return; }   /* mo man WiFi co san */
-    if (s_step2) { s_zl_started = true; fd_zlink_code_start(); show(); return; }   /* Buoc 2: Lay ma moi */
+    if (fd_ota_is_paired()) {   /* nut Lien ket Zalo, khong phai dang nhap */
+        s_step2 = true;
+        s_zl_started = true;
+        fd_zlink_code_start();
+        show();
+        return;
+    }
     fd_ota_pair_stop();
     fd_ota_pair_start();
 }
@@ -511,10 +516,7 @@ static void build(lv_obj_t *scr)
     s_srv_seen = fd_ota_server_gen();
     s_step2 = s_zl_started = false;
     s_seen_unpaired = !fd_ota_is_paired();
-    if (!s_seen_unpaired) {   /* 2.1.2: da ghep -> xin ma ngay (1 request) thay vi status roi moi start */
-        if (fd_zlink_linked() == FD_ZL_YES) fd_zlink_refresh();
-        else { s_step2 = true; }
-    }
+    if (!s_seen_unpaired) fd_zlink_refresh();   /* da dang nhap: chi hoi trang thai, khong mo ma */}
     show();
     s_tm = lv_timer_create(tm_cb, 300, NULL);
 }

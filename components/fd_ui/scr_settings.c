@@ -66,15 +66,14 @@ static void pair_icon_fill(void)
 {
     lv_obj_clean(s_pair_ico);
     bool paired = fd_ota_is_paired();
-    bool zl_wait = paired && fd_zlink_linked() == FD_ZL_NO;   /* 2.0.0: Buoc 1 xong, Buoc 2 (Zalo) chua */
-    /* 1.3.4: chua ghep -> chi chu trang thai mau cam + cham cam nho goc tren-phai icon; hang giu nhu cac hang khac */
-    lv_obj_set_style_text_color(s_pair_sub, paired && !zl_wait ? lv_palette_darken(LV_PALETTE_GREY, 1) : lv_color_hex(FD_COLOR_ALERT), 0);
+    /* Dang nhap va bao hanh tach roi: hang nay chi noi trang thai dang nhap. */
+    lv_obj_set_style_text_color(s_pair_sub, paired ? lv_palette_darken(LV_PALETTE_GREY, 1) : lv_color_hex(FD_COLOR_ALERT), 0);
     char nm[64];
     if (paired && fd_ota_get_user_name(nm, sizeof(nm))) {
         lv_obj_t *av = ui_avatar_initials(s_pair_ico, nm, 36, 0x2563EB);
         lv_obj_center(av);
         lv_label_set_text(s_pair_title, nm);
-        lv_label_set_text(s_pair_sub, zl_wait ? _("ZALO_WAITING") : _("DEVICE_PAIRED"));
+        lv_label_set_text(s_pair_sub, _("DEVICE_PAIRED"));
     } else {
         lv_obj_t *i = lv_label_create(s_pair_ico);
         lv_obj_set_style_text_font(i, &lv_font_montserrat_14, 0);
@@ -91,7 +90,7 @@ static void pair_icon_fill(void)
             lv_obj_align(dot, LV_ALIGN_TOP_RIGHT, -4, 6);
         }
         lv_label_set_text(s_pair_title, _("PAIR_DEVICE"));
-        lv_label_set_text(s_pair_sub, paired ? (zl_wait ? _("ZALO_WAITING") : _("DEVICE_PAIRED")) : _("NOT_PAIRED"));
+        lv_label_set_text(s_pair_sub, paired ? _("DEVICE_PAIRED") : _("NOT_PAIRED"));
     }
 }
 

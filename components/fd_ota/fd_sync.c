@@ -26,6 +26,8 @@ static const char *TAG = "fd_sync";
 #define STORE_TMP   SDIR "/store.tmp"
 #define EVLOG       SDIR "/events.log"
 #define EVLOG_TMP   SDIR "/events.tmp"
+#define VLOG        SDIR "/card_seen.log"
+#define VLOG_TMP    SDIR "/card_seen.tmp"
 #define STORE_MAX_BYTES (3 * 1024 * 1024)
 #define EV_MAX_BYTES    (512 * 1024)
 #define PUSH_BATCH  50
@@ -44,7 +46,7 @@ enum { CMD_PUSH = 1, CMD_FORCE, CMD_STATS };
 typedef struct {
     char id[FD_SYNC_WID_LEN], cid[FD_SYNC_WID_LEN];
     uint8_t st, nsen, streak;
-    uint16_t seen;
+    uint16_t seen, views;
     uint32_t ca, off;
     char en[FD_FC_WORD_LEN], ipa[FD_FC_IPA_LEN], vi[FD_FC_MEAN_LEN];
     char pos[24];   /* 2.3.5: loai tu (noun/verb/...) tu store.tsv */
@@ -186,6 +188,8 @@ static word_t *find_word(const char *id)
 static void replay_events(void);
 
 /* Doc store.tsv vao RAM (giu khoa). false = khong co / hong (kho rong). */
+static void views_replay_locked(void);
+
 static bool load_store_locked(void)
 {
     s_nw = 0;
@@ -260,6 +264,7 @@ static bool load_store_locked(void)
     s_st.prio_new = pn;
     s_st.prio_unl = pu;
     s_st.topics = topics_count(topics);
+    views_replay_locked();
     replay_events();
     ESP_LOGI(TAG, "kho: %d tu, %d cau, %d bo", s_nw, ns, nc);
     return true;
@@ -868,15 +873,95 @@ fd_study_err_t fd_sync_build_quiz(fd_study_session_t *s, bool vi_en, int n)
     return FD_STUDY_ERR_NONE;
 }
 
+/* Dem lan hien the. File: "id" = +1, hoac "id<TAB>count" sau khi nen. */
+static void views_replay_locked(void)
+{
+    FILE *f = fopen(VLOG, "r");
+    if (!f) return;
+    char line[48];
+    while (fgets(line, sizeof(line), f)) {
+        char *tab = strchr(line, '\t');
+        if (tab) *tab = 0;
+        size_t n = strlen(line);
+        while (n && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
+        if (!is_wid(line)) continue;
+        word_t *w = find_word(line);
+        if (!w) continue;
+        unsigned add = tab ? (unsigned)strtoul(tab + 1, NULL, 10) : 1u;
+        unsigned sum = (unsigned)w->views + (add ? add : 1u);
+        w->views = sum > 65535u ? 65535u : (uint16_t)sum;
+    }
+    fclose(f);
+}
+
+static void views_compact(void)
+{
+    if (!s_mx) return;
+    lock();
+    FILE *f = fopen(VLOG_TMP, "w");
+    bool ok = f != NULL;
+    for (int i = 0; ok && i < s_nw; i++) {
+        if (!s_w[i].views) continue;
+        if (fprintf(f, "%s\t%u\n", s_w[i].id, (unsigned)s_w[i].views) < 0) ok = false;
+    }
+    if (f) {
+        ok = fflush(f) == 0 && ok;
+        ok = fsync(fileno(f)) == 0 && ok;
+        ok = fclose(f) == 0 && ok;
+    }
+    if (ok) ok = rename(VLOG_TMP, VLOG) == 0;
+    if (!ok) unlink(VLOG_TMP);
+    unlock();
+}
+
+void fd_sync_card_seen(const char *wid)
+{
+    if (!s_mx || !is_wid(wid)) return;
+    lock();
+    word_t *w = find_word(wid);
+    bool hit = w != NULL;
+    if (hit && w->views < 65535) w->views++;
+    unlock();
+    if (!hit) return;
+    mkdir(SDIR, 0775);
+    FILE *f = fopen(VLOG, "a");
+    if (!f) return;
+    fprintf(f, "%s\n", wid);
+    fflush(f);
+    fsync(fileno(f));
+    long sz = ftell(f);
+    fclose(f);
+    if (sz > 65536) views_compact();
+}
+
+/* It xem truoc. Cung muc do xem: chua thuoc truoc (neu bat), tu moi truoc (neu bat), roi ngau nhien. */
+static int order_cards(ord_t *o, int cap)
+{
+    int n = 0;
+    for (int i = 0; i < s_nw; i++) {
+        if (!s_w[i].en[0] || !s_w[i].vi[0]) continue;
+        uint64_t views = s_w[i].views > 255 ? 255 : s_w[i].views;
+        uint64_t unl = (s_st.prio_unl && s_w[i].st == 2) ? 1 : 0;
+        uint64_t sub = s_st.prio_new ? (uint64_t)(0xFFFFFFFFu - s_w[i].ca) : (uint64_t)esp_random();
+        o[n].key = (views << 56) | (unl << 48) | ((sub & 0xFFFFFFFFull) << 16) | (esp_random() & 0xFFFF);
+        o[n].idx = i;
+        n++;
+    }
+    qsort(o, n, sizeof(*o), ord_cmp);
+    return n < cap ? n : cap;
+}
+
 int fd_sync_build_cards(fd_fc_card_t *out, int cap)
 {
-    if (!out || cap <= 0 || !fd_sync_ready()) return 0;
+    if (!out || cap <= 0) return 0;
     ord_t *o = ps_alloc(sizeof(ord_t) * FD_SYNC_MAX_WORDS);
     if (!o) return 0;
     lock();
-    int m = order_words(o, cap, false);
+    int m = s_st.have ? order_cards(o, cap) : 0;
     for (int i = 0; i < m; i++) {
         const word_t *w = &s_w[o[i].idx];
+        memset(&out[i], 0, sizeof(out[i]));
+        ucpy(out[i].id, sizeof(out[i].id), w->id);
         ucpy(out[i].word, sizeof(out[i].word), w->en);
         ucpy(out[i].ipa, sizeof(out[i].ipa), w->ipa);
         ucpy(out[i].meaning, sizeof(out[i].meaning), w->vi);

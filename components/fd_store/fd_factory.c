@@ -3,7 +3,8 @@
  * doc bat ky khoa nao: format phan vung storage (/data) roi xoa toan bo NVS.
  * Xoa NVS = dang xuat (fdict/device_token, user_name), Wi-Fi da luu, PIN, ngon ngu,
  * do sang, am luong, xoay, den trang, thoi gian tat man, che do nha phat trien, cau hinh hoc.
- * Khong dung phan vung voice (Pico), otadata, hay firmware. */
+ * Khong dung phan vung voice (Pico), otadata, hay firmware.
+ * Bao hanh nam o may chu, khoa theo MAC (eFuse). Xoa NVS khong doi ngay kich hoat. */
 #include "fd_store.h"
 #include "esp_littlefs.h"
 #include "esp_log.h"

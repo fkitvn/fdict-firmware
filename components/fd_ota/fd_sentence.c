@@ -127,40 +127,6 @@ fd_study_err_t fd_sen_parse(const char *body, char *sid, int sid_cap, fd_sen_ex_
     return *n > 0 ? FD_STUDY_ERR_NONE : FD_STUDY_ERR_FORMAT;
 }
 
-/* Bo cau mau (giong SEED_SENTENCES phia server): dung khi chua tung tai duoc cau nao. */
-static const char *const BUILTIN[][2] = {
-    {"I go to school every day.", "Tôi đi học mỗi ngày."},
-    {"My mother cooks dinner for us.", "Mẹ tôi nấu bữa tối cho chúng tôi."},
-    {"The cat is sleeping on the bed.", "Con mèo đang ngủ trên giường."},
-    {"We drink water after running.", "Chúng tôi uống nước sau khi chạy."},
-    {"She reads a book before bed.", "Cô ấy đọc sách trước khi ngủ."},
-    {"My father works in a hospital.", "Bố tôi làm việc ở bệnh viện."},
-    {"They play football in the park.", "Họ chơi bóng đá trong công viên."},
-    {"I want to learn English well.", "Tôi muốn học tốt tiếng Anh."},
-    {"Can you speak more slowly?", "Bạn có thể nói chậm hơn không?"},
-    {"He is my best friend.", "Cậu ấy là bạn thân nhất của tôi."},
-    {"Our house has a small garden.", "Nhà chúng tôi có một khu vườn nhỏ."},
-    {"What time is it now?", "Bây giờ là mấy giờ?"},
-    {"The stars are bright at night.", "Các vì sao sáng vào ban đêm."},
-    {"We eat rice with fish.", "Chúng tôi ăn cơm với cá."},
-    {"The weather is very hot today.", "Hôm nay thời tiết rất nóng."},
-    {"Please open the window.", "Làm ơn mở cửa sổ ra."},
-    {"My sister likes to sing.", "Em gái tôi thích hát."},
-    {"The dog runs very fast.", "Con chó chạy rất nhanh."},
-    {"I brush my teeth every morning.", "Tôi đánh răng mỗi sáng."},
-    {"This apple is sweet and fresh.", "Quả táo này ngọt và tươi."},
-    {"We visit our grandparents on Sunday.", "Chúng tôi thăm ông bà vào Chủ nhật."},
-    {"The teacher writes on the board.", "Cô giáo viết lên bảng."},
-    {"It is raining outside.", "Bên ngoài trời đang mưa."},
-    {"He takes the bus to work.", "Anh ấy đi xe buýt đi làm."},
-    {"I am hungry and tired.", "Tôi đói và mệt."},
-    {"She has long black hair.", "Cô ấy có mái tóc đen dài."},
-    {"Do you like ice cream?", "Bạn có thích kem không?"},
-    {"The shop opens at eight.", "Cửa hàng mở cửa lúc tám giờ."},
-    {"My room is clean now.", "Phòng tôi giờ đã sạch."},
-    {"We will travel by train.", "Chúng tôi sẽ đi du lịch bằng tàu hỏa."},
-};
-#define N_BUILTIN ((int)(sizeof(BUILTIN) / sizeof(BUILTIN[0])))
 
 static int rnd(int n) { return n > 1 ? (int)(esp_random() % (uint32_t)n) : 0; }
 
@@ -183,40 +149,8 @@ static void shuffle_ex(fd_sen_ex_t *e)
     for (int i = 0; i < e->n; i++) memcpy(e->tok[i], e->ans[e->n - 1 - i], FD_SEN_TOK_LEN);   /* dao nguoc */
 }
 
-static bool builtin_ex(int k, fd_sen_ex_t *e)
-{
-    memset(e, 0, sizeof(*e));
-    snprintf(e->id, sizeof(e->id), "b%03d", k + 1);
-    ucpy(e->sentence, sizeof(e->sentence), BUILTIN[k][0]);
-    ucpy(e->hint, sizeof(e->hint), BUILTIN[k][1]);
-    char buf[FD_SEN_TXT_LEN];
-    ucpy(buf, sizeof(buf), BUILTIN[k][0]);
-    size_t L = strlen(buf);
-    if (L && strchr(".?!", buf[L - 1])) { e->end[0] = buf[L - 1]; buf[--L] = 0; }
-    else e->end[0] = '.';
-    char *save = NULL;
-    for (char *t = strtok_r(buf, " ", &save); t; t = strtok_r(NULL, " ", &save)) {
-        if (e->n >= FD_SEN_TOK || strlen(t) >= FD_SEN_TOK_LEN) return false;
-        strcpy(e->ans[e->n++], t);
-    }
-    if (e->n < 2) return false;
-    shuffle_ex(e);
-    return true;
-}
-
-static int load_builtin(fd_sen_ex_t *out, int count)
-{
-    int idx[N_BUILTIN];
-    for (int i = 0; i < N_BUILTIN; i++) idx[i] = i;
-    for (int i = N_BUILTIN - 1; i > 0; i--) { int j = rnd(i + 1), t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
-    int n = 0;
-    for (int i = 0; i < N_BUILTIN && n < count; i++)
-        if (builtin_ex(idx[i], &out[n])) n++;
-    return n;
-}
 
 /* ---------- file ---------- */
-static bool exists(const char *p) { struct stat st; return stat(p, &st) == 0; }
 
 static bool write_atomic(const char *path, const char *tmp, const char *data)
 {
@@ -257,18 +191,6 @@ static int outbox_count(void)
 }
 
 /* ---------- body ---------- */
-static char *build_start(void)
-{
-    char id[16];
-    fd_ota_get_device_id(id, sizeof(id));
-    cJSON *b = cJSON_CreateObject();
-    if (!b) return NULL;
-    cJSON_AddStringToObject(b, "device_id", id);
-    cJSON_AddNumberToObject(b, "count", s_count);
-    char *s = cJSON_PrintUnformatted(b);
-    cJSON_Delete(b);
-    return s;
-}
 
 /* goi khi dang giu lock */
 static char *build_result(void)
@@ -297,60 +219,24 @@ static char *build_result(void)
     return s;
 }
 
-/* /start online -> luu cache (phien moi, chua lam). Goi tu task. */
-static int fetch_online(char *rx, fd_sen_ex_t *tmp, char *sid, int *n)
-{
-    *n = 0;
-    if (!fd_ota_is_paired() || !fd_net_is_connected()) return 0;
-    char *body = build_start();
-    if (!body) return 0;
-    int code = fd_ota_api_post_ex("/api/study/sentence/start", body, rx, RESP_CAP, true);   /* 429: cho Retry-After */
-    free(body);
-    if (code == 200 && fd_sen_parse(rx, sid, FD_SEN_ID_LEN, tmp, FD_SEN_MAX, n) == FD_STUDY_ERR_NONE) {
-        lock();
-        if (write_atomic(CACHE, CACHE_TMP, rx)) unlink(USED);
-        else ESP_LOGW(TAG, "khong ghi duoc cache");
-        unlock();
-    } else *n = 0;
-    return code;
-}
 
 static void task(void *arg)
 {
     (void)arg;
-    char *rx = ps_alloc(RESP_CAP);
     fd_sen_ex_t *tmp = ps_alloc(FD_SEN_MAX * sizeof(fd_sen_ex_t));
     char sid[FD_SEN_ID_LEN] = "";
     fd_study_err_t err = FD_STUDY_ERR_NOMEM;
     int code = 0, n = 0, src = FD_SEN_SRC_ONLINE;
     bool submit = false, local = false;
     static char wid[FD_SEN_MAX][FD_SYNC_WID_LEN];
-    if (rx && tmp) {
+    if (tmp) {
         err = FD_STUDY_ERR_NONE;
-        n = fd_sync_build_sentences(tmp, wid, s_count);   /* kho dong bo: offline 100% */
+        n = fd_sync_build_sentences(tmp, wid, s_count);   /* chi kho dong bo, khong goi API luc bat dau */
         if (n > 0) {
             local = true;
             src = FD_SEN_SRC_CACHE;
             for (int i = 0; i < n; i++) shuffle_ex(&tmp[i]);
-        } else code = fetch_online(rx, tmp, sid, &n);
-        submit = n > 0 && !local;
-        if (n <= 0) {   /* offline / loi server: cache -> bo mau */
-            src = FD_SEN_SRC_CACHE;
-            lock();
-            bool used = exists(USED);
-            char *b = read_file(CACHE, rx, RESP_CAP);
-            unlock();
-            if (b && fd_sen_parse(b, sid, sizeof(sid), tmp, FD_SEN_MAX, &n) == FD_STUDY_ERR_NONE) {
-                submit = !used;   /* phien chua lam: ket qua van vao hang doi */
-                if (used) for (int i = 0; i < n; i++) shuffle_ex(&tmp[i]);
-            } else n = 0;
-        }
-        if (n <= 0) {
-            src = FD_SEN_SRC_BUILTIN;
-            sid[0] = 0;
-            n = load_builtin(tmp, s_count);
-        }
-        if (n <= 0) err = FD_STUDY_ERR_FORMAT;
+        } else err = FD_STUDY_ERR_NO_DECK;
     }
     ESP_LOGI(TAG, "start: src=%d http=%d n=%d", src, code, n);
     lock();
@@ -363,12 +249,11 @@ static void task(void *arg)
         s_can_submit = submit;
         s_local = local;
         if (local) memcpy(s_wid, wid, sizeof(s_wid));
-    }
+    } else s_st.n = 0;
     s_st.err = err;
     s_st.http = code;
     s_st.busy = false;
     unlock();
-    free(rx);
     free(tmp);
     vTaskDelete(NULL);
 }
@@ -378,9 +263,8 @@ static void sync_task(void *arg)
 {
     (void)arg;
     char *rx = ps_alloc(RESP_CAP), *body = ps_alloc(RESP_CAP);
-    fd_sen_ex_t *tmp = ps_alloc(FD_SEN_MAX * sizeof(fd_sen_ex_t));
     int sent = 0, kept = 0;
-    if (rx && body && tmp && fd_ota_is_paired() && fd_net_is_connected()) {
+    if (rx && body && fd_ota_is_paired() && fd_net_is_connected()) {
         bool stop = false;
         while (!stop) {
             char path[sizeof(SDIR) + 1 + 256] = "";   /* d_name toi da 255 */
@@ -403,14 +287,6 @@ static void sync_task(void *arg)
                 sent++;
             } else { kept++; stop = true; }   /* mang / 401 / 429 / 5xx: giu, thu lai sau */
         }
-        lock();
-        bool need = !stop && (exists(USED) || !exists(CACHE));
-        unlock();
-        if (need) {   /* nap san phien moi de hoc offline lan sau */
-            char sid[FD_SEN_ID_LEN];
-            int n;
-            fetch_online(rx, tmp, sid, &n);
-        }
     }
     int ob = outbox_count();
     if (sent || kept) ESP_LOGI(TAG, "sync: gui %d, con %d", sent, ob);
@@ -419,7 +295,6 @@ static void sync_task(void *arg)
     unlock();
     free(rx);
     free(body);
-    free(tmp);
     s_sync_busy = false;
     vTaskDelete(NULL);
 }

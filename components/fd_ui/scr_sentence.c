@@ -161,6 +161,7 @@ static void retry_cb(lv_event_t *e) { (void)e; show_setup(); }
 static void home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
 static void pair_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_PAIR); }
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
+static void sync_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_SYNC); }
 static void setup_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_setup(); }
 enum { OPT_CNT, OPT_DIR, OPT_REP };
 static void opt_cb(lv_event_t *e)
@@ -206,6 +207,12 @@ static void show_msg(const fd_sen_status_t *st)
         break;
     case FD_STUDY_ERR_NET:
         t = _("SERVER_UNREACHABLE"); sub = _("CHECK_WIFI_RETRY");
+        break;
+    case FD_STUDY_ERR_NO_DECK:
+        t = _("NO_OFFLINE_DATA_YET");
+        sub = _("SYNC_AUTO_HINT");
+        bt = _("SYNC_NOW");
+        cb = sync_cb;
         break;
     case FD_STUDY_ERR_FORMAT:
         t = _("INVALID_QUESTION_DATA");
@@ -473,7 +480,7 @@ static void show_feed(bool ok)
     const char *sub = s_loc ? s_ex.sentence : s_ex.hint;
     if (sub[0]) label(c, sub, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     if (s_reps && s_ex.sentence[0]) {   /* 2.3.6: tu dong phat nhu Quiz (Tat/1/2 lan) */
-        const fd_pron_cfg_t pc = {FD_PRON_AUTO, s_reps, false};
+        const fd_pron_cfg_t pc = {FD_PRON_PICO_ONLY, s_reps, false};
         ui_pron_say_cfg(s_ex.sentence, &pc);
     }
     lv_obj_t *r = row(s_body, false);
