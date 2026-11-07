@@ -12,7 +12,8 @@ vi:
   CANCEL: Hủy
   CARDS: Số thẻ
   CHANGE_PASSWORD: Đổi mật khẩu
-  CHECKING: Đang kiểm tra…
+  CHECKING: Đang kiểm tra phiên bản mới...
+  OTA_ERR_BUSY: Hệ thống đang bận. Vui lòng thử lại.
   CHECK_FOR_UPDATES: Kiểm tra cập nhật
   CHECK_WIFI_RETRY: Kiểm tra Wi-Fi rồi thử lại.
   CHIP_INFO: '%s v%u.%u, %u nhân, N%uR%u'

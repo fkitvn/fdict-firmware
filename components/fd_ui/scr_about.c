@@ -53,10 +53,11 @@ static lv_obj_t *s_ota_msg, *s_ota_spin;
 static lv_timer_t *s_ota_timer;
 
 /* ---------- Kiem tra cap nhat (fd_ota: GET /ota/check, tai esp_https_ota) ---------- */
-static lv_obj_t *s_ota_btn_lbl;
+static lv_obj_t *s_ota_btn, *s_ota_btn_lbl;
 
 static const char *ota_err_vi(const char *e, char *buf, size_t n)
 {
+    if (!strcmp(e, "busy")) return _("OTA_ERR_BUSY");
     if (!strcmp(e, "no_wifi")) return _("OTA_ERR_NO_WIFI");
     if (!strcmp(e, "no_time")) return _("OTA_ERR_NO_TIME");
     if (!strcmp(e, "batt_low")) return _("OTA_ERR_BATT_LOW");
@@ -87,6 +88,8 @@ static void ota_show(void)
     fd_ota_status_t st;
     fd_ota_get_status(&st);
     char b[96], eb[40];
+    /* Also covers the queued request: fd_ota_check_now publishes CHECKING synchronously. */
+    lv_obj_set_hidden(s_ota_btn, st.state == FD_OTA_ST_CHECKING);
     bool spin = false;
     uint32_t col = 0x6B7280;
     const char *btn = _("CHECK_FOR_UPDATES");
@@ -107,7 +110,7 @@ static void ota_show(void)
         lv_obj_set_hidden(s_ota_spin, true);
         lv_label_set_text(s_ota_btn_lbl, btn);
         return;
-    case FD_OTA_ST_CHECKING: spin = true; snprintf(b, sizeof(b), st.attempt > 1 ? _("OTA_CONNECTING") : _("CHECKING")); break;
+    case FD_OTA_ST_CHECKING: spin = true; snprintf(b, sizeof(b), _("CHECKING")); break;
     case FD_OTA_ST_UP_TO_DATE: col = 0x16A34A; snprintf(b, sizeof(b), _("NO_UPDATE_AVAILABLE")); break;
     case FD_OTA_ST_AVAILABLE: {
         unsigned c = (unsigned)(((uint64_t)st.size * 100 + 524288) / 1048576);   /* MB x100, lam tron */
@@ -230,7 +233,8 @@ static void auto_check(void)   /* khi mo man / khi WiFi vua co */
     int64_t now = esp_timer_get_time();
     if (s_last_check_us && now - s_last_check_us < AUTO_CHECK_DEBOUNCE_US && st.state != FD_OTA_ST_IDLE) return;   /* dung ket qua cu */
     s_last_check_us = now;
-    fd_ota_check_now();   /* duong kiem tra thu cong co san */
+    fd_ota_check_now();   /* queued state is visible before returning */
+    ota_show();
 }
 
 static void ota_timer_cb(lv_timer_t *t)
@@ -244,7 +248,7 @@ static void ota_timer_cb(lv_timer_t *t)
         int64_t now = esp_timer_get_time();
         if (cs.state == FD_OTA_ST_ERROR && cs.check_err && fd_net_is_connected()) {
             if (!s_recheck_us) s_recheck_us = now + (int64_t)(60 + esp_random() % 61) * 1000000;
-            else if (now >= s_recheck_us) { s_recheck_us = 0; s_last_check_us = now; fd_ota_check_now(); }
+            else if (now >= s_recheck_us) { s_recheck_us = 0; s_last_check_us = now; fd_ota_check_now(); ota_show(); }
         } else s_recheck_us = 0;
     }
     if (!s_popup_pending) return;
@@ -269,7 +273,7 @@ static void ota_cb(lv_event_t *e)
     if (st.state == FD_OTA_ST_REBOOT_PENDING) { fd_ota_reboot_now(); return; }   /* da tai xong: khoi dong lai ngay */
     if (st.state == FD_OTA_ST_CHECKING || st.state == FD_OTA_ST_DOWNLOADING) return;
     if (st.state == FD_OTA_ST_AVAILABLE) fd_ota_update_now();
-    else if (fd_net_is_connected()) { s_last_check_us = esp_timer_get_time(); s_popup_pending = true; fd_ota_check_now(); }
+    else if (fd_net_is_connected()) { s_last_check_us = esp_timer_get_time(); s_popup_pending = true; fd_ota_check_now(); ota_show(); }
 }
 
 /* Kich thuoc dang "12 KB" / "6,1 MB" (dau phay thap phan; dec = so chu so sau dau phay khi >= 1 MB) */
@@ -432,6 +436,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_width(ol, lv_pct(100)); lv_label_set_long_mode(ol, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(ol, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
     lv_label_set_text(ol, _("CHECK_FOR_UPDATES"));
     lv_obj_center(ol);
+    s_ota_btn = ob;
     s_ota_btn_lbl = ol;
     lv_obj_add_event_cb(ob, ota_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *orow = lv_obj_create(col);
@@ -504,7 +509,7 @@ static void destroy(void)
         lv_timer_delete(s_ota_timer);
         s_ota_timer = NULL;
     }
-    s_ota_msg = s_ota_spin = s_ota_btn_lbl = NULL;
+    s_ota_msg = s_ota_spin = s_ota_btn = s_ota_btn_lbl = NULL;
     dlg_close();
     s_auto_wait = s_popup_pending = false;
     s_recheck_us = 0;

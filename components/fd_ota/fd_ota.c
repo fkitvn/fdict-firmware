@@ -158,7 +158,27 @@ static void send_cmd(int c)
 {
     if (s_cmd && xQueueSend(s_cmd, &c, 0) != pdTRUE) ESP_LOGI(TAG, "cmd %d: hang doi day", c);
 }
-void fd_ota_check_now(void) { send_cmd(CMD_CHECK); }
+void fd_ota_check_now(void)
+{
+    if (!s_mx) return;
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (s_st.state != FD_OTA_ST_CHECKING && s_st.state != FD_OTA_ST_DOWNLOADING &&
+        s_st.state != FD_OTA_ST_REBOOT_PENDING) {
+        /* Claim the queued request before the worker can run: no visible old result or double tap. */
+        s_st.state = FD_OTA_ST_CHECKING;
+        s_st.pct = 0;
+        s_st.attempt = 0;
+        s_st.err[0] = 0;
+        s_st.check_err = false;
+        int cmd = CMD_CHECK;
+        if (!s_cmd || xQueueSend(s_cmd, &cmd, 0) != pdTRUE) {
+            s_st.state = FD_OTA_ST_ERROR;
+            s_st.check_err = true;
+            strlcpy(s_st.err, "busy", sizeof(s_st.err));
+        }
+    }
+    xSemaphoreGive(s_mx);
+}
 void fd_ota_update_now(void) { send_cmd(CMD_UPDATE); }
 void fd_ota_reboot_now(void) { send_cmd(CMD_REBOOT); }
 

@@ -6,6 +6,7 @@
  * Du lieu (25/10, FDict One - 1.1.6): the tu server (fd_flashcard: POST /api/study/cards, Bearer token, cache /data) - cung mau
  *   Hoc tap (fd_study). Vao man -> tai nen; bam Bat dau -> chup danh sach the hien co. Chua ghep/offline/chua co cache ->
  *   10 tu mau co dinh ben duoi (ITEMS). */
+#include <string.h>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -91,15 +92,50 @@ static void note_seen(void)
     if (s_buf && s_pos >= 0 && s_pos < s_n) fd_sync_card_seen(s_buf[s_order[s_pos]].id);
 }
 
+/* English labels never use automatic wrap (LVGL can split an oversized word).
+ * Pick the largest existing font that fits the whole phrase on one line. An
+ * exceptionally long token still remains intact and scrolls at the minimum font.
+ * Derive width from the visible card, not a hidden face's stale coordinates. */
+static void word_label_set(lv_obj_t *label, const char *text)
+{
+    char word[FD_FC_WORD_LEN];
+    strlcpy(word, text, sizeof(word));
+    for (char *p = word; *p; ++p) {
+        if (*p == '\n' || *p == '\r' || *p == '\t') *p = ' ';
+    }
+    lv_obj_update_layout(s_body);
+    lv_obj_t *face_obj = lv_obj_get_parent(label);
+    int32_t width = lv_obj_get_content_width(lv_obj_get_parent(face_obj)) -
+                    lv_obj_get_style_pad_left(face_obj, LV_PART_MAIN) -
+                    lv_obj_get_style_pad_right(face_obj, LV_PART_MAIN);
+    if (width < 1) width = 1;
+    static const lv_font_t *const fonts[] = {
+        &fd_font_mont_32, &fd_font_mont_24, &fd_font_noto_18, &fd_font_noto_14
+    };
+    const lv_font_t *font = fonts[3];
+    bool fits = false;
+    for (size_t i = 0; i < sizeof(fonts) / sizeof(fonts[0]); ++i) {
+        lv_point_t size;
+        lv_text_get_size(&size, word, fonts[i], 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        font = fonts[i];
+        if (size.x <= width) { fits = true; break; }
+    }
+    lv_obj_set_style_text_font(label, font, 0);
+    lv_obj_set_style_text_letter_space(label, 0, 0);
+    lv_label_set_long_mode(label, fits ? LV_LABEL_LONG_CLIP : LV_LABEL_LONG_SCROLL);
+    lv_label_set_text(label, word);
+}
+
 static void card_refresh(void)
 {
     const struct fd_fc_item *c = &s_items[s_order[s_pos]];
     /* Mat truoc = Tu: truoc [tu], sau [ipa, nghia]. Mat truoc = Nghia: truoc [nghia], sau [tu, ipa]. */
-    lv_label_set_text(lv_obj_get_child(s_front, 0), s_mfront ? c->meaning : c->word);
-    lv_label_set_text(lv_obj_get_child(s_back, 0), s_mfront ? c->word : c->ipa);
-    lv_label_set_text(lv_obj_get_child(s_back, 1), s_mfront ? c->ipa : c->meaning);
     lv_obj_set_hidden(s_front, s_flipped);
     lv_obj_set_hidden(s_back, !s_flipped);
+    if (s_mfront) lv_label_set_text(lv_obj_get_child(s_front, 0), c->meaning);
+    else lv_label_set_text(lv_obj_get_child(s_back, 0), c->ipa);
+    lv_label_set_text(lv_obj_get_child(s_back, 1), s_mfront ? c->ipa : c->meaning);
+    word_label_set(lv_obj_get_child(s_mfront ? s_back : s_front, 0), c->word);
     lv_label_set_text_fmt(s_count, "%d/%d", s_pos + 1, s_n);
 }
 

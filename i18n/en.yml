@@ -12,7 +12,8 @@ en:
   CANCEL: Cancel
   CARDS: Cards
   CHANGE_PASSWORD: Change password
-  CHECKING: Checking…
+  CHECKING: Checking for a new version...
+  OTA_ERR_BUSY: System busy. Please try again.
   CHECK_FOR_UPDATES: Check for updates
   CHECK_WIFI_RETRY: Check Wi-Fi and try again.
   CHIP_INFO: '%s v%u.%u, %u cores, N%uR%u'
