@@ -1,5 +1,5 @@
 /*
- * Cai dat > WiFi: trang thai, quet (RSSI + khoa), nhap mat khau bang ban phim T9 (fd_t9kb) (an/hien),
+ * Cai dat > WiFi: trang thai, quet (RSSI + khoa), nhap mat khau bang ban phim T9 (fd_t9kb),
  * ket noi mang moi / mang da luu, quen mang. Sai mat khau bao loi ro rang.
  */
 #include <stdio.h>
@@ -18,7 +18,6 @@ static lv_obj_t *s_list;
 static lv_obj_t *s_scan_btn_lbl;
 static lv_obj_t *s_panel;       /* lop nhap mat khau / thao tac mang */
 static lv_obj_t *s_ta;
-static lv_obj_t *s_eye_lbl;
 static char s_sel_ssid[33];
 static bool s_sel_secure;
 static fd_net_ap_t s_aps[FD_NET_MAX_SCAN];
@@ -56,19 +55,20 @@ static void status_from_state(void)
 }
 
 /* ---------- panel nhap mat khau ---------- */
+/* Nut Ket noi / phim Xong nam tren panel. Xoa ngay se giai phong dung object dang trong su kien LVGL -> panic, may khoi dong lai. */
 static void panel_close(void)
 {
     if (s_panel) {
-        lv_obj_delete(s_panel);
+        lv_obj_delete_async(s_panel);
         s_panel = NULL;
         s_ta = NULL;
-        s_eye_lbl = NULL;
     }
 }
 
 static void do_connect(void)
 {
-    const char *pass = s_ta ? lv_textarea_get_text(s_ta) : "";
+    char pass[64];
+    strlcpy(pass, s_ta ? lv_textarea_get_text(s_ta) : "", sizeof(pass));
     if (s_sel_secure && strlen(pass) < 8) {
         set_status(_("WIFI_PASSWORD_SHORT"), lv_palette_main(LV_PALETTE_RED));
         return;
@@ -87,14 +87,6 @@ static void t9_done_cb(lv_obj_t *kb, const char *text, void *user_data)
 {
     (void)kb; (void)text; (void)user_data;
     do_connect();
-}
-
-static void eye_cb(lv_event_t *e)
-{
-    (void)e;
-    bool hidden = lv_textarea_get_password_mode(s_ta);
-    lv_textarea_set_password_mode(s_ta, !hidden);
-    lv_label_set_text(s_eye_lbl, hidden ? LV_SYMBOL_EYE_OPEN : LV_SYMBOL_EYE_CLOSE);   /* mo = dang hien, nham = dang an */
 }
 
 static void forget_cb(lv_event_t *e)
@@ -159,21 +151,13 @@ static void open_password_panel(bool saved)
 
     s_ta = lv_textarea_create(row);
     lv_textarea_set_one_line(s_ta, true);
-    lv_textarea_set_password_mode(s_ta, false);   /* mac dinh hien mat khau moi lan mo panel */
+    lv_textarea_set_password_mode(s_ta, false);   /* luon hien mat khau */
     lv_textarea_set_max_length(s_ta, 63);   /* WPA2 passphrase 8..63 */
     lv_textarea_set_placeholder_text(s_ta, _("PASSWORD"));
     lv_obj_set_flex_grow(s_ta, 1);
     lv_obj_set_height(s_ta, 30);
     lv_obj_set_style_pad_ver(s_ta, 5, 0);
     lv_obj_set_style_text_font(s_ta, &fd_font_noto_14, 0);
-
-    lv_obj_t *eye = lv_button_create(row);
-    lv_obj_set_size(eye, 36, 30);
-    s_eye_lbl = lv_label_create(eye);
-    lv_obj_set_style_text_font(s_eye_lbl, &lv_font_montserrat_14, 0);
-    lv_label_set_text(s_eye_lbl, LV_SYMBOL_EYE_OPEN);
-    lv_obj_center(s_eye_lbl);
-    lv_obj_add_event_cb(eye, eye_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_t *cb = small_btn(row, _("CONNECT"), connect_cb, lv_color_hex(FD_COLOR_PRIMARY));
     lv_obj_set_style_pad_hor(cb, 14, 0);   /* nut X bo: Ket noi rong hon (huy = vuot mep / giu B1) */
@@ -200,7 +184,7 @@ static lv_obj_t *s_fdlg;   /* hop thoai xac nhan quen mang (layer_top) */
 static void fdlg_close(void)
 {
     if (s_fdlg) {
-        lv_obj_delete(s_fdlg);
+        lv_obj_delete_async(s_fdlg);
         s_fdlg = NULL;
     }
 }
@@ -554,7 +538,7 @@ static void build(lv_obj_t *scr)
 static void destroy(void)
 {
     fdlg_close();   /* roi man khi hop thoai mo = Huy */
-    s_scr = s_status = s_list = s_scan_btn_lbl = s_scan_spin = s_panel = s_ta = s_eye_lbl = NULL;
+    s_scr = s_status = s_list = s_scan_btn_lbl = s_scan_spin = s_panel = s_ta = NULL;
 }
 
 static void on_event(int32_t id, void *data)

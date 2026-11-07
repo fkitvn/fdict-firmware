@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [3.4.3] - 2026-11-07
+
+- Cài đặt tách Đăng nhập và Kích hoạt bảo hành. Trang bảo hành hiện hạn và QR chính sách đổi trả.
+- Mật khẩu Wi-Fi luôn hiện. Sửa lỗi kết nối Wi-Fi làm máy khởi động lại.
+
 ## [3.4.2] - 2026-11-07
 
 - Khi chưa đăng nhập mà vào học, màn hình hiện Bạn chưa đăng nhập. Hai nút là Trở lại và Đăng nhập.

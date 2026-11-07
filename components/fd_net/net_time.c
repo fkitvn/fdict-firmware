@@ -6,6 +6,8 @@
 #include "esp_netif_sntp.h"
 #include "fd_events.h"
 #include "fd_net.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "sdkconfig.h"
 
 static const char *TAG = "fd_time";
@@ -23,18 +25,29 @@ static void sync_cb(struct timeval *tv)
     fd_events_post(FD_EVT_TIME_SYNCED, NULL, 0);
 }
 
-void fd_net_time_start(void)
+/* ip_event chay tren sys_evt (stack 2304 B). esp_netif_sntp_init ngay trong do tran stack luc vua co IP. */
+static void time_task(void *arg)
 {
-    if (s_started) {
-        return;
-    }
-    s_started = true;
+    (void)arg;
     setenv("TZ", CONFIG_FD_TZ, 1);
     tzset();
     esp_sntp_config_t cfg = ESP_NETIF_SNTP_DEFAULT_CONFIG(CONFIG_FD_NTP_SERVER);
     cfg.sync_cb = sync_cb;
     esp_err_t err = esp_netif_sntp_init(&cfg);
     ESP_LOGI(TAG, "SNTP %s: %s", CONFIG_FD_NTP_SERVER, esp_err_to_name(err));
+    vTaskDelete(NULL);
+}
+
+void fd_net_time_start(void)
+{
+    if (s_started) {
+        return;
+    }
+    s_started = true;
+    if (xTaskCreate(time_task, "sntp", 4096, NULL, 3, NULL) != pdPASS) {
+        s_started = false;
+        ESP_LOGE(TAG, "Khong tao duoc task SNTP");
+    }
 }
 
 bool fd_net_time_valid(void)

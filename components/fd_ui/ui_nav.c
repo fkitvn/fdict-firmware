@@ -40,6 +40,7 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_POS] = &g_scr_pos,
     [FD_SCR_CLOZE] = &g_scr_cloze,
     [FD_SCR_DICT] = &g_scr_dict,
+    [FD_SCR_WARRANTY] = &g_scr_warranty,
 };
 
 static fd_scr_t s_cur = FD_SCR_COUNT;
@@ -424,6 +425,22 @@ static void btn_async(void *p)
     free(b);
 }
 
+/* Ve lai man (quet Wi-Fi, co IP) phai chay tren task LVGL. sys_evt chi co stack 2304 B:
+ * dung populate() ngay trong handler -> tran stack -> may tu khoi dong lai. */
+typedef struct {
+    int32_t id;
+    bool has;
+    fd_evt_wifi_disc_t disc;
+} ui_async_evt_t;
+
+static void ui_evt_async(void *p)
+{
+    ui_async_evt_t *ev = p;
+    const ui_screen_t *s = ui_nav_current();
+    if (s && s->on_event) s->on_event(ev->id, ev->has ? &ev->disc : NULL);
+    free(ev);
+}
+
 static void on_fd_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg; (void)base;
@@ -448,8 +465,14 @@ static void on_fd_event(void *arg, esp_event_base_t base, int32_t id, void *data
          * tien do outbox (cJSON + littlefs) + am thanh + ve lai man -> tran stack sys_evt -> reset. */
         fd_evt_button_t *cp = malloc(sizeof(*cp));
         if (cp) { *cp = *b; if (lv_async_call(btn_async, cp) != LV_RESULT_OK) free(cp); }
-    } else {
-        if (s && s->on_event) s->on_event(id, data);
+    } else if (s && s->on_event) {
+        ui_async_evt_t *ev = malloc(sizeof(*ev));
+        if (ev) {
+            ev->id = id;
+            ev->has = id == FD_EVT_WIFI_DISCONNECTED && data;
+            if (ev->has) ev->disc = *(const fd_evt_wifi_disc_t *)data;
+            if (lv_async_call(ui_evt_async, ev) != LV_RESULT_OK) free(ev);
+        }
     }
     fd_display_unlock();
 }

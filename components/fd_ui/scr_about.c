@@ -483,29 +483,6 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_text_align(s_warr_lbl, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(s_warr_lbl, LV_LABEL_LONG_WRAP);
     lv_label_set_text(s_warr_lbl, "-");
-    lv_obj_t *qw = lv_obj_create(col);
-    lv_obj_remove_style_all(qw);
-    lv_obj_set_size(qw, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(qw, lv_color_white(), 0);
-    lv_obj_set_style_bg_opa(qw, LV_OPA_COVER, 0);
-    lv_obj_set_style_pad_all(qw, 8, 0);
-    lv_obj_set_style_border_width(qw, 1, 0);
-    lv_obj_set_style_border_color(qw, lv_color_hex(0xE5E7EB), 0);
-    lv_obj_set_style_radius(qw, 8, 0);
-    lv_obj_set_clickable(qw, false);
-    lv_obj_t *qr = lv_qrcode_create(qw);
-    lv_qrcode_set_size(qr, 108);
-    lv_qrcode_set_dark_color(qr, lv_color_black());
-    lv_qrcode_set_light_color(qr, lv_color_white());
-    {
-        const char *url = "https://fkit.vn/chinh-sach-doi-tra";
-        lv_qrcode_update(qr, url, strlen(url));
-    }
-    lv_obj_t *cap = lv_label_create(col);
-    lv_obj_set_width(cap, lv_pct(100));
-    lv_obj_set_style_text_align(cap, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(cap, lv_color_hex(0x6B7280), 0);
-    lv_label_set_text(cap, _("POLICY_QR"));
 
     s_popup_pending = true;
     auto_check();
