@@ -516,7 +516,7 @@ static void build(lv_obj_t *scr)
     s_srv_seen = fd_ota_server_gen();
     s_step2 = s_zl_started = false;
     s_seen_unpaired = !fd_ota_is_paired();
-    if (!s_seen_unpaired) fd_zlink_refresh();   /* da dang nhap: chi hoi trang thai, khong mo ma */}
+    if (!s_seen_unpaired) fd_zlink_refresh();   /* da dang nhap: chi hoi trang thai, khong mo ma */
     show();
     s_tm = lv_timer_create(tm_cb, 300, NULL);
 }
