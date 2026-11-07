@@ -37,7 +37,6 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_MICTEST] = &g_scr_mictest,
     [FD_SCR_DEVMODE] = &g_scr_devmode,
     [FD_SCR_BTNTEST] = &g_scr_btntest,
-    [FD_SCR_WIFITEST] = &g_scr_wifitest,
     [FD_SCR_POS] = &g_scr_pos,
     [FD_SCR_CLOZE] = &g_scr_cloze,
     [FD_SCR_DICT] = &g_scr_dict,

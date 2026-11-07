@@ -33,7 +33,6 @@ typedef enum {
     FD_SCR_MICTEST,     /* 2.1.8 Thu micro; 2.2.3 Che do nha phat trien > Thu loa & micro */
     FD_SCR_DEVMODE,     /* 2.2.2 Cai dat > Che do nha phat trien (cong tac + cong cu kiem tra) */
     FD_SCR_BTNTEST,     /* 2.2.2 ... > Thu 4 nut bam */
-    FD_SCR_WIFITEST,    /* 2.2.2 ... > Thu Wi-Fi */
     FD_SCR_COUNT,
 } fd_scr_t;
 

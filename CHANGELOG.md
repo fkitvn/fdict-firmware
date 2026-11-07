@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [3.4.0] - 2026-11-07
+
+- Thêm Khôi phục cài đặt gốc. Bỏ mục Thử Wi-Fi.
+
 ## [2.3.11] - 2026-11-07
 
 - Cài đặt: Khôi phục cài đặt gốc. Hỏi xác nhận, rồi đăng xuất, xoá Wi-Fi, mã PIN, cài đặt và dữ liệu học trên máy, khởi động lại về mặc định.

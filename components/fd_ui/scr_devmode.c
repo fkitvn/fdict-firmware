@@ -1,5 +1,5 @@
 /* 2.2.2 Cai dat > Che do nha phat trien: cong tac bat/tat (NVS fd/devmode, xac nhan huy ghep + doi server Lab <-> chinh thuc,
- * giu nguyen hanh vi cu cua cong tac trong Cai dat) + cong cu kiem tra: [Thu 4 nut bam] [Thu Wi-Fi] [Thu loa & micro]. */
+ * giu nguyen hanh vi cu cua cong tac trong Cai dat) + cong cu kiem tra: [Thu 4 nut bam] [Thu loa & micro]. */
 #include "fd_fonts.h"
 #include "fd_ota.h"
 #include "fd_study.h"
@@ -167,7 +167,6 @@ static void build(lv_obj_t *scr)
     lv_label_set_text(h, _("DEV_TOOLS"));
 
     tool_item(body, LV_SYMBOL_KEYBOARD, _("BTN_TEST"), FD_SCR_BTNTEST);
-    tool_item(body, LV_SYMBOL_WIFI, _("WIFI_TEST"), FD_SCR_WIFITEST);
     tool_item(body, LV_SYMBOL_AUDIO, _("MIC_TEST"), FD_SCR_MICTEST);   /* 2.2.3: chuyen tu Cai dat */
 }
 
