@@ -116,12 +116,12 @@ en:
   PAIR_GETTING_CODE: Getting code…
   PAIR_GET_CODE: Get code
   PAIR_GET_NEW_CODE: Get new code
-  PAIR_HINT: Sign in with Zalo on your phone to keep studying.
+  PAIR_HINT: Sign in to continue
   PAIR_SCAN_WITH_PHONE: 'Scan with your phone · %d:%02d'
   PAIR_STEP_ID: Sign in
   PAIR_STEP_ZALO: Activate warranty
   POLICY_QR: Return policy
-  PAIR_TO_STUDY: Sign in to continue
+  PAIR_TO_STUDY: You are not signed in
   WORD_TYPE: Word type
   FILL_BLANK: Fill in the blank
   DICTIONARY: Dictionary

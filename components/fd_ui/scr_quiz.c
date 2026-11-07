@@ -348,7 +348,7 @@ static void show_msg(const fd_study_status_t *st)
     case FD_STUDY_ERR_UNPAIRED:
         t = _("PAIR_TO_STUDY");
         sub = _("PAIR_HINT");
-        bt = _("PAIR_DEVICE");
+        bt = _("PAIR_STEP_ID");
         cb = open_pair_cb;
         break;
     case FD_STUDY_ERR_NO_WIFI:

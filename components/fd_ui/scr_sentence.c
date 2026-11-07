@@ -200,7 +200,7 @@ static void show_msg(const fd_sen_status_t *st)
     char tmp[64];
     switch (st->err) {
     case FD_STUDY_ERR_UNPAIRED:
-        t = _("PAIR_TO_STUDY"); sub = _("PAIR_HINT"); bt = _("PAIR_DEVICE"); cb = pair_cb;
+        t = _("PAIR_TO_STUDY"); sub = _("PAIR_HINT"); bt = _("PAIR_STEP_ID"); cb = pair_cb;
         break;
     case FD_STUDY_ERR_NO_WIFI:
         t = _("WIFI_NOT_CONNECTED"); sub = _("STUDY_NEEDS_WIFI"); bt = _("OPEN_WIFI"); cb = wifi_cb;

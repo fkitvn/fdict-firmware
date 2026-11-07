@@ -116,12 +116,12 @@ vi:
   PAIR_GETTING_CODE: Đang lấy mã…
   PAIR_GET_CODE: Lấy mã
   PAIR_GET_NEW_CODE: Lấy mã mới
-  PAIR_HINT: Đăng nhập bằng Zalo trên điện thoại để tiếp tục học.
+  PAIR_HINT: Đăng nhập để tiếp tục sử dụng
   PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại · %d:%02d'
   PAIR_STEP_ID: 'Đăng nhập'
   PAIR_STEP_ZALO: Kích hoạt bảo hành
   POLICY_QR: Chính sách đổi trả
-  PAIR_TO_STUDY: Đăng nhập để tiếp tục
+  PAIR_TO_STUDY: Bạn chưa đăng nhập
   WORD_TYPE: Phân loại từ
   FILL_BLANK: Điền từ
   DICTIONARY: Từ điển

@@ -339,7 +339,7 @@ void ui_pair_gate(lv_obj_t *body)
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(r, 8, 0);
     ui_gate_btn(r, _("BACK"), false, gate_home_cb);
-    ui_gate_btn(r, _("PAIR_DEVICE"), true, gate_pair_cb);
+    ui_gate_btn(r, _("PAIR_STEP_ID"), true, gate_pair_cb);
 }
 
 /* ---------- 2.3.6: mau man cai dat truoc khi hoc (dung chung moi module) ---------- */
