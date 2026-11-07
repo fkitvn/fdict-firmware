@@ -24,6 +24,7 @@ static const char *TAG = "fd_net";
 #define NVS_KEY       "nets"
 #define BIT_CONNECTED BIT0
 #define BIT_SCAN_DONE BIT1
+#define BIT_STA_DOWN  BIT2   /* STA da ngat xong (handler roi) */
 #define RETRY_BASE_MS 1500   /* thu lai mang moi: 1.5 s + jitter 0..500 ms */
 #define RETRY_JITTER_MS 500
 #define POST_SCAN_MS  200    /* cho radio on dinh sau quet */
@@ -187,12 +188,28 @@ static void worker(void *arg)
         memset(&s_job, 0, sizeof(s_job));
         xSemaphoreGive(s_mtx);
         if (job.stop_scan) esp_wifi_scan_stop();
-        if (job.drop) esp_wifi_disconnect();
+        /* Ngat va ket noi cung luc: driver huy lenh ket noi moi, va su kien ngat bi nuot nen khong thu lai. */
+        if (job.drop) {
+            xEventGroupClearBits(s_eg, BIT_STA_DOWN);
+            esp_err_t de = esp_wifi_disconnect();
+            if (de == ESP_OK) {
+                EventBits_t b = xEventGroupWaitBits(s_eg, BIT_STA_DOWN, pdTRUE, pdTRUE, pdMS_TO_TICKS(2000));
+                if (!(b & BIT_STA_DOWN)) ESP_LOGW(TAG, "ngat mang: het gio, van thu ket noi");
+            }
+            vTaskDelay(pdMS_TO_TICKS(50));   /* handler uu tien cao hon phai return truoc esp_wifi_connect */
+        }
         if (job.run) {
+            ESP_LOGI(TAG, "Bat dau ket noi \"%s\"", (const char *)job.cfg.sta.ssid);
             esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &job.cfg);
             if (err == ESP_OK) err = esp_wifi_connect();
-            if (err != ESP_OK) ESP_LOGW(TAG, "connect: %s", esp_err_to_name(err));
-            fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "connect: %s", esp_err_to_name(err));
+                xSemaphoreTake(s_mtx, portMAX_DELAY);
+                if (s_target.ssid[0] && s_state != FD_NET_CONNECTED) schedule_ms(RETRY_TARGET, 800);
+                xSemaphoreGive(s_mtx);
+            } else {
+                fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
+            }
         }
     }
 }
@@ -492,6 +509,7 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         if (s_self_disconnect) {
             s_self_disconnect = false;
             xSemaphoreGive(s_mtx);
+            xEventGroupSetBits(s_eg, BIT_STA_DOWN);
             return;
         }
         s_dbg_disc_n++;
@@ -529,6 +547,7 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
                 ESP_LOGI(TAG, "Thu lai %d/%d sau %u ms (reason=%d)", s_new_attempts, max_try - 1, (unsigned)ms, d->reason);
                 schedule_ms(RETRY_TARGET, ms);
                 xSemaphoreGive(s_mtx);
+                xEventGroupSetBits(s_eg, BIT_STA_DOWN);
                 return;
             }
             ev.auth_fail = reason_is_auth_fail(d->reason);
@@ -546,6 +565,7 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
             s_state = FD_NET_IDLE;
         }
         xSemaphoreGive(s_mtx);
+        xEventGroupSetBits(s_eg, BIT_STA_DOWN);
         fd_events_post(FD_EVT_WIFI_DISCONNECTED, &ev, sizeof(ev));
     }
 }

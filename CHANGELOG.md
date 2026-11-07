@@ -3,6 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [3.4.5] - 2026-11-08
+
+- Sửa kết nối Wi-Fi: đợi ngắt mạng cũ xong rồi mới kết nối mạng mới.
+
 ## [3.4.4] - 2026-11-07
 
 - Sửa lỗi kết nối Wi-Fi làm máy khởi động lại.
