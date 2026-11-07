@@ -77,6 +77,7 @@ fd_study_err_t fd_fc_parse(const char *body, fd_fc_card_t *out, int cap, int *n)
             ucpy(d->word, sizeof(d->word), wd);
             ucpy(d->ipa, sizeof(d->ipa), jstr(c, "ipa"));
             ucpy(d->meaning, sizeof(d->meaning), mn);
+            ucpy(d->pos, sizeof(d->pos), jstr(c, "pos"));
             (*n)++;
         }
         if (*n > 0) err = FD_STUDY_ERR_NONE;

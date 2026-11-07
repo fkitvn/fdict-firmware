@@ -90,6 +90,11 @@ static void ota_show(void)
     char b[96], eb[40];
     /* Also covers the queued request: fd_ota_check_now publishes CHECKING synchronously. */
     lv_obj_set_hidden(s_ota_btn, st.state == FD_OTA_ST_CHECKING);
+    /* A bounded, one-line loading label; other results/errors may still wrap. */
+    bool checking = st.state == FD_OTA_ST_CHECKING;
+    lv_label_set_long_mode(s_ota_msg, checking ? LV_LABEL_LONG_DOT : LV_LABEL_LONG_WRAP);
+    lv_obj_set_height(s_ota_msg, checking ? lv_font_get_line_height(&fd_font_noto_14) : LV_SIZE_CONTENT);
+    lv_obj_set_style_text_align(s_ota_msg, checking ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, 0);
     bool spin = false;
     uint32_t col = 0x6B7280;
     const char *btn = _("CHECK_FOR_UPDATES");
@@ -441,17 +446,23 @@ static void build(lv_obj_t *scr)
     lv_obj_add_event_cb(ob, ota_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *orow = lv_obj_create(col);
     lv_obj_remove_style_all(orow);
-    lv_obj_set_size(orow, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_size(orow, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_scrollable(orow, false);
     lv_obj_set_flex_flow(orow, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(orow, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(orow, 6, 0);
+    lv_obj_set_style_pad_column(orow, 4, 0);
     s_ota_spin = lv_spinner_create(orow);
-    lv_obj_set_size(s_ota_spin, 18, 18);
-    lv_obj_set_style_arc_width(s_ota_spin, 3, 0);
-    lv_obj_set_style_arc_width(s_ota_spin, 3, LV_PART_INDICATOR);
+    lv_obj_set_size(s_ota_spin, 14, 14);
+    lv_obj_set_style_arc_width(s_ota_spin, 2, 0);
+    lv_obj_set_style_arc_width(s_ota_spin, 2, LV_PART_INDICATOR);
     lv_obj_set_hidden(s_ota_spin, true);
     s_ota_msg = lv_label_create(orow);
-    lv_obj_set_style_max_width(s_ota_msg, 190, 0);
+    /* 320px: 292px row - 14px spinner - 4px gap = 274px for 211px Vietnamese text.
+     * Portrait keeps the same single-line height and ellipsizes if necessary. */
+    lv_obj_set_width(s_ota_msg, 0);
+    lv_obj_set_flex_grow(s_ota_msg, 1);
+    lv_obj_set_style_text_font(s_ota_msg, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_letter_space(s_ota_msg, 0, 0);
     lv_label_set_long_mode(s_ota_msg, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(s_ota_msg, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_hidden(s_ota_msg, true);

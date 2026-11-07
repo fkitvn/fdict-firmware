@@ -976,6 +976,7 @@ int fd_sync_build_cards(fd_fc_card_t *out, int cap)
         ucpy(out[i].word, sizeof(out[i].word), w->en);
         ucpy(out[i].ipa, sizeof(out[i].ipa), w->ipa);
         ucpy(out[i].meaning, sizeof(out[i].meaning), w->vi);
+        ucpy(out[i].pos, sizeof(out[i].pos), w->pos);
     }
     unlock();
     free(o);

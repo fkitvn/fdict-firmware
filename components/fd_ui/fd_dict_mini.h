@@ -7,5 +7,5 @@ struct fd_fc_item {
     const char *word;      /* tieng Anh, chu thuong */
     const char *ipa;
     const char *meaning;   /* nghia tieng Viet ngan */
-    const char *audio;     /* Optional audio asset (NULL: TTS/cache fallback). */
+    const char *pos;       /* Optional part of speech from the synced word. */
 };

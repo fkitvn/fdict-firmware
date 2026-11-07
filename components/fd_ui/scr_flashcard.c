@@ -33,7 +33,7 @@ static int load_cards(void)
     if (!s_buf) s_buf = heap_caps_calloc(FD_FC_MAX, sizeof(fd_fc_card_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     int n = s_buf ? fd_sync_build_cards(s_buf, FD_FC_MAX) : 0;
     if (n <= 0) return 0;
-    for (int i = 0; i < n; i++) s_net[i] = (struct fd_fc_item){s_buf[i].word, s_buf[i].ipa, s_buf[i].meaning, NULL};
+    for (int i = 0; i < n; i++) s_net[i] = (struct fd_fc_item){s_buf[i].word, s_buf[i].ipa, s_buf[i].meaning, s_buf[i].pos};
     s_items = s_net;
     s_nitems = n;
     return n;
@@ -135,6 +135,14 @@ static void card_refresh(void)
     if (s_mfront) lv_label_set_text(lv_obj_get_child(s_front, 0), c->meaning);
     else lv_label_set_text(lv_obj_get_child(s_back, 0), c->ipa);
     lv_label_set_text(lv_obj_get_child(s_back, 1), s_mfront ? c->ipa : c->meaning);
+    const char *pos = c->pos ? c->pos : "";
+    pos += strspn(pos, " \t\r\n");
+    lv_obj_t *front_pos = lv_obj_get_child(s_front, 1);
+    lv_obj_t *back_pos = lv_obj_get_child(s_back, 2);
+    lv_label_set_text(front_pos, pos);
+    lv_label_set_text(back_pos, pos);
+    lv_obj_set_hidden(front_pos, !pos[0]);
+    lv_obj_set_hidden(back_pos, !pos[0]);
     word_label_set(lv_obj_get_child(s_mfront ? s_back : s_front, 0), c->word);
     lv_label_set_text_fmt(s_count, "%d/%d", s_pos + 1, s_n);
 }
@@ -214,6 +222,16 @@ static lv_obj_t *face_label(lv_obj_t *f, const lv_font_t *font, uint32_t color)
     lv_obj_set_style_text_font(l, font, 0);
     lv_obj_set_style_text_color(l, lv_color_hex(color), 0);
     return l;
+}
+
+/* Muted POS footer replaces the tap-count hint; hidden when data is absent. */
+static void pos_footer(lv_obj_t *face_obj)
+{
+    lv_obj_t *label = face_label(face_obj, &fd_font_noto_14, 0x9CA3AF);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(label, lv_font_get_line_height(&fd_font_noto_14));
+    lv_label_set_text(label, "");
+    lv_obj_set_hidden(label, true);
 }
 
 static void nav_btn(lv_obj_t *row, const char *txt, lv_event_cb_t cb, intptr_t ud)
@@ -302,9 +320,7 @@ static void show_card(void)
     /* tu tieng Anh: Montserrat 32 (ASCII); nghia tieng Viet: Noto 18; IPA: Noto 18 mau nhan */
     s_front = face(card);
     face_label(s_front, s_mfront ? &fd_font_noto_18 : &fd_font_mont_32, 0x111827);
-    lv_obj_t *h = lv_label_create(s_front);
-    lv_obj_set_style_text_color(h, lv_color_hex(0x9CA3AF), 0);
-    lv_label_set_text(h, _("TAP_TO_FLIP"));
+    pos_footer(s_front);
 
     s_back = face(card);
     if (s_mfront) {
@@ -314,6 +330,7 @@ static void show_card(void)
         face_label(s_back, &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
         face_label(s_back, &fd_font_noto_18, 0x111827);
     }
+    pos_footer(s_back);
     lv_obj_move_foreground(spk);   /* tren cac mat the */
 
     lv_obj_t *row = lv_obj_create(s_body);

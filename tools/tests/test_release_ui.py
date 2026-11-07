@@ -90,8 +90,58 @@ class ReleaseUiRegression(unittest.TestCase):
         for word in ["responsibility", "international"]:
             self.assertTrue(any(f.width(word) <= 166 for f in fonts))
         self.assertGreater(fonts[-1].width("W" * 47), 166)
+    def test_checking_row_one_line_and_pixel_budget(self):
+        s = text("components/fd_ui/scr_about.c")
+        for statement in ["lv_obj_set_size(orow, lv_pct(100), LV_SIZE_CONTENT)",
+                          "lv_obj_set_flex_flow(orow, LV_FLEX_FLOW_ROW)",
+                          "lv_obj_set_style_pad_column(orow, 4, 0)",
+                          "lv_obj_set_size(s_ota_spin, 14, 14)",
+                          "lv_obj_set_width(s_ota_msg, 0)",
+                          "lv_obj_set_flex_grow(s_ota_msg, 1)",
+                          "lv_obj_set_style_text_font(s_ota_msg, &fd_font_noto_14, 0)",
+                          "checking ? LV_LABEL_LONG_DOT : LV_LABEL_LONG_WRAP",
+                          "checking ? lv_font_get_line_height(&fd_font_noto_14) : LV_SIZE_CONTENT"]:
+            self.assertIn(statement, s)
+        self.assertNotIn("lv_obj_set_style_max_width(s_ota_msg, 190", s)
+        font = Font("fd_font_noto_14")
+        vi = "\u0110ang ki\u1ec3m tra phi\u00ean b\u1ea3n m\u1edbi..."
+        for value in [vi, "Checking for a new version..."]:
+            budget = 320 - 2 * 14 - 14 - 4
+            self.assertLessEqual(font.width(value), budget)
+            print(f"checking landscape: text={font.width(value)}px + spinner14 + gap4 <= row292 (label={budget}px)")
+        portrait = 240 - 2 * 14 - 14 - 4
+        self.assertEqual(portrait, 194)
+        self.assertLessEqual(font.width("..."), portrait)
+        self.assertGreater(font.width(vi), portrait)  # fixed one-line DOT is required here
+        print(f"checking portrait: label={portrait}px, fixed font line height + ellipsis, never a second line")
+
+    def test_pos_snapshot_and_footer_on_both_faces(self):
+        header = text("components/fd_ota/include/fd_flashcard.h")
+        self.assertIn("#define FD_FC_POS_LEN  24", header)
+        self.assertIn("char pos[FD_FC_POS_LEN]", header)
+        sync = text("components/fd_ota/fd_sync.c").split("int fd_sync_build_cards(")[1].split("return m;", 1)[0]
+        self.assertIn("ucpy(out[i].pos, sizeof(out[i].pos), w->pos)", sync)
+        parser = text("components/fd_ota/fd_flashcard.c").split("fd_study_err_t fd_fc_parse(")[1].split("static fd_study_err_t http_err", 1)[0]
+        self.assertIn('ucpy(d->pos, sizeof(d->pos), jstr(c, "pos"))', parser)
+        ui = text("components/fd_ui/scr_flashcard.c")
+        self.assertIn("s_buf[i].meaning, s_buf[i].pos", ui)
+        for face in ["front", "back"]:
+            self.assertIn("pos_footer(s_" + face + ")", ui)
+            self.assertIn("lv_obj_set_hidden(" + face + "_pos, !pos[0])", ui)
+        self.assertIn('pos += strspn(pos, " \\t\\r\\n")', ui)
+        self.assertIn("c->pos ? c->pos :", ui)
+        self.assertNotIn("TAP_TO_FLIP", ui)
+        self.assertNotIn("const char *audio", text("components/fd_ui/fd_dict_mini.h"))
+        for p in ["i18n/en.yml", "i18n/vi.yml", "components/fd_i18n/lv_i18n.c"]:
+            self.assertNotIn("TAP_TO_FLIP", text(p))
+        # Optional field is zero-initialized by both snapshot/parser; old store/cache has no POS.
+        self.assertIn("memset(&out[i], 0, sizeof(out[i]))", sync)
+        self.assertIn("memset(d, 0, sizeof(*d))", parser)
+        print("POS: existing sync TSV and optional JSON -> PSRAM card snapshot -> both footers; missing/blank hidden")
+
     def test_release_version(self):
-        self.assertIn('set(PROJECT_VER "FDict One - 3.4.7")', text("CMakeLists.txt"))
-        self.assertIn("## [3.4.7] - 2026-11-08", text("CHANGELOG.md"))
+        version = re.search(r'set\(PROJECT_VER "FDict One - (\d+\.\d+\.\d+)"\)', text("CMakeLists.txt")).group(1)
+        latest = re.search(r"^## \[(.*?)\]", text("CHANGELOG.md"), re.M).group(1)
+        self.assertEqual(version, latest)
 
 if __name__ == "__main__": unittest.main(verbosity=2)

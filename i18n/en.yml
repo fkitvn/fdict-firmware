@@ -187,7 +187,6 @@ en:
   SWIPE_BACK_HINT: Swipe from the left/right edge to go back
   SYNC: Sync
   SYNC_PENDING_N: '%d waiting to sync'
-  TAP_TO_FLIP: '1 flips, 2 closes, 3 next'
   TAP_TO_SETUP_WIFI: Tap to set up Wi-Fi
   TIMEOUT_WAKE_HINT: Touch the screen or press a button to wake
   TURN_OFF_DEVELOPER_MODE: Turn off developer mode?

@@ -11,12 +11,14 @@
 #define FD_FC_WORD_LEN 48
 #define FD_FC_IPA_LEN  64
 #define FD_FC_MEAN_LEN 128
+#define FD_FC_POS_LEN  24
 
 typedef struct {
     char id[25];
     char word[FD_FC_WORD_LEN];
     char ipa[FD_FC_IPA_LEN];
     char meaning[FD_FC_MEAN_LEN];
+    char pos[FD_FC_POS_LEN];   /* Optional raw POS (noun/verb/...); empty for old data. */
 } fd_fc_card_t;
 
 typedef struct {

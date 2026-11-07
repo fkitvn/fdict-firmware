@@ -187,7 +187,6 @@ vi:
   SWIPE_BACK_HINT: Vuốt từ mép trái/phải để quay lại
   SYNC: Đồng bộ
   SYNC_PENDING_N: Chờ đồng bộ %d
-  TAP_TO_FLIP: '1 lật, 2 úp, 3 sang thẻ'
   TAP_TO_SETUP_WIFI: Chạm để cài Wi-Fi
   TIMEOUT_WAKE_HINT: Chạm màn hình hoặc bấm nút để bật lại
   TURN_OFF_DEVELOPER_MODE: Tắt chế độ nhà phát triển?
