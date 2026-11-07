@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [3.4.4] - 2026-11-07
+
+- Sửa lỗi kết nối Wi-Fi làm máy khởi động lại.
+- Kích hoạt bảo hành: chưa kích hoạt thì hiện mã 6 số và hướng dẫn mở Mini App Zalo. Đã kích hoạt thì hiện thời hạn.
+
 ## [3.4.3] - 2026-11-07
 
 - Cài đặt tách Đăng nhập và Kích hoạt bảo hành. Trang bảo hành hiện hạn và QR chính sách đổi trả.

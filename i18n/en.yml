@@ -224,6 +224,7 @@ en:
   WARRANTY: Warranty
   WARRANTY_NEEDED: Not activated
   WARRANTY_UNTIL: 'Until %s'
+  WARRANTY_ZALO_HINT: Open FDict in the Zalo Mini App to activate warranty
   WIFI_WRONG_PASSWORD: Wrong password for “%s”. Select the network to re-enter it.
   WILL_RESTART_WHEN_IDLE: Will restart when idle
   WORD: Word

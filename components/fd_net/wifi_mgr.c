@@ -15,6 +15,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "nvs.h"
 
 static const char *TAG = "fd_net";
@@ -38,6 +39,15 @@ void fd_net_time_start(void);   /* net_time.c */
 
 static SemaphoreHandle_t s_mtx;
 static EventGroupHandle_t s_eg;
+/* esp_wifi_connect/disconnect phat event dong bo. Goi chung khi dang giu s_mtx -> handler cung lay s_mtx -> ket, watchdog reset. */
+typedef struct {
+    bool run;
+    bool drop;
+    bool stop_scan;
+    wifi_config_t cfg;
+} wifi_job_t;
+static wifi_job_t s_job;
+static TaskHandle_t s_worker;
 static esp_netif_t *s_netif;
 static esp_timer_handle_t s_retry_timer;
 
@@ -166,6 +176,32 @@ static const char *reason_name(int r)
     }
 }
 
+static void worker(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        xTaskNotifyWait(0, UINT32_MAX, NULL, portMAX_DELAY);
+        wifi_job_t job;
+        xSemaphoreTake(s_mtx, portMAX_DELAY);
+        job = s_job;
+        memset(&s_job, 0, sizeof(s_job));
+        xSemaphoreGive(s_mtx);
+        if (job.stop_scan) esp_wifi_scan_stop();
+        if (job.drop) esp_wifi_disconnect();
+        if (job.run) {
+            esp_err_t err = esp_wifi_set_config(WIFI_IF_STA, &job.cfg);
+            if (err == ESP_OK) err = esp_wifi_connect();
+            if (err != ESP_OK) ESP_LOGW(TAG, "connect: %s", esp_err_to_name(err));
+            fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
+        }
+    }
+}
+
+static void job_kick(void)
+{
+    if (s_worker) xTaskNotify(s_worker, 1, eSetBits);
+}
+
 /* Hen gio ket noi tren s_retry_timer (moi ket noi lai deu di qua day, khong goi thang tu event handler) */
 static void schedule_ms(retry_kind_t kind, uint32_t ms)
 {
@@ -286,8 +322,10 @@ static void do_connect(const saved_net_t *n)
      * Dung quet va hen ket noi lai sau khi SCAN_DONE (on_scan_done/timer), khong cho o day. */
     if (s_scanning) {
         ESP_LOGW(TAG, "Dang quet -> dung quet, ket noi sau SCAN_DONE + %d ms", POST_SCAN_MS);
-        esp_wifi_scan_stop();
+        s_job.stop_scan = true;
+        s_job.run = false;
         schedule_ms(RETRY_TARGET, POST_SCAN_MS);
+        job_kick();
         return;
     }
     s_state = FD_NET_CONNECTING;
@@ -310,11 +348,11 @@ static void do_connect(const saved_net_t *n)
              (const char *)cfg.sta.ssid, mode_name(s_compat), cfg.sta.bssid_set, MAC2STR(cfg.sta.bssid), cfg.sta.channel,
              cfg.sta.threshold.authmode, cfg.sta.pmf_cfg.capable, cfg.sta.pmf_cfg.required,
              cfg.sta.sae_pwe_h2e, cfg.sta.scan_method, cfg.sta.sort_method);
-    esp_wifi_set_config(WIFI_IF_STA, &cfg);
     ESP_LOGD(TAG, "Ket noi toi \"%s\"%s (mat khau %u ky tu)", n->ssid, s_target_new ? " (mang moi)" : "",
              (unsigned)strlen(n->pass));
-    esp_wifi_connect();
-    fd_events_post(FD_EVT_WIFI_CONNECTING, NULL, 0);
+    s_job.cfg = cfg;
+    s_job.run = true;
+    job_kick();   /* worker doi mutex; nguoi goi phai xSemaphoreGive ngay sau do_connect */
 }
 
 static void connect_next_saved(void)
@@ -472,10 +510,9 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
                 if (strcmp(s_scan[i].ssid, s_target.ssid) == 0) { sc_ch = s_scan_ch[i]; sc_auth = s_scan_auth[i]; break; }
             }
         }
-        uint8_t cur_ch = 0; wifi_second_chan_t sec; esp_wifi_get_channel(&cur_ch, &sec);
         ESP_LOGD(TAG, "Mat ket noi \"%s\"", s_target.ssid);
-        ESP_LOGW(TAG, "Mat ket noi reason=%d (%s) rssi=%d bssid=" MACSTR " ch=%d (kenh radio=%u) lan=%d mode=%s authmode=%d",
-                 d->reason, reason_name(d->reason), d->rssi, MAC2STR(d->bssid), sc_ch, cur_ch,
+        ESP_LOGW(TAG, "Mat ket noi reason=%d (%s) rssi=%d bssid=" MACSTR " ch=%d lan=%d mode=%s authmode=%d",
+                 d->reason, reason_name(d->reason), d->rssi, MAC2STR(d->bssid), sc_ch,
                  s_target_new ? s_new_attempts + 1 : s_backoff_n + 1, mode_name(s_compat), sc_auth);
         ESP_LOGW(TAG, "That bai o: %s", step_name(d->reason));
         /* Router khong tra loi auth (2) / connection fail (205): doi che do thuong <-> WPA2-compat cho lan sau */
@@ -592,6 +629,10 @@ esp_err_t fd_net_init(void)
 
     saved_load();
     ESP_LOGI(TAG, "WiFi STA san sang, %d mang da luu", s_saved_n);
+    if (xTaskCreate(worker, "wifi_job", 6144, NULL, 3, &s_worker) != pdPASS) {
+        ESP_LOGE(TAG, "khong tao duoc wifi_job");
+        s_worker = NULL;
+    }
     xSemaphoreTake(s_mtx, portMAX_DELAY);
     connect_next_saved();
     xSemaphoreGive(s_mtx);
@@ -611,8 +652,12 @@ esp_err_t fd_net_scan_start(void)
     esp_timer_stop(s_retry_timer);
     if (s_state == FD_NET_CONNECTING || s_state == FD_NET_WAIT_RETRY) {
         /* Dang thu ket noi thi khong quet duoc -> dung lai, quet xong se thu tiep */
-        s_self_disconnect = (s_state == FD_NET_CONNECTING);
-        esp_wifi_disconnect();
+        if (s_state == FD_NET_CONNECTING) {
+            s_self_disconnect = true;
+            s_job.drop = true;
+            s_job.run = false;
+            job_kick();
+        }
         s_state = FD_NET_IDLE;
     }
     xSemaphoreGive(s_mtx);
@@ -664,7 +709,7 @@ esp_err_t fd_net_connect(const char *ssid, const char *pass)
     strlcpy(n.pass, pass ? pass : "", sizeof(n.pass));
     if (s_state == FD_NET_CONNECTED || s_state == FD_NET_CONNECTING) {
         s_self_disconnect = true;
-        esp_wifi_disconnect();
+        s_job.drop = true;
     }
     s_target_new = true;
     s_new_attempts = 0;
@@ -688,7 +733,7 @@ esp_err_t fd_net_connect_saved(const char *ssid)
     saved_net_t n = s_saved[i];
     if (s_state == FD_NET_CONNECTED || s_state == FD_NET_CONNECTING) {
         s_self_disconnect = true;
-        esp_wifi_disconnect();
+        s_job.drop = true;
     }
     s_target_new = false;
     s_backoff_n = 0;
@@ -710,7 +755,9 @@ esp_err_t fd_net_forget(const char *ssid)
         if (strcmp(s_target.ssid, ssid) == 0 && s_state != FD_NET_IDLE) {
             esp_timer_stop(s_retry_timer);
             s_self_disconnect = (s_state == FD_NET_CONNECTED || s_state == FD_NET_CONNECTING);
-            esp_wifi_disconnect();
+            s_job.drop = true;
+            s_job.run = false;
+            job_kick();
             xEventGroupClearBits(s_eg, BIT_CONNECTED);
             s_state = FD_NET_IDLE;
             s_target.ssid[0] = 0;

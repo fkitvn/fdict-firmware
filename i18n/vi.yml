@@ -224,6 +224,7 @@ vi:
   WARRANTY: Bảo hành
   WARRANTY_NEEDED: Chưa kích hoạt
   WARRANTY_UNTIL: 'Đến %s'
+  WARRANTY_ZALO_HINT: Mở Fdict trên mini app zalo để kích hoạt bảo hành
   WIFI_WRONG_PASSWORD: Sai mật khẩu cho “%s”. Chọn mạng để nhập lại.
   WILL_RESTART_WHEN_IDLE: Sẽ khởi động lại khi rảnh
   WORD: Từ
