@@ -112,3 +112,123 @@ void fd_zlink_status_get(fd_warranty_status_t *out)
     *out = s_status;
     taskEXIT_CRITICAL(&s_mux);
 }
+
+/* Independent Zalo linking: no credentials or device ID in the QR URL. */
+#include "esp_timer.h"
+static fd_link_status_t s_link;
+static bool s_link_active, s_link_busy;
+static uint32_t s_link_gen, s_link_server;
+static int64_t s_link_expiry, s_link_next;
+
+static void link_task(void *arg)
+{
+    uint32_t generation = (uint32_t)(uintptr_t)arg;
+    taskENTER_CRITICAL(&s_mux);
+    bool start = !s_link.code[0];
+    uint32_t server = s_link_server;
+    taskEXIT_CRITICAL(&s_mux);
+    char id[16], body[48], response[256] = {0};
+    fd_ota_get_device_id(id, sizeof(id));
+    snprintf(body, sizeof(body), "{\"device_id\":\"%s\"}", id);
+    int64_t began = esp_timer_get_time();
+    int http = fd_ota_api_post_ex(start ? "/api/devices/zalo-link/start" : "/api/devices/zalo-link/poll",
+        body, response, sizeof(response), false);
+    fd_link_status_t result = {.state = FD_LINK_ERROR};
+    int seconds = 0;
+    cJSON *j = http == 200 ? cJSON_Parse(response) : NULL;
+    if (j && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(j, "linked"))) result.state = FD_LINK_DONE;
+    else if (j) {
+        const cJSON *code = cJSON_GetObjectItemCaseSensitive(j, "code");
+        const cJSON *ttl = cJSON_GetObjectItemCaseSensitive(j, "expires_in");
+        bool valid_code = !start || (cJSON_IsString(code) && strlen(code->valuestring) == 6 &&
+            strspn(code->valuestring, "0123456789") == 6);
+        if (valid_code && cJSON_IsNumber(ttl) && ttl->valueint > 0 && ttl->valueint <= 300) {
+            result.state = FD_LINK_CODE;
+            if (start) strlcpy(result.code, code->valuestring, sizeof(result.code));
+            seconds = ttl->valueint;
+        } else strlcpy(result.err, "format", sizeof(result.err));
+    } else if (http == 410 || http == 404) result.state = FD_LINK_LOADING;
+    else if (http < 0) strlcpy(result.err, "network", sizeof(result.err));
+    else snprintf(result.err, sizeof(result.err), "HTTP %d", http);
+    cJSON_Delete(j);
+    bool still_paired = fd_ota_is_paired();
+    taskENTER_CRITICAL(&s_mux);
+    if (s_link_active && generation == s_link_gen && server == fd_ota_server_gen() && still_paired) {
+        if (result.state == FD_LINK_CODE) {
+            if (start) strlcpy(s_link.code, result.code, sizeof(s_link.code));
+            s_link.state = FD_LINK_CODE;
+            s_link_expiry = began + (int64_t)seconds * 1000000;
+        } else if (!start && result.state == FD_LINK_ERROR && http < 0) {
+            /* A transient network failure does not discard a still-valid code. */
+        } else {
+            s_link = result;
+            s_link_expiry = 0;
+        }
+        s_link_next = esp_timer_get_time() + 5000000;
+    }
+    s_link_busy = false;
+    taskEXIT_CRITICAL(&s_mux);
+    vTaskDelete(NULL);
+}
+
+void fd_zalo_link_stop(void)
+{
+    taskENTER_CRITICAL(&s_mux);
+    s_link_active = false;
+    ++s_link_gen;
+    memset(&s_link, 0, sizeof(s_link));
+    taskEXIT_CRITICAL(&s_mux);
+}
+void fd_zalo_link_start(void)
+{
+    taskENTER_CRITICAL(&s_mux);
+    ++s_link_gen;
+    s_link_server = fd_ota_server_gen();
+    s_link_active = true;
+    s_link_expiry = s_link_next = 0;
+    memset(&s_link, 0, sizeof(s_link));
+    s_link.state = FD_LINK_LOADING;
+    taskEXIT_CRITICAL(&s_mux);
+    fd_zalo_link_tick();
+}
+void fd_zalo_link_tick(void)
+{
+    bool paired = fd_ota_is_paired();
+    bool connected = fd_net_is_connected();
+    int64_t t = esp_timer_get_time();
+    taskENTER_CRITICAL(&s_mux);
+    if (!s_link_active || s_link_busy || s_link.state == FD_LINK_DONE) { taskEXIT_CRITICAL(&s_mux); return; }
+    if (!paired || s_link_server != fd_ota_server_gen()) {
+        s_link.state = FD_LINK_ERROR;
+        s_link.code[0] = 0;
+        strlcpy(s_link.err, "login_required", sizeof(s_link.err));
+        s_link_active = false;
+        taskEXIT_CRITICAL(&s_mux); return;
+    }
+    if (s_link_expiry && t >= s_link_expiry) {
+        s_link.state = FD_LINK_LOADING;
+        s_link.code[0] = 0;
+        s_link_expiry = s_link_next = 0;
+    }
+    if (t < s_link_next || s_link.state == FD_LINK_ERROR) { taskEXIT_CRITICAL(&s_mux); return; }
+    if (!connected) { s_link_next = t + 5000000; taskEXIT_CRITICAL(&s_mux); return; }
+    s_link_busy = true;
+    uint32_t gen = s_link_gen;
+    taskEXIT_CRITICAL(&s_mux);
+    if (xTaskCreate(link_task, "fd_zalo_link", 8192, (void *)(uintptr_t)gen, 3, NULL) != pdPASS) {
+        taskENTER_CRITICAL(&s_mux);
+        s_link_busy = false;
+        s_link.state = FD_LINK_ERROR;
+        strlcpy(s_link.err, "nomem", sizeof(s_link.err));
+        taskEXIT_CRITICAL(&s_mux);
+    }
+}
+void fd_zalo_link_get(fd_link_status_t *out)
+{
+    if (!out) return;
+    taskENTER_CRITICAL(&s_mux);
+    *out = s_link;
+    int64_t remaining = s_link_expiry - esp_timer_get_time();
+    out->seconds = remaining > 0 ? (int)((remaining + 999999) / 1000000) : 0;
+    taskEXIT_CRITICAL(&s_mux);
+}
