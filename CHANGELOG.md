@@ -3,11 +3,10 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+<!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
+
 ## [4.1.8] - 2026-11-08
-- Từ điển: nút chuyển Anh - Việt / Việt - Anh, gợi ý "Nhập từ cần tra", lịch sử lưu chiều tra.
-- Bàn phím Từ điển: gõ tiếng Việt Telex (chế độ Việt - Anh), thêm phím Quay lại.
-- Luyện tập: đáp án một màu, nhãn A/B/C/D; nút 1-4 ứng với A-D.
-- Đồng bộ: dùng cả câu ví dụ gốc của từ (Sắp xếp câu, Điền chỗ trống).
+Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay lại. Luyện tập đáp án một màu, nhãn ABCD. Đồng bộ dùng cả câu ví dụ.
 
 ## [4.1.7] - 2026-11-08
 

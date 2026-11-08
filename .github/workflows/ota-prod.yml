@@ -281,12 +281,25 @@ jobs:
           [[ "${BUILD_ID:?}" =~ ^[0-9a-f]{10}$ ]]
           test -f "${OTA_BIN:?}"; test -f "${FULL_BIN:?}"
 
+          # OTA da dang o buoc truoc: loi cai gh (vd GitHub 504) chi bo qua GitHub Release, khong lam fail job.
+          dl() {  # dl <file> <url>: thu 6 lan, lui dan 10..60 s
+            local n
+            for n in 1 2 3 4 5 6; do
+              curl -fsSL --connect-timeout 20 --max-time 300 -o "$1" "$2" && return 0
+              echo "Tai that bai lan $n: $2"; sleep $((10 * n))
+            done
+            return 1
+          }
           if ! command -v gh >/dev/null 2>&1; then
             echo "Cai gh $GH_VERSION"
             T="$(mktemp -d)"
-            curl -fsSL --retry 3 -o "$T/gh.tgz" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz"
-            curl -fsSL --retry 3 -o "$T/sums.txt" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_checksums.txt"
-            ( cd "$T" && awk -v f="gh_${GH_VERSION}_linux_amd64.tar.gz" '$2==f{print $1"  gh.tgz"}' sums.txt | grep -q . && awk -v f="gh_${GH_VERSION}_linux_amd64.tar.gz" '$2==f{print $1"  gh.tgz"}' sums.txt | sha256sum -c - )
+            BASE_URL="https://github.com/cli/cli/releases/download/v${GH_VERSION}"
+            if ! dl "$T/gh.tgz" "$BASE_URL/gh_${GH_VERSION}_linux_amd64.tar.gz" || ! dl "$T/sums.txt" "$BASE_URL/gh_${GH_VERSION}_checksums.txt" \
+              || ! ( cd "$T" && awk -v f="gh_${GH_VERSION}_linux_amd64.tar.gz" '$2==f{print $1"  gh.tgz"}' sums.txt | grep -q . && awk -v f="gh_${GH_VERSION}_linux_amd64.tar.gz" '$2==f{print $1"  gh.tgz"}' sums.txt | sha256sum -c - ); then
+              echo "::warning::Khong cai duoc gh - bo qua GitHub Release (OTA da dang)"
+              echo "| github release | bo qua: khong cai duoc gh |" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
             tar -xzf "$T/gh.tgz" -C "$T"
             install -m 0755 "$T/gh_${GH_VERSION}_linux_amd64/bin/gh" /usr/local/bin/gh
           fi

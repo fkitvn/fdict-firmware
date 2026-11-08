@@ -53,6 +53,10 @@ for ln in lines:
         t = re.sub(r"[`*_]", "", t)
         out.append(t)
 s = " ".join(out).strip()
+# Ghi chu phat hanh ngan, khong ky tu dac biet (quy uoc 4.1.8): bo ngoac kep, gach cheo, hai cham, cham phay, ngoac, gach noi rieng le.
+s = re.sub(r"[\"'`/\\:;()\[\]{}<>|#*_~^=+]", " ", s)
+s = re.sub(r"\s+-+\s+", " ", s)
+s = re.sub(r"\s+", " ", s).strip()
 if not s:
     sys.exit("CHANGELOG.md: muc [%s] trong" % ver)
 if "\ufffd" in s or re.search(r"(?<=\w)\?(?=\w)", re.sub(r"https?://\S+", "", s)):
