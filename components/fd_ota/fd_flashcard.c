@@ -138,6 +138,7 @@ static void task(void *arg)
         if (!s_cache_tried) { s_cache_tried = true; load_cache(tmp, rx); }
         int ln = fd_sync_build_cards(tmp, FD_FC_MAX);   /* 2.3.0: the tu kho dong bo (offline, theo uu tien hoc) */
         if (ln > 0) { n = ln; err = FD_STUDY_ERR_NONE; }
+        else if (ln < 0) err = FD_STUDY_ERR_NOMEM;
         else if (!fd_ota_is_paired()) err = FD_STUDY_ERR_UNPAIRED;
         else if (!fd_net_is_connected()) err = FD_STUDY_ERR_NO_WIFI;
         else {

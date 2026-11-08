@@ -66,8 +66,7 @@ static void unlock(void) { xSemaphoreGive(s_mx); }
 
 static void *ps_alloc(size_t n)
 {
-    void *p = heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    return p ? p : malloc(n);
+    return heap_caps_malloc(n, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
 
 static void ucpy(char *out, size_t cap, const char *in)
@@ -710,7 +709,14 @@ static void task(void *arg)
     for (;;) {
         int c = 0;
         bool got = xQueueReceive(s_q, &c, pdMS_TO_TICKS(2000)) == pdTRUE;
-        if (!rx) { vTaskDelay(pdMS_TO_TICKS(10000)); rx = ps_alloc(RX_CAP); continue; }
+        if (!rx) {
+            set_err("nomem");
+            ESP_LOGW(TAG, "sync RX: PSRAM exhausted; retry in 10s (free=%u)",
+                     (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+            vTaskDelay(pdMS_TO_TICKS(10000));
+            rx = ps_alloc(RX_CAP);
+            continue;
+        }
         bool on = fd_net_is_connected() && fd_ota_is_paired();
         int64_t now = esp_timer_get_time();
         if (on && !was_on) next = 0;   /* vua co mang: dong bo ngay */
@@ -964,9 +970,9 @@ static int order_cards(ord_t *o, int cap)
 
 int fd_sync_build_cards(fd_fc_card_t *out, int cap)
 {
-    if (!out || cap <= 0) return 0;
+    if (!out || cap <= 0 || !s_mx) return 0;
     ord_t *o = ps_alloc(sizeof(ord_t) * FD_SYNC_MAX_WORDS);
-    if (!o) return 0;
+    if (!o) return -1;
     lock();
     int m = s_st.have ? order_cards(o, cap) : 0;
     for (int i = 0; i < m; i++) {

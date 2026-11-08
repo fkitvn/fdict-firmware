@@ -17,7 +17,9 @@ static inline uint32_t op_w(uint32_t val) { UNUSED(val); return 0; }
 static inline uint32_t op_f(uint32_t val) { UNUSED(val); return 0; }
 static inline uint32_t op_t(uint32_t val) { UNUSED(val); return 0; }
 
-static lv_i18n_phrase_t en_singulars[] = {
+static const lv_i18n_phrase_t en_singulars[] = {
+    {"MEMORY_ERROR", "Not enough memory. Retry."},
+    {"STORAGE_ERROR", "Storage unavailable."},
     {"NO", "No"},
     {"OFF", "Off"},
     {"ON", "On"},
@@ -339,7 +341,9 @@ static const lv_i18n_lang_t en_lang = {
     .locale_plural_fn = en_plural_fn
 };
 
-static lv_i18n_phrase_t vi_singulars[] = {
+static const lv_i18n_phrase_t vi_singulars[] = {
+    {"MEMORY_ERROR", "Thiếu bộ nhớ. Thử lại."},
+    {"STORAGE_ERROR", "Lỗi bộ nhớ lưu trữ."},
     {"NO", "Không"},
     {"OFF", "Tắt"},
     {"ON", "Bật"},
@@ -718,7 +722,7 @@ int lv_i18n_set_locale(const char * l_name)
 }
 
 
-static const char * __lv_i18n_get_text_core(lv_i18n_phrase_t * trans, const char * msg_id)
+static const char * __lv_i18n_get_text_core(const lv_i18n_phrase_t * trans, const char * msg_id)
 {
     uint16_t i;
     for(i = 0; trans[i].msg_id != NULL; i++) {

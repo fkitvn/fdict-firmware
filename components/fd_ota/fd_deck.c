@@ -4,6 +4,7 @@
  * Ket qua offline -> /data/outbox -> POST /api/study/result (cung dinh dang phien online). */
 #include "fd_deck.h"
 #include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +49,7 @@ static void unlock(void) { xSemaphoreGive(s_mx); }
 
 static char *read_file(const char *p, size_t max, size_t *out_len)
 {
+    errno = 0;
     FILE *f = fopen(p, "rb");
     if (!f) return NULL;
     fseek(f, 0, SEEK_END);
@@ -56,7 +58,7 @@ static char *read_file(const char *p, size_t max, size_t *out_len)
     char *b = NULL;
     if (n > 0 && (size_t)n <= max) {
         b = heap_caps_malloc((size_t)n + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        if (!b) b = malloc((size_t)n + 1);
+        if (!b) errno = ENOMEM;
         if (b && fread(b, 1, (size_t)n, f) != (size_t)n) { free(b); b = NULL; }
         if (b) b[n] = 0;
     }
@@ -385,7 +387,7 @@ static bool outbox_flush(void)
         if (!is_ext(e->d_name, ".json")) continue;
         snprintf(p, sizeof(p), OBOX "/%s", e->d_name);
         char *body = read_file(p, BODY_MAX, NULL);
-        if (!body) { ESP_LOGW(TAG, "outbox %s: khong doc duoc / qua lon -> bo", e->d_name); unlink(p); continue; }
+        if (!body) { ESP_LOGW(TAG, "outbox %s: read/PSRAM error; keep and retry", e->d_name); stop = true; break; }
         int code = fd_ota_api_post("/api/study/result", body, rx, sizeof(rx));
         free(body);
         if (code >= 200 && code < 300) { unlink(p); done++; ESP_LOGI(TAG, "outbox gui %s -> %d: xong", e->d_name, code); }
@@ -423,6 +425,7 @@ static bool prefetch_one(const char *dir)
     fd_study_session_t *s = heap_caps_calloc(1, sizeof(*s), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     bool ok = false;
     int code = -1, n = 0;
+    if (!rx || !s) ESP_LOGW(TAG, "prefetch: PSRAM exhausted; retry with existing backoff");
     if (rx && s) {
         code = fd_ota_api_post("/api/study/start", body, rx, FILE_MAX);
         if (code == 200 && fd_study_parse_start(rx, s) == FD_STUDY_ERR_NONE) {
@@ -561,9 +564,10 @@ fd_study_err_t fd_deck_build_session(fd_study_session_t *s, bool vi_en, bool fre
         char p[PATH_N + 32];
         snprintf(p, sizeof(p), CDIR "/%.23s", L[best].name);
         char *b = read_file(p, FILE_MAX, NULL);
-        err = b ? fd_study_parse_start(b, s) : FD_STUDY_ERR_NO_DECK;
+        err = b ? fd_study_parse_start(b, s) : errno == ENOMEM ? FD_STUDY_ERR_NOMEM : FD_STUDY_ERR_NO_DECK;
         free(b);
-        if (err) { unlink(p); cache_count(); }   /* hong: bo */
+        /* Parse failure may be cJSON OOM: never delete a valid cached deck on allocation failure. */
+        if (err) ESP_LOGW(TAG, "offline cache read/parse err=%d: kept for retry", err);
     }
     if (!err) {
         for (int i = s->n - 1; i > 0; i--) {   /* tron thu tu cau (giu nguyen key A-D cua tung cau) */

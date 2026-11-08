@@ -1,4 +1,6 @@
 en:
+  MEMORY_ERROR: 'Not enough memory. Retry.'
+  STORAGE_ERROR: 'Storage unavailable.'
   'NO': 'No'
   'OFF': 'Off'
   'ON': 'On'

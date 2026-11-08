@@ -36,8 +36,12 @@ void fd_factory_boot(void)
     if (v != 1) return;
 
     ESP_LOGW(TAG, "khoi phuc cai dat goc");
-    esp_err_t fe = fd_store_format();
-    if (fe != ESP_OK) ESP_LOGE(TAG, "format /data: %s", esp_err_to_name(fe));
+    /* The persisted factory flag is set only by the confirmed reset dialog. */
+    esp_err_t fe = esp_littlefs_format(FD_STORE_PARTITION);
+    if (fe != ESP_OK) {
+        ESP_LOGE(TAG, "format /data: %s; keep NVS/reset flag for retry", esp_err_to_name(fe));
+        return;
+    }
 
     nvs_flash_deinit();
     esp_err_t ee = nvs_flash_erase();
@@ -47,5 +51,5 @@ void fd_factory_boot(void)
         return;   /* co con lai -> lan khoi dong sau thu lai */
     }
     ESP_ERROR_CHECK(nvs_flash_init());
-    if (fe != ESP_OK) fd_factory_arm();   /* NVS sach nhung /data chua xoa -> format lai lan sau */
+
 }

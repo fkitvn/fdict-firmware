@@ -58,6 +58,7 @@ fd_study_err_t fd_sync_build_quiz(fd_study_session_t *s, bool vi_en, int n);
 /* Trac nghiem phan loai tu (POS) / dien tu cho trong tu kho dong bo (4 dap an). */
 fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n);
 fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n);
+/* Returns count, 0 when no data, -1 on PSRAM exhaustion. */
 int fd_sync_build_cards(fd_fc_card_t *out, int cap);
 /* Ghi 1 lan tu duoc hien tren Lat tu. Dem nam trong kho RAM va /data/sync/card_seen.log (con sau khi dong bo lai). */
 void fd_sync_card_seen(const char *wid);

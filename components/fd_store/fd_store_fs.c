@@ -6,18 +6,22 @@
 #include "esp_log.h"
 
 static const char *TAG = "fd_store";
+static esp_err_t s_status = ESP_ERR_INVALID_STATE;
+
+esp_err_t fd_store_status(void) { return s_status; }
 
 esp_err_t fd_store_mount(void)
 {
     esp_vfs_littlefs_conf_t conf = {
         .base_path = FD_STORE_BASE_PATH,
         .partition_label = FD_STORE_PARTITION,
-        .format_if_mount_failed = true,
+        .format_if_mount_failed = false,
         .dont_mount = false,
     };
     esp_err_t err = esp_vfs_littlefs_register(&conf);
+    s_status = err;
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Mount LittleFS that bai: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Mount LittleFS failed: %s; data preserved, no automatic format", esp_err_to_name(err));
         return err;
     }
     size_t total = 0, used = 0;
@@ -32,11 +36,6 @@ esp_err_t fd_store_info(size_t *total, size_t *used)
     return esp_littlefs_info(FD_STORE_PARTITION, total, used);
 }
 
-esp_err_t fd_store_format(void)
-{
-    return esp_littlefs_format(FD_STORE_PARTITION);
-}
-
 esp_err_t fd_store_selftest(void)
 {
     const char *path = FD_STORE_BASE_PATH "/.selftest";
@@ -44,7 +43,7 @@ esp_err_t fd_store_selftest(void)
     FILE *f = fopen(path, "w");
     if (!f) {
         ESP_LOGE(TAG, "selftest: khong mo duoc %s de ghi", path);
-        return ESP_FAIL;
+        return s_status = ESP_FAIL;
     }
     fputs(msg, f);
     fclose(f);
@@ -53,14 +52,14 @@ esp_err_t fd_store_selftest(void)
     f = fopen(path, "r");
     if (!f) {
         ESP_LOGE(TAG, "selftest: khong mo duoc %s de doc", path);
-        return ESP_FAIL;
+        return s_status = ESP_FAIL;
     }
     fgets(buf, sizeof(buf), f);
     fclose(f);
     unlink(path);
     if (strcmp(buf, msg) != 0) {
         ESP_LOGE(TAG, "selftest: du lieu doc lai khong khop");
-        return ESP_FAIL;
+        return s_status = ESP_FAIL;
     }
 
     /* Bo dem so lan boot: kiem tra du lieu ton tai qua reset */

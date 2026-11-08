@@ -65,7 +65,7 @@ jobs:
           [[ "${FW_VERSION:?}" =~ $FW_RE ]] || { echo "::error::fw_version sai: $FW_VERSION"; exit 1; }
           [[ "${BUILD_ID:?}" =~ ^[0-9a-f]{10}$ ]] || { echo "::error::build_id sai: $BUILD_ID"; exit 1; }
           SIZE="$(stat -c%s "$OTA_BIN")"
-          test "$SIZE" -lt 4194304 || { echo "::error::bin >= 4 MB"; exit 1; }
+          test "$SIZE" -lt 3145728 || { echo "::error::bin >= 3 MiB"; exit 1; }
           SHA256="$(sha256sum "$OTA_BIN" | awk '{print tolower($1)}')"
           [[ "$SHA256" =~ ^[0-9a-f]{64}$ ]]
           NOTES="${NOTES_VI:-Cập nhật firmware}"
@@ -318,6 +318,11 @@ jobs:
             echo "- Build ID: \`$BUILD_ID\`"
             echo "- \`${BASE}-full.bin\` sha256: \`$FULL_SHA\`"
             echo "- \`${BASE}-app.bin\` sha256: \`$APP_SHA\`"
+            echo ""
+            echo "### 4.0.0 partition migration"
+            echo "USB full.bin at 0x0 is required for the new 3 MiB OTA slots and 8.06 MiB LittleFS."
+            echo "Erase/replace old flash data as needed, then confirm Factory Reset on the device to initialize LittleFS. Back up anything needed first."
+            echo "OTA replaces only the application; it does not migrate the partition table or enlarge LittleFS. No old-layout migration/gating is provided for this development release."
             echo ""
             echo "### full.bin (nạp từ 0x0)"
             echo ""

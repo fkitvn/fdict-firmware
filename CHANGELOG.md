@@ -3,6 +3,14 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.0.0] - 2026-11-08
+
+- Hai slot OTA 3 MiB, LittleFS 8,06 MiB; hiển thị dung lượng LittleFS trong Thông tin phiên bản.
+- Cần nạp full.bin qua USB để đổi phân vùng; chấp nhận xóa dữ liệu, khôi phục cài đặt gốc để khởi tạo LittleFS.
+
+- Bảo vệ RAM trong, chuyển JSON và bảng chữ sang PSRAM/flash; thêm log heap.
+- Báo lỗi bộ nhớ/lưu trữ rõ hơn, giữ dữ liệu khi thiếu RAM hoặc lỗi LittleFS.
+
 ## [3.4.8] - 2026-11-08
 
 - Lật từ: thay gợi ý thao tác bằng từ loại, ẩn khi dữ liệu chưa có.

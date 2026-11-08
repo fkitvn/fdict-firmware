@@ -1,4 +1,6 @@
 vi:
+  MEMORY_ERROR: 'Thiếu bộ nhớ. Thử lại.'
+  STORAGE_ERROR: 'Lỗi bộ nhớ lưu trữ.'
   'NO': Không
   'OFF': Tắt
   'ON': Bật

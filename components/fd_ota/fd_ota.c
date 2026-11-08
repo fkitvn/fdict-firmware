@@ -100,6 +100,10 @@ typedef struct {
 
 static QueueHandle_t s_cmd;
 static SemaphoreHandle_t s_mx;
+static TaskHandle_t s_worker;
+static portMUX_TYPE s_init_gate = portMUX_INITIALIZER_UNLOCKED;
+static bool s_initializing;
+static esp_err_t s_start_error;
 static fd_ota_status_t s_st;
 static manifest_t s_man;           /* chi task fd_ota doc/ghi */
 static bool s_have_man, s_reboot_pending;
@@ -142,7 +146,15 @@ static void st_chk_err(const char *err)
 void fd_ota_get_status(fd_ota_status_t *out)
 {
     if (!out) return;
-    if (!s_mx) { memset(out, 0, sizeof(*out)); return; }
+    if (!s_mx) {
+        memset(out, 0, sizeof(*out));
+        if (s_start_error) {
+            out->state = FD_OTA_ST_ERROR;
+            out->check_err = true;
+            strlcpy(out->err, "no_mem", sizeof(out->err));
+        }
+        return;
+    }
     xSemaphoreTake(s_mx, portMAX_DELAY);
     *out = s_st;
     xSemaphoreGive(s_mx);
@@ -160,6 +172,7 @@ static void send_cmd(int c)
 }
 void fd_ota_check_now(void)
 {
+    if (!s_mx && s_start_error) fd_ota_start(s_display_ok, s_storage_ok);
     if (!s_mx) return;
     xSemaphoreTake(s_mx, portMAX_DELAY);
     if (s_st.state != FD_OTA_ST_CHECKING && s_st.state != FD_OTA_ST_DOWNLOADING &&
@@ -1019,7 +1032,12 @@ static void pair_set(fd_pair_state_t st, bool new_session, int exp_s, const char
 void fd_ota_pair_get(fd_pair_status_t *out)
 {
     if (!out) return;
-    if (!s_mx) { memset(out, 0, sizeof(*out)); return; }
+    if (!s_mx) {
+        memset(out, 0, sizeof(*out));
+        if (s_start_error) { out->state = FD_PAIR_ERROR; strlcpy(out->err, "nomem", sizeof(out->err)); }
+        out->paired = fd_ota_is_paired();
+        return;
+    }
     xSemaphoreTake(s_mx, portMAX_DELAY);
     *out = s_pair;
     if (s_pair_start_pending) out->state = FD_PAIR_REQUESTING;
@@ -1032,6 +1050,7 @@ void fd_ota_pair_get(fd_pair_status_t *out)
 }
 void fd_ota_pair_start(void)
 {
+    if (!s_mx && s_start_error) fd_ota_start(s_display_ok, s_storage_ok);
     if (!s_mx || !s_cmd) return;
     xSemaphoreTake(s_mx, portMAX_DELAY);
     if (s_pair_start_pending) { xSemaphoreGive(s_mx); return; }
@@ -1417,6 +1436,7 @@ static bool idle_now(void) { return s_is_idle ? s_is_idle() : false; }
 static void ota_task(void *arg)
 {
     (void)arg;
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* no access to unpublished handles */
     selftest_run();
     int64_t next_report = 0;
     for (;;) {
@@ -1481,7 +1501,11 @@ static void ota_task(void *arg)
 
 esp_err_t fd_ota_start(bool display_ok, bool storage_ok)
 {
-    if (s_cmd) return ESP_OK;
+    taskENTER_CRITICAL(&s_init_gate);
+    if (s_initializing) { taskEXIT_CRITICAL(&s_init_gate); return ESP_ERR_INVALID_STATE; }
+    if (s_worker) { taskEXIT_CRITICAL(&s_init_gate); return ESP_OK; }
+    s_initializing = true;
+    taskEXIT_CRITICAL(&s_init_gate);
     s_display_ok = display_ok;
     s_storage_ok = storage_ok;
     uint8_t m[6];
@@ -1495,12 +1519,33 @@ esp_err_t fd_ota_start(bool display_ok, bool storage_ok)
         if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) { nvs_get_u8(h, "devmode", &v); nvs_close(h); }
         s_lab = v != 0;   /* che do nha phat trien -> server Lab */
     }
-    s_mx = xSemaphoreCreateMutex();
-    s_cmd = xQueueCreate(6, sizeof(int));
-    if (!s_mx || !s_cmd) return ESP_ERR_NO_MEM;
+    SemaphoreHandle_t mx = xSemaphoreCreateMutex();
+    QueueHandle_t queue = mx ? xQueueCreate(6, sizeof(int)) : NULL;
+    TaskHandle_t worker = NULL;
+    if (!mx || !queue) goto failed;
+    if (xTaskCreatePinnedToCore(ota_task, "fd_ota", 8192, NULL, 3, &worker, tskNO_AFFINITY) != pdPASS) goto failed;
+    taskENTER_CRITICAL(&s_init_gate);
+    s_cmd = queue;
+    s_mx = mx;
+    s_worker = worker;
+    s_start_error = ESP_OK;
+    taskEXIT_CRITICAL(&s_init_gate);
     ESP_LOGI(TAG, "start: device_id=%s build=%s hw=%s channel=%s server=%s token=%s", s_dev_id, s_build, CONFIG_FD_OTA_HW,
              FD_OTA_CHANNEL, s_lab ? "lab" : "prod", fd_ota_is_paired() ? "co" : "khong");
-    boot_state();
-    if (xTaskCreatePinnedToCore(ota_task, "fd_ota", 8192, NULL, 3, NULL, tskNO_AFFINITY) != pdPASS) return ESP_ERR_NO_MEM;
+    boot_state();   /* sets selftest_pending before callers can sleep; worker is still blocked */
+    taskENTER_CRITICAL(&s_init_gate);
+    s_initializing = false;
+    taskEXIT_CRITICAL(&s_init_gate);
+    xTaskNotifyGive(worker);
     return ESP_OK;
+
+failed:
+    if (queue) vQueueDelete(queue);
+    if (mx) vSemaphoreDelete(mx);
+    taskENTER_CRITICAL(&s_init_gate);
+    s_start_error = ESP_ERR_NO_MEM;
+    s_initializing = false;
+    taskEXIT_CRITICAL(&s_init_gate);
+    ESP_LOGW(TAG, "init: no memory; all partial resources released, manual retry available");
+    return ESP_ERR_NO_MEM;
 }

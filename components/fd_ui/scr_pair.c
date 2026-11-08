@@ -174,7 +174,7 @@ static void show(void)
         break;
     case FD_PAIR_ERROR:
         col = 0xDC2626;
-        snprintf(b, sizeof(b), _("ERROR_FMT"), !strcmp(p.err, "no_wifi") ? _("NO_WIFI") : p.err);
+        snprintf(b, sizeof(b), _("ERROR_FMT"), !strcmp(p.err, "nomem") ? _("MEMORY_ERROR") : !strcmp(p.err, "no_wifi") ? _("NO_WIFI") : p.err);
         bt = _("RETRY");
         break;
     default:

@@ -8,6 +8,7 @@
 #include "fd_ota.h"
 #include "fd_sync.h"
 #include "ui_priv.h"
+#include "fd_store.h"
 
 static lv_obj_t *s_body, *s_v[5], *s_state, *s_btn;
 static bool s_gate;
@@ -33,7 +34,8 @@ static lv_obj_t *kv(lv_obj_t *p, const char *k)
 
 static void fmt_err(const char *e, char *out, size_t n)
 {
-    if (!strcmp(e, "no_wifi")) strlcpy(out, _("WIFI_NOT_CONNECTED"), n);
+    if (!strcmp(e, "nomem")) strlcpy(out, _("MEMORY_ERROR"), n);
+    else if (!strcmp(e, "no_wifi")) strlcpy(out, _("WIFI_NOT_CONNECTED"), n);
     else if (!strcmp(e, "unpaired")) strlcpy(out, _("PAIR_TO_STUDY"), n);
     else snprintf(out, n, _("ERROR_FMT"), e);
 }
@@ -57,7 +59,8 @@ static void refresh(void)
     bool run = st.state == FD_SYNC_CHECKING || st.state == FD_SYNC_PULLING || st.state == FD_SYNC_PUSHING || st.manual;
     char m[96];
     uint32_t col = FD_COLOR_TEXT_MUTED;
-    if (st.state == FD_SYNC_PULLING) snprintf(m, sizeof(m), _("SYNC_STATE_PULL"), st.pct);
+    if (fd_store_status() != ESP_OK) { strlcpy(m, _("STORAGE_ERROR"), sizeof(m)); col = 0xDC2626; }
+    else if (st.state == FD_SYNC_PULLING) snprintf(m, sizeof(m), _("SYNC_STATE_PULL"), st.pct);
     else if (run) strlcpy(m, _("SYNC_STATE_RUN"), sizeof(m));
     else if (!fd_net_is_connected()) { strlcpy(m, _("SYNC_STATE_IDLE"), sizeof(m)); col = FD_COLOR_ALERT; }
     else if (st.state == FD_SYNC_ERROR && st.err[0]) { fmt_err(st.err, m, sizeof(m)); col = 0xDC2626; }

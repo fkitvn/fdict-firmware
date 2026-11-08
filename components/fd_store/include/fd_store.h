@@ -10,13 +10,12 @@
 extern "C" {
 #endif
 
-/* Mount LittleFS tai /data (tu format lan dau neu mount loi). */
+/* Mount without formatting, even on first boot. Failed data is preserved. */
 esp_err_t fd_store_mount(void);
 esp_err_t fd_store_info(size_t *total, size_t *used);
+esp_err_t fd_store_status(void);   /* last mount/self-test result for UI diagnostics */
 /* Ghi/doc/xoa file thu /data/.selftest, tang bo dem /data/boot_count.txt. */
 esp_err_t fd_store_selftest(void);
-/* Xoa toan bo phan vung /data. Goi khi chua mount. Khong dung phan vung voice. */
-esp_err_t fd_store_format(void);
 
 /* Dat co NVS. Lan khoi dong sau (fd_factory_boot) format /data va xoa het NVS. */
 bool fd_factory_arm(void);

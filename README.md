@@ -1,3 +1,11 @@
+## 4.0.0 — phân vùng mới (bản phát triển)
+
+- Flash 16 MiB: `ota_0` tại `0x20000`, `ota_1` tại `0x320000`, mỗi slot `0x300000` (3 MiB).
+- LittleFS (`storage`) tại `0x620000`, dài `0x810000` (8,0625 MiB, màn hình làm tròn thành 8,1 MB). Voice vẫn tại `0xE30000`.
+- **Cần USB full.bin tại 0x0 để áp dụng bảng phân vùng mới.** Sao lưu nếu cần, chấp nhận xóa dữ liệu cũ; sau khi nạp, xác nhận **Khôi phục cài đặt gốc** trên thiết bị để khởi tạo LittleFS. Firmware không tự format khi mount lỗi.
+- OTA chỉ thay app, không đổi bảng phân vùng hoặc tăng LittleFS. Không có cơ chế chuyển đổi/gate thiết bị dùng bảng cũ trong bản phát triển này. Không tự flash hay xóa thiết bị.
+- `Cài đặt > Thông tin phiên bản > LittleFS` hiển thị dung lượng đang dùng / tổng thực tế của phân vùng được mount.
+
 # FDict One – Máy học từ vựng
 
 Firmware cho **FDict One**, máy học từ vựng tiếng Anh cầm tay chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
@@ -51,13 +59,13 @@ Flash 16 MB, xem `partitions.csv`:
 | otadata  | data/ota      | 0x19000  | 8 KB                         |
 | phy_init | data/phy      | 0x1B000  | 4 KB                         |
 | nvs_keys | data/nvs_keys | 0x1C000  | 4 KB                         |
-| ota_0    | app           | 0x20000  | 4 MB                         |
-| ota_1    | app           | 0x420000 | 4 MB                         |
-| storage  | data/littlefs | 0x820000 | ~6,06 MB                     |
+| ota_0    | app           | 0x20000  | 3 MiB                         |
+| ota_1    | app           | 0x320000 | 3 MiB                         |
+| storage  | data/littlefs | 0x620000 | ~8,06 MiB                     |
 | voice    | data/0x40     | 0xE30000 | 1,75 MB (dữ liệu giọng Pico) |
 | coredump | data/coredump | 0xFF0000 | 64 KB                        |
 
-Mỗi slot ứng dụng 4 MB, nên file ứng dụng `.bin` phải nhỏ hơn 4 MB (hiện khoảng 1,5 MB).
+Mỗi slot ứng dụng 3 MiB, nên file ứng dụng `.bin` phải nhỏ hơn 3 MiB (hiện khoảng 1,5 MB).
 
 ## Yêu cầu build
 
@@ -102,7 +110,7 @@ esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>
 
 Cách dễ nhất: mở <https://fkit.vn/firmware?spu=fdictone> bằng Chrome/Edge và bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)). Hoặc dùng <https://espressif.github.io/esptool-js/>: chọn cổng, thêm file `-full.bin` ở địa chỉ `0x0`, bấm Program.
 
-Khi đổi bảng phân vùng, phân vùng `/data` (LittleFS) bị định dạng lại: mất cache bài học và kết quả chưa gửi. NVS giữ nguyên, không cần ghép lại.
+Khi đổi bảng phân vùng, dữ liệu LittleFS cũ không được giữ. Firmware không tự format; sau khi nạp full.bin qua USB, xác nhận Khôi phục cài đặt gốc để tạo lại LittleFS (xóa NVS và dữ liệu, cần ghép lại).
 
 Ảnh đầy đủ được tạo bằng `esptool merge-bin` theo `build/flash_args`:
 
@@ -131,11 +139,11 @@ esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x20000 fdict-firmware-v<
 | | app.bin | full.bin |
 |---|---|---|
 | Tên file | `fdict-firmware-vX.Y.Z-<build_id>-app.bin` | `fdict-firmware-vX.Y.Z-<build_id>-full.bin` |
-| Kích thước | ~1,5 MB (phải < 4 MB) | ~16,3 MB (≤ 16 MiB) |
+| Kích thước | ~1,5 MB (phải < 3 MiB) | ~16,3 MB (≤ 16 MiB) |
 | Nội dung | chỉ chương trình FDict One | ảnh gộp toàn bộ flash |
 | Nạp bằng | OTA | USB, từ offset `0x0` (fkit.vn/firmware / `esptool write_flash 0x0 ...`) |
 
-- **app.bin**: chỉ chương trình FDict One, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 4 MB) nên phải < 4 MB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
+- **app.bin**: chỉ chương trình FDict One, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 3 MiB) nên phải < 3 MiB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
 - **full.bin**: ảnh gộp (merged image) nạp từ `0x0` qua USB, gồm:
 
 | Offset | Thành phần |
@@ -158,6 +166,7 @@ nên build ESP-IDF không cần Node.js. Sau khi thêm/sửa chuỗi, chạy t�
 npx lv_i18n@0.2.1 extract -s 'components/fd_ui/*.c' -t 'i18n/*.yml'   # thêm khoá mới (giá trị ~) vào cả hai file
 # điền giá trị tiếng Anh (en.yml) và tiếng Việt (vi.yml) cho mọi khoá mới, rồi:
 npx lv_i18n@0.2.1 compile -t 'i18n/*.yml' -o components/fd_i18n -l en
+python tools/const_i18n.py
 ```
 
 Chuỗi trong mảng tĩnh (ô Trang chủ, nhãn màn Thông tin, lựa chọn Học tập/Flash card) được dịch ở chỗ dùng `_(arr[i])`,
@@ -191,7 +200,7 @@ Workflow `.github/workflows/ota-prod.yml` chạy khi **push lên nhánh `prod`**
 4. Tải `-full.bin` của cùng bản build lên máy chủ: `POST {DICT_API_URL}/api/admin/releases/full` (gắn vào `release_id` vừa đăng), cho trình nạp USB trên web.
 5. Tạo **GitHub Release** tag `v<semver>` (tiêu đề `FDict One - <semver>`) với `...-full.bin`, `...-app.bin` và `SHA256SUMS.txt`, ghi chú lấy từ CHANGELOG. Mỗi bản prod đều xuất hiện ở mục Releases của repo; tag đã có thì bỏ qua, không ghi đè.
 
-Bước OTA chỉ đẩy **bản app** (< 4 MB); `-full.bin` đi qua endpoint riêng ở bước 4.
+Bước OTA chỉ đẩy **bản app** (< 3 MiB); `-full.bin` đi qua endpoint riêng ở bước 4.
 
 ### Biến và secret cần tạo
 
@@ -219,7 +228,7 @@ Script dừng build nếu:
 - mục đầu CHANGELOG khác `PROJECT_VER`;
 - phiên bản ghi trong file bin (`esp_app_desc`) khác `PROJECT_VER`;
 - build có cảnh báo;
-- file bin từ 4 MB trở lên.
+- file bin từ 3 MiB trở lên.
 
 `build_id` = 10 ký tự hex đầu (chữ thường) SHA256 file ELF, giống màn _Thông tin_.
 
@@ -260,7 +269,7 @@ partitions.csv        bảng phân vùng 16 MB
 ## Đóng góp
 
 - Mở issue hoặc pull request. Mô tả rõ thay đổi và cách kiểm tra trên thiết bị.
-- Build phải sạch: 0 lỗi, 0 cảnh báo, ứng dụng nhỏ hơn 4 MB.
+- Build phải sạch: 0 lỗi, 0 cảnh báo, ứng dụng nhỏ hơn 3 MiB.
 - Kiểm tra giao diện ở cả màn dọc và ngang.
 - Không đưa URL máy chủ thật, token, mật khẩu hay `sdkconfig` vào commit.
 - Ghi thay đổi vào [CHANGELOG.md](CHANGELOG.md).
@@ -283,6 +292,6 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 - **Build:** ESP-IDF 6.1, `idf.py set-target esp32s3 && idf.py build`; flash with `idf.py -p <PORT> flash monitor`.
 - **Configure:** server URLs are Kconfig options (`menuconfig`), placeholders by default; `sdkconfig` is git-ignored.
 - **First-time flashing:** write `fdict-firmware-v<ver>-<build>-full.bin` at `0x0` over USB (esptool or a web flasher).
-- **app.bin vs full.bin:** app.bin (~1.5 MB, < 4 MB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
+- **app.bin vs full.bin:** app.bin (~1.5 MB, < 3 MiB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
 - **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>-app.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
 - **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The FDict (device: FDict One) / fkit.vn names and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.

@@ -124,14 +124,15 @@ class ReleaseUiRegression(unittest.TestCase):
         parser = text("components/fd_ota/fd_flashcard.c").split("fd_study_err_t fd_fc_parse(")[1].split("static fd_study_err_t http_err", 1)[0]
         self.assertIn('ucpy(d->pos, sizeof(d->pos), jstr(c, "pos"))', parser)
         ui = text("components/fd_ui/scr_flashcard.c")
-        self.assertIn("s_buf[i].meaning, s_buf[i].pos", ui)
+        self.assertIn("s_items = s_buf", ui)
+        self.assertNotIn("s_net[", ui)
         for face in ["front", "back"]:
             self.assertIn("pos_footer(s_" + face + ")", ui)
             self.assertIn("lv_obj_set_hidden(" + face + "_pos, !pos[0])", ui)
         self.assertIn('pos += strspn(pos, " \\t\\r\\n")', ui)
-        self.assertIn("c->pos ? c->pos :", ui)
+        self.assertIn("const char *pos = c->pos;", ui)
         self.assertNotIn("TAP_TO_FLIP", ui)
-        self.assertNotIn("const char *audio", text("components/fd_ui/fd_dict_mini.h"))
+        self.assertFalse((ROOT / "components/fd_ui/fd_dict_mini.h").exists())
         for p in ["i18n/en.yml", "i18n/vi.yml", "components/fd_i18n/lv_i18n.c"]:
             self.assertNotIn("TAP_TO_FLIP", text(p))
         # Optional field is zero-initialized by both snapshot/parser; old store/cache has no POS.

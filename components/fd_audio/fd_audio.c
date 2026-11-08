@@ -535,7 +535,7 @@ static int16_t *synth_fb(bool ok, size_t *out_n)
     const float f1 = ok ? 1318.5f : 330.0f, f2 = ok ? 1760.0f : 220.0f;
     size_t n = (size_t)(n1 + n2);
     int16_t *b = heap_caps_malloc(n * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (!b) b = malloc(n * sizeof(int16_t));
+    /* Feedback PCM is non-DMA; leave internal RAM for the I2S staging/rings. */
     if (!b) return NULL;
     for (size_t i = 0; i < n; i++) {
         bool second = (int)i >= n1;

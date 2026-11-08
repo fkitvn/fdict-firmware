@@ -33,15 +33,15 @@
 #define ROW_H   24
 #define LABEL_W 96
 
-enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_DATA, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_COUNT };
+enum { R_FW, R_DEVID, R_BUILD, R_DATE, R_SIZE, R_FLASH, R_LITTLEFS, R_VOICE, R_IDF, R_MAC, R_IP, R_CHIP, R_RAM, R_PSRAM, R_LCD, R_OTA, R_COUNT };
 static const char *const LABELS[R_COUNT] = {"Firmware", "DEVICE_ID", "Build", "BUILD_DATE", "SIZE",
-                                            "FLASH_MEMORY", "DATA", "VOICE", "ESP-IDF", "MAC",
+                                            "FLASH_MEMORY", "LittleFS", "VOICE", "ESP-IDF", "MAC",
                                             "IP", "Chip", "INTERNAL_RAM", "PSRAM", "DISPLAY", "SERVER"};
 /* Thu tu hien thi theo nhom (so am = tieu de nhom SECT[-n-1]) */
 static const char *const SECT[] = {"DEVICE", "SOFTWARE", "MEMORY", "CONNECTIVITY"};
 static const int8_t ORDER[] = {-1, R_CHIP, R_DEVID, R_LCD,
                                -2, R_FW, R_BUILD, R_DATE, R_SIZE, R_IDF, R_VOICE,
-                               -3, R_FLASH, R_DATA, R_RAM, R_PSRAM,
+                               -3, R_FLASH, R_LITTLEFS, R_RAM, R_PSRAM,
                                -4, R_IP, R_MAC, R_OTA};
 static lv_obj_t *s_val[R_COUNT];
 /* "FDict One - x.y.z": dung FD_FW_SEMVER de khong lap tien to */
@@ -57,6 +57,7 @@ static lv_obj_t *s_ota_btn, *s_ota_btn_lbl;
 
 static const char *ota_err_vi(const char *e, char *buf, size_t n)
 {
+    if (!strcmp(e, "no_mem") || !strcmp(e, "nomem")) return _("MEMORY_ERROR");
     if (!strcmp(e, "busy")) return _("OTA_ERR_BUSY");
     if (!strcmp(e, "no_wifi")) return _("OTA_ERR_NO_WIFI");
     if (!strcmp(e, "no_time")) return _("OTA_ERR_NO_TIME");
@@ -294,18 +295,24 @@ static void fmt_sz(char *out, size_t n, uint64_t v, int dec)
 /* Flash / /data / giong doc: tinh khi mo man (esp_littlefs_info duyet FS - khong goi moi tick) */
 static void mem_rows(void)
 {
-    char a[16], b[16], o[64];
+    /* On-demand checkpoint when the version/memory screen opens (not every tick). */
+    ESP_LOGI("heap", "about: internal free=%u largest=%u min=%u PSRAM free=%u B",
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    char a[16], o[64];
     uint32_t fl = 0;
     esp_flash_get_size(NULL, &fl);
     lv_label_set_text_fmt(s_val[R_FLASH], "%u MB", (unsigned)(fl >> 20));
     size_t tot = 0, used = 0;
     if (fd_store_info(&tot, &used) == ESP_OK && tot) {
-        unsigned p10 = (unsigned)(((uint64_t)used * 1000 + tot / 2) / tot);
-        fmt_sz(a, sizeof(a), used, 1);
-        fmt_sz(b, sizeof(b), tot, 1);
-        snprintf(o, sizeof(o), "%s / %s (%u,%u%%)", a, b, p10 / 10, p10 % 10);
-    } else snprintf(o, sizeof(o), _("UNREADABLE"));
-    lv_label_set_text(s_val[R_DATA], o);
+        /* Always MiB, one decimal, localized comma; report actual mounted table. */
+        unsigned u10 = (unsigned)(((uint64_t)used * 10 + 524288) / 1048576);
+        unsigned t10 = (unsigned)(((uint64_t)tot * 10 + 524288) / 1048576);
+        snprintf(o, sizeof(o), "%u,%u / %u,%u MB", u10 / 10, u10 % 10, t10 / 10, t10 % 10);
+    } else snprintf(o, sizeof(o), "%s", _("STORAGE_ERROR"));
+    lv_label_set_text(s_val[R_LITTLEFS], o);
     char vo[48];
     const esp_partition_t *vp = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "voice");
     uint32_t h[8] = {0};   /* header voice.bin (tools/mk_voice.py): magic[8], ver, ta_off, ta_len, sg_off, sg_len, crc */

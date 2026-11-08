@@ -78,7 +78,12 @@ static void begin_lookup(const char *word)
         show_error(&st);
         return;
     }
-    if (!fd_dictnet_lookup(s_word)) return;
+    if (!fd_dictnet_lookup(s_word)) {
+        fd_dictnet_status_t st;
+        fd_dictnet_get(&st);
+        if (st.state == FD_DICTNET_ERROR) show_error(&st);
+        return;
+    }
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     label(s_body, _("LOADING"), &fd_font_noto_18, FD_COLOR_TEXT);
@@ -112,6 +117,8 @@ static void show_error(const fd_dictnet_status_t *st)
     if (st->err == FD_DICTNET_ERR_NO_WIFI) msg = _("LOOKUP_NEED_WIFI");
     else if (st->err == FD_DICTNET_ERR_UNPAIRED) msg = _("PAIR_TO_STUDY");
     else if (st->err == FD_DICTNET_ERR_NOT_FOUND) msg = _("LOOKUP_NOT_FOUND");
+    else if (st->err == FD_DICTNET_ERR_NOMEM) msg = _("MEMORY_ERROR");
+    else if (st->err == FD_DICTNET_ERR_STORAGE) msg = _("STORAGE_ERROR");
     label(s_body, msg, &fd_font_noto_18, FD_COLOR_TEXT);
     lv_obj_t *b = lv_button_create(s_body);
     lv_obj_set_size(b, lv_pct(100), 40);

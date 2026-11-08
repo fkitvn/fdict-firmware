@@ -26,6 +26,7 @@
 #include "fd_store.h"
 #include "fd_ui.h"
 #include "sys_info.h"
+#include "json_memory.h"
 
 static const char *TAG = "app";
 
@@ -102,6 +103,7 @@ static void run_app(void)
 
 void app_main(void)
 {
+    fd_json_memory_init();   /* before NVS consumers/UI/network tasks can create JSON */
     ESP_LOGI(TAG, "firmware: %s", FD_FW_NAME);
     { char sha[11]; esp_app_get_elf_sha256(sha, sizeof(sha)); ESP_LOGI(TAG, "build_id: %s (%u ky tu)", sha, (unsigned)strlen(sha)); }
     {   /* eFuse OPTIONAL_UNIQUE_ID (128 bit, khong bi mat): chi log, chua dung */

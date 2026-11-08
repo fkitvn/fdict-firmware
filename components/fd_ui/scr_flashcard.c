@@ -15,15 +15,15 @@
 #include "fd_flashcard.h"
 #include "fd_ota.h"
 #include "fd_sync.h"
-#include "fd_dict_mini.h"   /* struct fd_fc_item (word, ipa, meaning) */
+#include "fd_store.h"
+
 #include "nvs.h"
 #include "ui_priv.h"
 
 
 /* Bo the chup tu kho dong bo luc bam Bat dau. Khong goi API, khong co tu mau. */
 static fd_fc_card_t *s_buf;                 /* FD_FC_MAX, PSRAM */
-static struct fd_fc_item s_net[FD_FC_MAX];
-static const struct fd_fc_item *s_items;
+static const fd_fc_card_t *s_items;
 static int s_nitems;
 
 static int load_cards(void)
@@ -32,9 +32,10 @@ static int load_cards(void)
     s_nitems = 0;
     if (!s_buf) s_buf = heap_caps_calloc(FD_FC_MAX, sizeof(fd_fc_card_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     int n = s_buf ? fd_sync_build_cards(s_buf, FD_FC_MAX) : 0;
-    if (n <= 0) return 0;
-    for (int i = 0; i < n; i++) s_net[i] = (struct fd_fc_item){s_buf[i].word, s_buf[i].ipa, s_buf[i].meaning, s_buf[i].pos};
-    s_items = s_net;
+    if (n <= 0) {
+        return !s_buf || n < 0 ? -1 : 0;
+    }
+    s_items = s_buf;
     s_nitems = n;
     return n;
 }
@@ -128,14 +129,14 @@ static void word_label_set(lv_obj_t *label, const char *text)
 
 static void card_refresh(void)
 {
-    const struct fd_fc_item *c = &s_items[s_order[s_pos]];
+    const fd_fc_card_t *c = &s_items[s_order[s_pos]];
     /* Mat truoc = Tu: truoc [tu], sau [ipa, nghia]. Mat truoc = Nghia: truoc [nghia], sau [tu, ipa]. */
     lv_obj_set_hidden(s_front, s_flipped);
     lv_obj_set_hidden(s_back, !s_flipped);
     if (s_mfront) lv_label_set_text(lv_obj_get_child(s_front, 0), c->meaning);
     else lv_label_set_text(lv_obj_get_child(s_back, 0), c->ipa);
     lv_label_set_text(lv_obj_get_child(s_back, 1), s_mfront ? c->ipa : c->meaning);
-    const char *pos = c->pos ? c->pos : "";
+    const char *pos = c->pos;
     pos += strspn(pos, " \t\r\n");
     lv_obj_t *front_pos = lv_obj_get_child(s_front, 1);
     lv_obj_t *back_pos = lv_obj_get_child(s_back, 2);
@@ -195,7 +196,7 @@ static void shuffle_cb(lv_event_t *e) { (void)e; shuffle(); show_pos(true); }
 static void speak_cb(lv_event_t *e)
 {
     (void)e;
-    const struct fd_fc_item *c = &s_items[s_order[s_pos]];
+    const fd_fc_card_t *c = &s_items[s_order[s_pos]];
     const fd_pron_cfg_t cfg = {FD_PRON_PICO_ONLY, 1, false};
     ui_pron_say_cfg(c->word, &cfg);
 }
@@ -253,7 +254,8 @@ static void nav_btn(lv_obj_t *row, const char *txt, lv_event_cb_t cb, intptr_t u
 static void show_card(void)
 {
     s_view = V_CARD;
-    if (load_cards() <= 0) {
+    int loaded = load_cards();
+    if (loaded <= 0) {
         lv_obj_clean(s_body);
         lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -263,7 +265,7 @@ static void show_card(void)
         lv_label_set_long_mode(a, LV_LABEL_LONG_WRAP);
         lv_obj_set_style_text_align(a, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_font(a, &fd_font_noto_18, 0);
-        lv_label_set_text(a, _("NO_OFFLINE_DATA_YET"));
+        lv_label_set_text(a, fd_store_status() != ESP_OK ? _("STORAGE_ERROR") : loaded < 0 ? _("MEMORY_ERROR") : _("NO_OFFLINE_DATA_YET"));
         lv_obj_t *b = lv_label_create(s_body);
         lv_obj_set_width(b, lv_pct(100));
         lv_label_set_long_mode(b, LV_LABEL_LONG_WRAP);

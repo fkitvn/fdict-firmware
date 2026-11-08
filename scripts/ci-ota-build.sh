@@ -128,7 +128,7 @@ print("esp_app_desc: version=%s, elf_sha256 khop" % ver)
 PY
 
 SIZE="$(stat -c%s "$APP_BIN")"
-(( SIZE > 0 && SIZE < 4194304 )) || die "Kich thuoc bin $SIZE khong hop le (< 4194304)"
+(( SIZE > 0 && SIZE < 3145728 )) || die "Kich thuoc bin $SIZE khong hop le (< 3145728)"
 
 # ---------- dau ra ----------
 mkdir -p "$OUT_DIR"

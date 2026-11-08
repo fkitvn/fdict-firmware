@@ -33,6 +33,8 @@ typedef enum {
     FD_DICTNET_ERR_NET,
     FD_DICTNET_ERR_SERVER,
     FD_DICTNET_ERR_FORMAT,
+    FD_DICTNET_ERR_NOMEM,
+    FD_DICTNET_ERR_STORAGE,
 } fd_dictnet_err_t;
 
 typedef struct {
@@ -44,7 +46,7 @@ typedef struct {
     bool queued;         /* add that bai -> da xep hang */
 } fd_dictnet_status_t;
 
-void fd_dictnet_init(void);
+bool fd_dictnet_init(void);   /* false: clean failure, safe to retry */
 /* Tra cuu + (mac dinh) auto-add. false = dang ban. */
 bool fd_dictnet_lookup(const char *word);
 void fd_dictnet_get(fd_dictnet_status_t *out);
