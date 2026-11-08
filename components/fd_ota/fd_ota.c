@@ -1016,6 +1016,7 @@ void fd_ota_selftest_wait(uint32_t timeout_ms)
 /* ---------- ghep doi (POST /api/devices/pair/start, /poll moi 5 s, 410 -> phien moi) ---------- */
 static fd_pair_status_t s_pair;      /* doc qua fd_ota_pair_get (s_mx) */
 static bool s_pair_active;
+static bool s_unpair_pending; /* guarded by s_mx; not lost when command queue is full */
 static bool s_pair_start_pending;   /* guarded by s_mx; queued or running pair/start */
 static int64_t s_pair_exp_us, s_pair_next_us;
 
@@ -1066,7 +1067,15 @@ void fd_ota_pair_start(void)
     }
 }
 void fd_ota_pair_stop(void) { send_cmd(CMD_PAIR_STOP); }
-void fd_ota_unpair(void) { send_cmd(CMD_UNPAIR); }
+void fd_ota_unpair(void)
+{
+    if (!s_mx) return;
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    bool already = s_unpair_pending;
+    s_unpair_pending = true;
+    xSemaphoreGive(s_mx);
+    if (!already) send_cmd(CMD_UNPAIR); /* wake worker; pending flag survives queue overflow */
+}
 
 /* Doi server (bat/tat che do nha phat trien): ap dung URL ngay; task fd_ota huy ghep + tai OTA, xoa hang doi bao cao, kiem tra lai. */
 void fd_ota_set_server(bool lab)
@@ -1430,6 +1439,23 @@ static void pair_tick(void)
     if (now >= s_pair_next_us) { s_pair_next_us = now + (int64_t)PAIR_POLL_MS * 1000; pair_poll(); }
 }
 
+/* Run only on the OTA worker, never on LVGL. Pending flag survives a full queue. */
+static void pair_unpair(void)
+{
+    s_pair_active = false;
+    /* Revoke with current bearer BEFORE local erasure. Offline/network/server
+     * failure still clears locally; no 429 retry delay. Never log credentials. */
+    if (fd_ota_is_paired() && fd_net_is_connected()) {
+        char body[48], response[96];
+        snprintf(body, sizeof(body), "{\"device_id\":\"%s\"}", s_dev_id);
+        int status = fd_ota_api_post_ex("/api/devices/unpair", body, response, sizeof(response), false);
+        ESP_LOGI(TAG, "pair: revoke HTTP %d", status);
+    }
+    bool ok = token_save(NULL);
+    name_save(NULL);
+    pair_set(FD_PAIR_IDLE, false, 0, NULL);
+    ESP_LOGI(TAG, "pair: huy ghep, xoa token: %s", ok ? "OK" : "LOI");
+}
 /* ---------- task ---------- */
 static bool idle_now(void) { return s_is_idle ? s_is_idle() : false; }
 
@@ -1442,20 +1468,18 @@ static void ota_task(void *arg)
     for (;;) {
         int cmd = 0;
         xQueueReceive(s_cmd, &cmd, pdMS_TO_TICKS(s_pair_active ? 250 : IDLE_POLL_MS));
+        xSemaphoreTake(s_mx, portMAX_DELAY);
+        bool unpair = s_unpair_pending;
+        s_unpair_pending = false;
+        xSemaphoreGive(s_mx);
+        if (unpair) pair_unpair(); /* do not discard a queued pair/start, switch or update */
+        if (cmd == CMD_UNPAIR) cmd = 0; /* wakeup only; never erase a later login */
         if (cmd == CMD_PAIR_START) {
             s_pair_active = true; s_pair_retry_us = 0;
             pair_request();
             xSemaphoreTake(s_mx, portMAX_DELAY);
             s_pair_start_pending = false;
             xSemaphoreGive(s_mx);
-            cmd = 0;
-        }
-        else if (cmd == CMD_UNPAIR) {   /* huy ghep: dung poll + xoa NVS fdict/device_token */
-            s_pair_active = false;
-            bool ok = token_save(NULL);
-            name_save(NULL);
-            pair_set(FD_PAIR_IDLE, false, 0, NULL);
-            ESP_LOGI(TAG, "pair: huy ghep, xoa token: %s", ok ? "OK" : "LOI");
             cmd = 0;
         }
         else if (cmd == CMD_SWITCH) {   /* doi server: huy ghep + bo manifest/bao cao cua server cu, kiem tra lai sau 5 s */
