@@ -11,6 +11,7 @@
 #include "sdkconfig.h"
 #include "fd_pin.h"
 #include "fd_store.h"
+#include "fd_sync.h"
 #include "ui_priv.h"
 
 #include "ui_swipe.h"
@@ -22,6 +23,11 @@ LV_IMAGE_DECLARE(img_sleep);
 LV_IMAGE_DECLARE(img_contrast);   /* den trang: Material-style contrast A8 */
 
 static lv_obj_t *s_ov, *s_panel, *s_bri_val, *s_vol_icon, *s_vol_val, *s_vol_sl;
+static lv_obj_t *s_words_lbl, *s_fs_lbl, *s_sync_btn;   /* 4.1.4: hang thong tin + nut Dong bo ngay */
+static uint32_t s_sync_wait;   /* force_done can dat (0 = khong cho) */
+static void info_update(void);
+static lv_obj_t *sym(lv_obj_t *p, const char *s);
+static bool s_sync_user;       /* nguoi dung bam: loi -> toast */
 
 bool ui_quick_is_open(void) { return s_ov != NULL; }
 
@@ -54,6 +60,7 @@ void ui_quick_close(bool anim)
     if (!s_ov) return;
     lv_obj_t *ov = s_ov, *pn = s_panel;
     s_ov = s_panel = s_bri_val = s_vol_icon = s_vol_val = s_vol_sl = NULL;
+    s_words_lbl = s_fs_lbl = s_sync_btn = NULL;
     lv_anim_delete(ov, NULL);
     lv_anim_delete(pn, NULL);
     if (!anim) {
@@ -104,17 +111,6 @@ static void vol_cb(lv_event_t *e)
 {
     int v = (int)lv_slider_get_value(s_vol_sl);
     vol_show(v);
-
-    /* 4.1.3: dung luong LittleFS (/data) "da dung / tong MB", tinh 1 lan moi khi mo bang */
-    size_t fs_tot = 0, fs_used = 0;
-    lv_obj_t *fs = lv_label_create(s_panel);
-    lv_obj_set_width(fs, lv_pct(100));
-    lv_obj_set_style_text_align(fs, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_style_text_color(fs, lv_color_hex(0x6B7280), 0);
-    if (fd_store_info(&fs_tot, &fs_used) == ESP_OK && fs_tot) {
-        unsigned u10 = (unsigned)((fs_used * 10ULL + 524288) / 1048576), t10 = (unsigned)((fs_tot * 10ULL + 524288) / 1048576);
-        lv_label_set_text_fmt(fs, "LittleFS %u.%u / %u.%u MB", u10 / 10, u10 % 10, t10 / 10, t10 % 10);
-    } else lv_label_set_text(fs, "LittleFS -- / -- MB");
     if (lv_event_get_code(e) == LV_EVENT_RELEASED) {
         fd_audio_set_volume(v);
         if (v > 0) ui_vol_beep();   /* 'bip bip' o muc moi */
@@ -160,7 +156,78 @@ static void gray_cb(lv_event_t *e)
     fd_ui_toast(on ? _("GRAYSCALE_ON") : _("GRAYSCALE_OFF"));
 }
 
-static void set_cb(lv_event_t *e)
+/* 4.1.4: hang thong tin "<N> Tu vung" | "xx / yy MB (zz%)" - doc kho LittleFS (khong goi mang) */
+static void info_update(void)
+{
+    if (s_words_lbl) {
+        fd_sync_status_t st;
+        fd_sync_get(&st);
+        lv_label_set_text_fmt(s_words_lbl, "%d Từ vựng", st.have ? st.words : 0);
+    }
+    if (s_fs_lbl) {
+        size_t tot = 0, used = 0;
+        if (fd_store_info(&tot, &used) == ESP_OK && tot) {
+            unsigned u10 = (unsigned)((used * 10ULL + 524288) / 1048576), t10 = (unsigned)((tot * 10ULL + 524288) / 1048576);
+            unsigned pct = (unsigned)((used * 100ULL + tot / 2) / tot);
+            lv_label_set_text_fmt(s_fs_lbl, "%u.%u / %u.%u MB (%u%%)", u10 / 10, u10 % 10, t10 / 10, t10 % 10, pct);
+        } else lv_label_set_text(s_fs_lbl, "-- / -- MB");
+    }
+}
+
+static void sync_show(bool busy)
+{
+    if (!s_sync_btn) return;
+    lv_obj_clean(s_sync_btn);
+    if (busy) {
+        lv_obj_t *sp = lv_spinner_create(s_sync_btn);
+        lv_spinner_set_anim_params(sp, 1000, 270);
+        lv_obj_set_size(sp, 22, 22);
+        lv_obj_set_style_arc_width(sp, 3, 0);
+        lv_obj_set_style_arc_width(sp, 3, LV_PART_INDICATOR);
+        lv_obj_set_style_arc_color(sp, lv_color_hex(FD_COLOR_ON_PRIMARY), LV_PART_INDICATOR);
+        lv_obj_center(sp);
+    } else {
+        lv_obj_t *l = sym(s_sync_btn, LV_SYMBOL_REFRESH);
+        lv_obj_set_width(l, LV_SIZE_CONTENT);
+        lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
+        lv_obj_center(l);
+    }
+}
+
+static void sync_tmr_cb(lv_timer_t *t)
+{
+    if (!s_sync_wait) return;
+    fd_sync_status_t st;
+    fd_sync_get(&st);
+    if ((int32_t)(st.force_done - s_sync_wait) < 0) return;   /* chua xong */
+    s_sync_wait = 0;
+    sync_show(false);
+    info_update();
+    if (!st.force_ok && s_sync_user) {
+        char m[64];
+        snprintf(m, sizeof(m), "Đồng bộ chưa được (%s)", st.err[0] ? st.err : "lỗi");
+        fd_ui_toast(m);
+    }
+    s_sync_user = false;
+    (void)t;
+}
+
+static void sync_tmr_del_cb(lv_event_t *e) { lv_timer_delete((lv_timer_t *)lv_event_get_user_data(e)); }
+
+static void sync_cb(lv_event_t *e)
+{
+    (void)e;
+    if (s_sync_wait) return;   /* dang dong bo: bo qua */
+    fd_sync_status_t st;
+    fd_sync_get(&st);
+    s_sync_wait = st.force_done + 1;
+    if (!s_sync_wait) s_sync_wait = 1;
+    s_sync_user = true;
+    sync_show(true);
+    fd_sync_force();   /* POST /api/study/sync: gui ket qua + tai lai bo tu/cai dat */
+}
+
+__attribute__((unused)) static void set_cb(lv_event_t *e)
 {
     (void)e;
     ui_quick_close(false);
@@ -297,6 +364,7 @@ static lv_obj_t *qbtn(lv_obj_t *r, int32_t bw, lv_event_cb_t cb)
 {
     lv_obj_t *b = lv_button_create(r);
     lv_obj_set_size(b, bw, 44);
+    lv_obj_set_flex_grow(b, 1);   /* 4.1.4: cac nut gian deu theo chieu rong man */
     lv_obj_set_style_radius(b, 10, 0);
     lv_obj_set_style_shadow_width(b, 0, 0);
     lv_obj_set_style_bg_color(b, lv_color_white(), 0);
@@ -388,16 +456,17 @@ void ui_quick_open(void)
     s_vol_sl = slider_row(s_panel, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), 0, v, vol_cb, &s_vol_icon, &s_vol_val);
     vol_show(v);
 
-    /* 4.1.3: dung luong LittleFS (/data) "da dung / tong MB", tinh 1 lan moi khi mo bang */
-    size_t fs_tot = 0, fs_used = 0;
-    lv_obj_t *fs = lv_label_create(s_panel);
-    lv_obj_set_width(fs, lv_pct(100));
-    lv_obj_set_style_text_align(fs, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_style_text_color(fs, lv_color_hex(0x6B7280), 0);
-    if (fd_store_info(&fs_tot, &fs_used) == ESP_OK && fs_tot) {
-        unsigned u10 = (unsigned)((fs_used * 10ULL + 524288) / 1048576), t10 = (unsigned)((fs_tot * 10ULL + 524288) / 1048576);
-        lv_label_set_text_fmt(fs, "LittleFS %u.%u / %u.%u MB", u10 / 10, u10 % 10, t10 / 10, t10 % 10);
-    } else lv_label_set_text(fs, "LittleFS -- / -- MB");
+    /* 4.1.4: hang thong tin: trai "<N> Tu vung", phai "xx / yy MB (zz%)" (tinh khi mo bang + sau Dong bo ngay) */
+    lv_obj_t *ir = lv_obj_create(s_panel);
+    lv_obj_remove_style_all(ir);
+    lv_obj_set_size(ir, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(ir, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(ir, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    s_words_lbl = lv_label_create(ir);
+    s_fs_lbl = lv_label_create(ir);
+    lv_obj_set_style_text_color(s_words_lbl, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_style_text_color(s_fs_lbl, lv_color_hex(0x6B7280), 0);
+    info_update();
 
     lv_obj_t *sep = lv_obj_create(s_panel);
     lv_obj_remove_style_all(sep);
@@ -410,9 +479,10 @@ void ui_quick_open(void)
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     /* Hang nut (20/10 09:32; 2.1.9 Home -> Den trang): Wi-Fi, Xoay, Den trang, Cai dat, Ngu - tat ca qua qbtn() (cung kieu). Ngang 320: 5 x 48 + 4 x 12;
      * doc 240 (noi dung ~214 px): 5 x 38 + 4 x 4. */
-    bool narrow = lv_display_get_horizontal_resolution(NULL) < 300;
-    int32_t bw = narrow ? 38 : 48;
-    lv_obj_set_style_pad_column(r, narrow ? 4 : 12, 0);
+    /* 4.1.4: 4 nut (Wi-Fi, Den trang, Dong bo ngay, Ngu) gian deu het chieu rong (flex_grow) ca doc lan ngang */
+    int32_t bw = 1;
+    lv_obj_set_flex_align(r, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(r, lv_display_get_horizontal_resolution(NULL) < 300 ? 6 : 10, 0);
 
     /* WiFi: trang thai qua mau icon (ket noi = amber dam, dang ket noi = amber mo, chua = xam + gach cheo) */
     lv_obj_t *w = qbtn(r, bw, wifi_cb);
@@ -429,7 +499,9 @@ void ui_quick_open(void)
     lv_obj_set_style_image_recolor_opa(gi, LV_OPA_COVER, 0);
     lv_obj_center(gi);
     gray_style(gb);
-    qsym(qbtn(r, bw, set_cb), LV_SYMBOL_SETTINGS);   /* Cai dat */
+    s_sync_btn = qbtn(r, bw, sync_cb);   /* 4.1.4: Dong bo ngay (thay Cai dat) */
+    sync_show(s_sync_wait != 0);
+    lv_obj_add_event_cb(s_sync_btn, sync_tmr_del_cb, LV_EVENT_DELETE, lv_timer_create(sync_tmr_cb, 300, NULL));
 
 #if CONFIG_FD_SLEEP_BTN
     lv_obj_t *pb = qbtn(r, bw, sleep_cb);   /* Ngu: icon mat trang (Material Symbols bedtime) */

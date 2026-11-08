@@ -39,6 +39,8 @@ typedef struct {
     bool prio_new, prio_unl; /* cai dat tu mini app */
     int topics;              /* so chu de quan tam */
     bool manual;             /* dang chay "Dong bo ngay" */
+    uint32_t force_done;     /* 4.1.4: so lan "Dong bo ngay" da chay xong (UI cho ket qua) */
+    bool force_ok;           /* ket qua lan "Dong bo ngay" cuoi */
 } fd_sync_status_t;
 
 typedef enum { FD_STATS_IDLE = 0, FD_STATS_LOADING, FD_STATS_OK, FD_STATS_ERROR } fd_stats_state_t;

@@ -728,7 +728,7 @@ static void task(void *arg)
         if (got && c == CMD_FORCE) {
             lock(); s_st.manual = true; unlock();
             bool ok = do_sync(rx, true);
-            lock(); s_st.manual = false; unlock();
+            lock(); s_st.manual = false; s_st.force_ok = ok; s_st.force_done++; unlock();
             back = BACK_MIN_US;
             next = esp_timer_get_time() + (ok ? CHECK_US : back);
             continue;

@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.1.4] - 2026-11-08
+
+- Bảng kéo xuống: hàng thông tin "N Từ vựng" và dung lượng "xx / yy MB (zz%)".
+- 4 nút dưới giãn đều theo chiều rộng màn hình; thay nút Cài đặt bằng nút Đồng bộ ngay (có vòng xoay khi đang chạy).
+- Sửa lỗi 4.1.3: kéo thanh âm lượng không còn thêm dòng dung lượng lặp lại.
+
 ## [4.1.3] - 2026-11-08
 
 - Đồng bộ qua một API duy nhất `/api/study/sync`: gửi kết quả học chưa gửi và nhận danh sách từ, cài đặt (ghi LittleFS nguyên tử).
