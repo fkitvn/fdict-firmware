@@ -1,11 +1,13 @@
 #pragma once
 /* 2.3.0 Dong bo (module "Dong bo"): mini app Zalo / cloud la NGUON DUNG cho cai dat + bo tu.
  * Khi co Wi-Fi + da ghep (task "fd_sync", tu chay nen):
- *  - Kiem tra re: POST /api/study/sync/rev {device_id} -> {rev}; rev khac rev da luu (hoac Dong bo ngay) ->
- *    POST /api/study/sync/pull {device_id, offset, limit} theo trang -> ghi /data/sync/store.tmp -> fsync -> rename
+ *  4.1.3: MOI lenh di qua 1 API POST /api/study/sync {device_id, events?, rev?, offset?, limit?}
+ *    -> {acked, rev/etag, settings, unchanged | words[] (co the rong), next_offset}.
+ *  - Kiem tra re: (sync, rev + limit 1) {device_id} -> {rev}; rev khac rev da luu (hoac Dong bo ngay) ->
+ *    (sync, trang) {device_id, offset, limit} theo trang -> ghi /data/sync/store.tmp -> fsync -> rename
  *    /data/sync/store.tsv (nguyen tu; thay TOAN BO ban cu => tu/bo/cai dat bi xoa tren cloud cung bi xoa tren may).
  *  - Ket qua hoc offline: moi cau tra loi = 1 dong JSON {eid,k,wid,ok,ts} noi vao /data/sync/events.log (fsync);
- *    gui POST /api/study/sync/push (lo <= 50, eid chong trung), chi xoa dong khi server ack.
+ *    gui (sync, events) (lo <= 50, eid chong trung), chi xoa dong khi server ack.
  *  - 401: fd_ota xoa token (ve Chua ghep), GIU du lieu + outbox; 429: fd_ota cho Retry-After, sau do backoff.
  * Hoc offline 100%: Quiz / Flash card / Sap xep cau doc tu kho nay (khong mang).
  * Dinh dang store.tsv (UTF-8, tab, 1 ban ghi/dong):

@@ -21,7 +21,7 @@
 static const char *TAG = "fd_audio";
 
 #define SAMPLE_RATE 16000
-#define VOL_DEFAULT 70
+#define VOL_DEFAULT 100   /* 4.1.3: mac dinh khi chua luu NVS */
 #define CHUNK       256   /* mau mono / lan ghi */
 #define PA_STARTUP_MS 60   /* truoc: 10 ms */
 #define DRAIN_CHUNKS  8    /* 8 x 256 mau = 128 ms im lang > do sau DMA mac dinh (6 x 240 khung = 90 ms) */

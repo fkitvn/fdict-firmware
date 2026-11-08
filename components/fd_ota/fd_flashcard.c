@@ -13,6 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#define FC_SERVER_FALLBACK 0   /* 4.1.3: khong goi /api/study/cards; the lay tu kho dong bo */
 
 static const char *TAG = "fd_fc";
 
@@ -140,6 +141,7 @@ static void task(void *arg)
         if (ln > 0) { n = ln; err = FD_STUDY_ERR_NONE; }
         else if (ln < 0) err = FD_STUDY_ERR_NOMEM;
         else if (!fd_ota_is_paired()) err = FD_STUDY_ERR_UNPAIRED;
+        else if (!FC_SERVER_FALLBACK) { err = FD_STUDY_ERR_NO_DECK; fd_sync_kick(); }   /* 4.1.3: chi doc kho LittleFS */
         else if (!fd_net_is_connected()) err = FD_STUDY_ERR_NO_WIFI;
         else {
             char id[16];

@@ -10,6 +10,7 @@
 #include "fd_net.h"
 #include "sdkconfig.h"
 #include "fd_pin.h"
+#include "fd_store.h"
 #include "ui_priv.h"
 
 #include "ui_swipe.h"
@@ -103,6 +104,17 @@ static void vol_cb(lv_event_t *e)
 {
     int v = (int)lv_slider_get_value(s_vol_sl);
     vol_show(v);
+
+    /* 4.1.3: dung luong LittleFS (/data) "da dung / tong MB", tinh 1 lan moi khi mo bang */
+    size_t fs_tot = 0, fs_used = 0;
+    lv_obj_t *fs = lv_label_create(s_panel);
+    lv_obj_set_width(fs, lv_pct(100));
+    lv_obj_set_style_text_align(fs, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_style_text_color(fs, lv_color_hex(0x6B7280), 0);
+    if (fd_store_info(&fs_tot, &fs_used) == ESP_OK && fs_tot) {
+        unsigned u10 = (unsigned)((fs_used * 10ULL + 524288) / 1048576), t10 = (unsigned)((fs_tot * 10ULL + 524288) / 1048576);
+        lv_label_set_text_fmt(fs, "LittleFS %u.%u / %u.%u MB", u10 / 10, u10 % 10, t10 / 10, t10 % 10);
+    } else lv_label_set_text(fs, "LittleFS -- / -- MB");
     if (lv_event_get_code(e) == LV_EVENT_RELEASED) {
         fd_audio_set_volume(v);
         if (v > 0) ui_vol_beep();   /* 'bip bip' o muc moi */
@@ -116,7 +128,7 @@ static void wifi_cb(lv_event_t *e)
     fd_ui_show(FD_SCR_WIFI);
 }
 
-static void rot_cb(lv_event_t *e)
+__attribute__((unused)) static void rot_cb(lv_event_t *e)   /* 4.1.3: bo nut Xoay khoi bang nhanh (con trong Cai dat) */
 {
     (void)e;
     ui_quick_close(false);
@@ -376,6 +388,17 @@ void ui_quick_open(void)
     s_vol_sl = slider_row(s_panel, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), 0, v, vol_cb, &s_vol_icon, &s_vol_val);
     vol_show(v);
 
+    /* 4.1.3: dung luong LittleFS (/data) "da dung / tong MB", tinh 1 lan moi khi mo bang */
+    size_t fs_tot = 0, fs_used = 0;
+    lv_obj_t *fs = lv_label_create(s_panel);
+    lv_obj_set_width(fs, lv_pct(100));
+    lv_obj_set_style_text_align(fs, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_set_style_text_color(fs, lv_color_hex(0x6B7280), 0);
+    if (fd_store_info(&fs_tot, &fs_used) == ESP_OK && fs_tot) {
+        unsigned u10 = (unsigned)((fs_used * 10ULL + 524288) / 1048576), t10 = (unsigned)((fs_tot * 10ULL + 524288) / 1048576);
+        lv_label_set_text_fmt(fs, "LittleFS %u.%u / %u.%u MB", u10 / 10, u10 % 10, t10 / 10, t10 % 10);
+    } else lv_label_set_text(fs, "LittleFS -- / -- MB");
+
     lv_obj_t *sep = lv_obj_create(s_panel);
     lv_obj_remove_style_all(sep);
     lv_obj_set_size(sep, lv_pct(100), 1);
@@ -400,7 +423,6 @@ void ui_quick_open(void)
     if (ns == FD_NET_CONNECTING) lv_obj_set_style_text_opa(wi, LV_OPA_60, 0);
     ui_wifi_slash_sync(wi, ns != FD_NET_CONNECTED && ns != FD_NET_CONNECTING);
 
-    qsym(qbtn(r, bw, rot_cb), LV_SYMBOL_REFRESH);    /* mo man Huong xoay */
     lv_obj_t *gb = qbtn(r, bw, gray_cb);   /* bat/tat che do den trang (cung cong tac Cai dat) */
     lv_obj_t *gi = lv_image_create(gb);   /* contrast A8 24x24 (nua vong) */
     lv_image_set_src(gi, &img_contrast);

@@ -3,6 +3,13 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.1.3] - 2026-11-08
+
+- Đồng bộ qua một API duy nhất `/api/study/sync`: gửi kết quả học chưa gửi và nhận danh sách từ, cài đặt (ghi LittleFS nguyên tử).
+- Bỏ tải trước phiên học từ server chạy nền, hết lặp lại thông báo "chưa đủ từ"; Lật từ chỉ đọc dữ liệu trên máy.
+- Mặc định âm lượng 100%, độ sáng 90% (khi chưa lưu giá trị).
+- Bảng kéo xuống: bỏ nút xoay màn hình, thêm dung lượng LittleFS đã dùng / tổng (MB).
+
 ## [4.1.2] - 2026-11-08
 
 - Sắp xếp màn Liên kết Zalo giống Đăng nhập: tiêu đề, QR, đếm ngược và hai nút thao tác ở đáy màn hình.

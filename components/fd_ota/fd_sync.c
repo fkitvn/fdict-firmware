@@ -31,6 +31,8 @@ static const char *TAG = "fd_sync";
 #define STORE_MAX_BYTES (3 * 1024 * 1024)
 #define EV_MAX_BYTES    (512 * 1024)
 #define PUSH_BATCH  50
+/* 4.1.3: API dong bo DUY NHAT (gui ket qua chua gui + nhan bo tu/cai dat; luon 200 ke ca danh sach rong). */
+#define SYNC_PATH   "/api/study/sync"
 #define PUSH_ROUNDS 20
 #define PAGE        40
 #define RX_CAP      (128 * 1024)
@@ -432,7 +434,7 @@ static int push_all(char *rx)
         int n = 0;
         size_t bn = 0;
         if (body) {
-            bn = (size_t)snprintf(body, cap, "{\"device_id\":\"%s\",\"events\":[", id);
+            bn = (size_t)snprintf(body, cap, "{\"device_id\":\"%s\",\"limit\":1,\"events\":[", id);
             for (size_t i = 0, s = 0; i < len && n < PUSH_BATCH; i++) {
                 if (b[i] != '\n') continue;
                 size_t m = i - s;
@@ -450,7 +452,7 @@ static int push_all(char *rx)
         if (!body) { code = -2; break; }
         if (n == 0) { free(body); break; }
         lock(); s_st.state = FD_SYNC_PUSHING; unlock();
-        code = fd_ota_api_post("/api/study/sync/push", body, rx, RX_CAP);
+        code = fd_ota_api_post(SYNC_PATH, body, rx, RX_CAP);
         free(body);
         if (code != 200) { ESP_LOGI(TAG, "push %d ket qua -> %d: giu, thu lai sau", n, code); break; }
         cJSON *r = cJSON_Parse(rx);
@@ -510,7 +512,7 @@ static int pull_all(char *rx, char *err, size_t errn)
         bool restart = false, fail = false;
         for (;;) {
             snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"offset\":%d,\"limit\":%d}", id, offset, PAGE);
-            code = fd_ota_api_post("/api/study/sync/pull", body, rx, RX_CAP);
+            code = fd_ota_api_post(SYNC_PATH, body, rx, RX_CAP);
             if (code != 200) { code_err(code, err, errn); fail = true; break; }
             cJSON *r = cJSON_Parse(rx);
             if (!r) { strlcpy(err, "format", errn); fail = true; break; }
@@ -630,10 +632,11 @@ static bool do_sync(char *rx, bool force)
     }
     bool need = force;
     if (!need) {
-        char id[16], body[64];
+        char id[16], body[128], cur[32];
         fd_ota_get_device_id(id, sizeof(id));
-        snprintf(body, sizeof(body), "{\"device_id\":\"%s\"}", id);
-        int c = fd_ota_api_post("/api/study/sync/rev", body, rx, RX_CAP);
+        lock(); strlcpy(cur, s_rev, sizeof(cur)); unlock();
+        snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"rev\":\"%s\",\"limit\":1,\"events\":[]}", id, cur);
+        int c = fd_ota_api_post(SYNC_PATH, body, rx, RX_CAP);   /* rev trung -> {unchanged:true}: re */
         if (c != 200) { code_err(c, err, sizeof(err)); set_err(err); return false; }
         cJSON *r = cJSON_Parse(rx);
         const char *rv = r ? js(r, "rev") : "";

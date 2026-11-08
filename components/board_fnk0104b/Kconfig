@@ -35,5 +35,5 @@ menu "Board FNK0104B (Freenove ESP32-S3 2.8\")"
     config BOARD_BACKLIGHT_DEFAULT
         int "Do sang mac dinh (%)"
         range 0 100
-        default 80
+        default 90
 endmenu

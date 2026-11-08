@@ -407,6 +407,8 @@ static bool outbox_flush(void)
 }
 
 /* ---------- prefetch nen: POST /api/study/start (nguoi dung xac nhan: phai hoc offline duoc ngay ca khi chua hoc online) ---------- */
+/* 4.1.3: TAT prefetch study/start tu server (gay spam "chua du tu"). Quiz tao phien tu kho LittleFS (fd_sync). */
+#define PF_SERVER_PREFETCH 0
 #define PF_TARGET_Q   100
 #define PF_COUNT      20
 #define PF_GAP_US     (15LL * 1000000)
@@ -478,7 +480,7 @@ static void task(void *arg)
         bool stale = last_full == 0 || now - last_full >= PF_REFRESH_US;
         int fe = fresh_count('e'), fv = fresh_count('v');
         bool low = fe < PF_FRESH_MIN || fv < PF_FRESH_MIN;   /* cache-first can san phien chua dung cho ca 2 chieu */
-        if (on && !fd_sync_ready() && now >= next_pf && (cache_q() < PF_TARGET_Q || stale || low)) {
+        if (PF_SERVER_PREFETCH && on && !fd_sync_ready() && now >= next_pf && (cache_q() < PF_TARGET_Q || stale || low)) {
             if (low) dir_i = fe <= fv ? 0 : 1;   /* bu chieu dang thieu truoc */
             bool ok = prefetch_one(dir_i ? "vi-en" : "en-vi");
             dir_i ^= 1;
