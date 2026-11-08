@@ -169,6 +169,17 @@ static fd_dictnet_err_t hist_save(void)
     cJSON_free(j);
     return err;
 }
+void fd_dictnet_clear_history(void)
+{
+    if (s_mx) lock();
+    s_nh = 0;
+    memset(s_hist, 0, sizeof(s_hist));
+    unlink(HIST_PATH);
+    unlink(HIST_PATH ".tmp");
+    if (s_mx) unlock();
+    ESP_LOGI(TAG, "xoa lich su tra");
+}
+
 static fd_dictnet_err_t hist_push(const fd_dictnet_entry_t *e)
 {
     if (!e || !e->en[0]) return FD_DICTNET_ERR_FORMAT;

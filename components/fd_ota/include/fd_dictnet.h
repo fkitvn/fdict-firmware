@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define FD_DICTNET_HIST_MAX 30
+#define FD_DICTNET_HIST_MAX 20   /* 4.1.7: 30 -> 20 (file cu 30 muc: hist_load cat con 20) */
 #define FD_DICTNET_WORD_LEN 48
 #define FD_DICTNET_IPA_LEN  64
 #define FD_DICTNET_MEAN_LEN 128
@@ -51,5 +51,7 @@ bool fd_dictnet_init(void);   /* false: clean failure, safe to retry */
 bool fd_dictnet_lookup(const char *word);
 void fd_dictnet_get(fd_dictnet_status_t *out);
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap);
+/* Xoa lich su tra (RAM + /data/dict_hist.json/.tmp). Goi khi dang xuat / khoi phuc cai dat goc. */
+void fd_dictnet_clear_history(void);
 /* Day hang cho add khi co Wi-Fi (goi tu task fd_dict / kick). */
 void fd_dictnet_flush(void);

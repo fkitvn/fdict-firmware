@@ -1,6 +1,7 @@
 /* Cai dat (khong header): Dang nhap | Thong tin bao hanh | WiFi | Do sang | Am luong | Thoi gian cho | Huong xoay | Thong tin phien ban | Che do nha phat trien | Khoi phuc cai dat goc. */
 #include <stdio.h>
 #include "esp_system.h"
+#include "fd_dictnet.h"
 #include "fd_audio.h"
 #include "fd_display.h"
 #include "fd_fonts.h"
@@ -13,6 +14,7 @@
 #include "fd_pin.h"
 #include "fd_study.h"
 #include "ui_priv.h"
+LV_IMAGE_DECLARE(img_zalo);   /* 4.1.7: logo Zalo (img_zalo.c) */
 
 static lv_obj_t *s_wifi_sub;
 static lv_obj_t *s_rot_sub;
@@ -202,6 +204,7 @@ static void factory_worker(void *arg)
         /* Offline/failure still resets locally; re-pair invalidates old codes and ownership. */
         (void)fd_ota_api_post_ex("/api/devices/unpair", body, response, sizeof(response), false);
     }
+    fd_dictnet_clear_history();   /* 4.1.7: xoa ngay (truoc ca khi format /data o lan khoi dong sau) */
     if (fd_factory_arm()) esp_restart();
     s_reset_failed = true;
     vTaskDelete(NULL);
@@ -340,6 +343,23 @@ static void build(lv_obj_t *scr)
     ui_screen_title(body, _("SETTINGS"));
     pair_card(body);
     s_zalo_card = item(body, LV_SYMBOL_REFRESH, _("ZALO_LINK_TITLE"), go_cb, (void *)(intptr_t)FD_SCR_ZALO_LINK, NULL);
+    {   /* 4.1.7: icon Zalo (o xanh bo goc + chu "Zalo" trang, img_zalo A8) thay ky hieu */
+        lv_obj_t *old = lv_obj_get_child(s_zalo_card, 0);
+        if (old) lv_obj_delete(old);
+        lv_obj_t *zb = lv_obj_create(s_zalo_card);
+        lv_obj_remove_style_all(zb);
+        lv_obj_set_size(zb, 24, 24);
+        lv_obj_set_style_radius(zb, 6, 0);
+        lv_obj_set_style_bg_opa(zb, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(zb, lv_color_hex(0x0068FF), 0);
+        lv_obj_set_clickable(zb, false);
+        lv_obj_t *zi = lv_image_create(zb);
+        lv_image_set_src(zi, &img_zalo);
+        lv_obj_set_style_image_recolor(zi, lv_color_white(), 0);
+        lv_obj_set_style_image_recolor_opa(zi, LV_OPA_COVER, 0);
+        lv_obj_center(zi);
+        lv_obj_move_to_index(zb, 0);
+    }
     item(body, LV_SYMBOL_WIFI, "WiFi", go_cb, (void *)(intptr_t)FD_SCR_WIFI, &s_wifi_sub);
     item(body, LV_SYMBOL_KEYBOARD, _("LANGUAGE"), go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);

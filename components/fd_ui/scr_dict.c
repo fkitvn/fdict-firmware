@@ -180,17 +180,18 @@ static void show_home(void)
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 6, 0);
     label(s_body, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    label(s_body, _("LOOKUP_HINT"), NULL, FD_COLOR_TEXT_MUTED);
 
     lv_obj_t *row = lv_obj_create(s_body);
     lv_obj_remove_style_all(row);
     lv_obj_set_size(row, lv_pct(100), 40);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(row, 10, 0);   /* 4.1.7: khe o nhap - nut thu gon */
     s_ta = lv_textarea_create(row);
     lv_obj_set_flex_grow(s_ta, 1);
     lv_textarea_set_one_line(s_ta, true);
     lv_textarea_set_max_length(s_ta, FD_DICTNET_WORD_LEN - 1);
-    lv_textarea_set_placeholder_text(s_ta, "hello");
+    lv_obj_set_style_text_font(s_ta, &fd_font_noto_14, 0);   /* Noto: co dau tieng Viet cho goi y */
+    lv_textarea_set_placeholder_text(s_ta, _("LOOKUP_HINT"));   /* 4.1.7: goi y nam trong o nhap (bo nhan phia tren) */
     lv_obj_set_style_pad_all(s_ta, 8, 0);
 
     /* 4.1.5: mac dinh ban phim QWERTY luon mo; nut thu gon de hien lich su tra, cham o nhap -> mo lai */

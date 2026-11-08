@@ -334,7 +334,7 @@ static const lv_buttonmatrix_ctrl_t qw_ctrl_plain[] = {
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_CHK | 2,
-    5, QW_CTRL | 2
+    3, QW_CTRL | 4   /* 4.1.7: phim cach gon, OK (tra) rong hon */
 };
 
 void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)

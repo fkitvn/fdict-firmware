@@ -1,6 +1,7 @@
 /* fd_ota: OTA tu API may chu FDict One (CONFIG_FD_OTA_BASE_URL, xem include/fd_ota.h).
  * Log tag fd_ota, INFO, moi buoc 1 dong. KHONG BAO GIO log token (Authorization) hay query cua URL tai. */
 #include "fd_ota.h"
+#include "fd_dictnet.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1454,6 +1455,7 @@ static void pair_unpair(void)
     bool ok = token_save(NULL);
     name_save(NULL);
     pair_set(FD_PAIR_IDLE, false, 0, NULL);
+    fd_dictnet_clear_history();   /* 4.1.7: dang xuat -> xoa lich su tra */
     ESP_LOGI(TAG, "pair: huy ghep, xoa token: %s", ok ? "OK" : "LOI");
 }
 /* ---------- task ---------- */

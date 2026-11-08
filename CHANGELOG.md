@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.1.7] - 2026-11-08
+
+- Từ điển: gợi ý nằm trong ô nhập, phím Tra rộng hơn, phím cách gọn hơn, giãn khoảng cách nút thu gọn.
+- Lịch sử tra tối đa 20 từ; xoá khi đăng xuất hoặc khôi phục cài đặt gốc.
+- Cài đặt: biểu tượng Zalo cho mục Liên kết Zalo.
+
 ## [4.1.6] - 2026-11-08
 
 - Đồng bộ ngay: báo "Đã đồng bộ thành công"; quá 30 giây thì dừng và báo lỗi.
