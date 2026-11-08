@@ -235,12 +235,11 @@ en:
   ZALO_CODE_ERROR: Could not get a code
   ZALO_CODE_EXPIRED: Code expired
   ZALO_CODE_EXPIRES: 'Expires in %d:%02d'
-  ZALO_CODE_HINT: Enter this code in the FDict Zalo Mini App to activate warranty
+  ZALO_CODE_HINT: Scan with Zalo or enter this code in the Mini App
   ZALO_GETTING_CODE: Getting code...
   ZALO_LINKED: Zalo linked
   ZALO_NEW_CODE: New code
   ZALO_WAITING: Zalo not linked
-    again
   SENTENCE: 'Sentence order'
   SEN_LOADING: 'Loading sentences…'
   SEN_PROGRESS: 'Sentence %d/%d'
@@ -301,3 +300,10 @@ en:
   STATS_STREAK: 'Study streak'
   STATS_ANS_FMT: '%d/%d correct'
   STATS_DAYS_FMT: '%d days'
+  ZALO_UNLINK: Unlink
+  ZALO_UNLINK_CONFIRM: Unlink Zalo?
+  ZALO_UNLINK_HINT: Remove Zalo from your FDict account on all devices. Warranty and login are unchanged.
+  ZALO_UNLINKING: Unlinking...
+  ZALO_UNLINK_ERROR: Could not unlink Zalo. Please try again.
+  ZALO_LINK_TITLE: Link Zalo
+  ZALO_LOGIN_REQUIRED: Please log in first

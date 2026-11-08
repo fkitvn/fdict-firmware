@@ -116,35 +116,59 @@ void fd_zlink_status_get(fd_warranty_status_t *out)
 /* Independent Zalo linking: no credentials or device ID in the QR URL. */
 #include "esp_timer.h"
 static fd_link_status_t s_link;
-static bool s_link_active, s_link_busy;
+static bool s_link_active, s_link_busy, s_link_checked, s_unlink_requested;
 static uint32_t s_link_gen, s_link_server;
 static int64_t s_link_expiry, s_link_next;
+typedef enum { LINK_STATUS, LINK_START, LINK_POLL, LINK_UNLINK } link_op_t;
 
 static void link_task(void *arg)
 {
     uint32_t generation = (uint32_t)(uintptr_t)arg;
     taskENTER_CRITICAL(&s_mux);
-    bool start = !s_link.code[0];
+    if (generation != s_link_gen || !s_link_active) {
+        s_link_busy = false;
+        taskEXIT_CRITICAL(&s_mux);
+        vTaskDelete(NULL);
+        return;
+    }
+    link_op_t op = s_unlink_requested ? LINK_UNLINK :
+        (!s_link_checked || s_link.state == FD_LINK_DONE) ? LINK_STATUS :
+        !s_link.code[0] ? LINK_START : LINK_POLL;
+    s_unlink_requested = false;
     uint32_t server = s_link_server;
     taskEXIT_CRITICAL(&s_mux);
-    char id[16], body[48], response[256] = {0};
+    char id[16], body[72], response[384] = {0};
     fd_ota_get_device_id(id, sizeof(id));
-    snprintf(body, sizeof(body), "{\"device_id\":\"%s\"}", id);
+    snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"confirm\":true}", id);
+    const char *path = op == LINK_STATUS ? "/api/devices/zalo-link/status" :
+        op == LINK_UNLINK ? "/api/devices/zalo-link/unlink" :
+        op == LINK_START ? "/api/devices/zalo-link/start" : "/api/devices/zalo-link/poll";
     int64_t began = esp_timer_get_time();
-    int http = fd_ota_api_post_ex(start ? "/api/devices/zalo-link/start" : "/api/devices/zalo-link/poll",
-        body, response, sizeof(response), false);
+    int http = fd_ota_api_post_ex(path, body, response, sizeof(response), false);
     fd_link_status_t result = {.state = FD_LINK_ERROR};
     int seconds = 0;
     cJSON *j = http == 200 ? cJSON_Parse(response) : NULL;
-    if (j && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(j, "linked"))) result.state = FD_LINK_DONE;
+    if (op == LINK_UNLINK) {
+        if (j && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(j, "ok")) &&
+            cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(j, "zalo_linked"))) {
+            result.state = FD_LINK_LOADING;
+        } else {
+            result.state = FD_LINK_DONE;
+            strlcpy(result.err, "unlink_failed", sizeof(result.err));
+        }
+    } else if (op == LINK_STATUS) {
+        const cJSON *linked = cJSON_GetObjectItemCaseSensitive(j, "zalo_linked");
+        if (cJSON_IsBool(linked)) result.state = cJSON_IsTrue(linked) ? FD_LINK_DONE : FD_LINK_LOADING;
+        else strlcpy(result.err, "status_failed", sizeof(result.err));
+    } else if (j && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(j, "linked"))) result.state = FD_LINK_DONE;
     else if (j) {
         const cJSON *code = cJSON_GetObjectItemCaseSensitive(j, "code");
         const cJSON *ttl = cJSON_GetObjectItemCaseSensitive(j, "expires_in");
-        bool valid_code = !start || (cJSON_IsString(code) && strlen(code->valuestring) == 6 &&
+        bool valid_code = op != LINK_START || (cJSON_IsString(code) && strlen(code->valuestring) == 6 &&
             strspn(code->valuestring, "0123456789") == 6);
         if (valid_code && cJSON_IsNumber(ttl) && ttl->valueint > 0 && ttl->valueint <= 300) {
             result.state = FD_LINK_CODE;
-            if (start) strlcpy(result.code, code->valuestring, sizeof(result.code));
+            if (op == LINK_START) strlcpy(result.code, code->valuestring, sizeof(result.code));
             seconds = ttl->valueint;
         } else strlcpy(result.err, "format", sizeof(result.err));
     } else if (http == 410 || http == 404) result.state = FD_LINK_LOADING;
@@ -154,17 +178,20 @@ static void link_task(void *arg)
     bool still_paired = fd_ota_is_paired();
     taskENTER_CRITICAL(&s_mux);
     if (s_link_active && generation == s_link_gen && server == fd_ota_server_gen() && still_paired) {
+        if (op == LINK_STATUS && result.state != FD_LINK_ERROR) s_link_checked = true;
         if (result.state == FD_LINK_CODE) {
-            if (start) strlcpy(s_link.code, result.code, sizeof(s_link.code));
+            if (op == LINK_START) strlcpy(s_link.code, result.code, sizeof(s_link.code));
             s_link.state = FD_LINK_CODE;
             s_link_expiry = began + (int64_t)seconds * 1000000;
-        } else if (!start && result.state == FD_LINK_ERROR && http < 0) {
+        } else if (op == LINK_POLL && result.state == FD_LINK_ERROR && http < 0) {
             /* A transient network failure does not discard a still-valid code. */
+        } else if (op == LINK_STATUS && s_link.state == FD_LINK_DONE && result.state == FD_LINK_ERROR && http < 0) {
+            /* Keep the last confirmed link visible while offline. */
         } else {
             s_link = result;
             s_link_expiry = 0;
         }
-        s_link_next = esp_timer_get_time() + 5000000;
+        s_link_next = result.state == FD_LINK_LOADING ? 0 : esp_timer_get_time() + 5000000;
     }
     s_link_busy = false;
     taskEXIT_CRITICAL(&s_mux);
@@ -175,6 +202,7 @@ void fd_zalo_link_stop(void)
 {
     taskENTER_CRITICAL(&s_mux);
     s_link_active = false;
+    s_unlink_requested = false;
     ++s_link_gen;
     memset(&s_link, 0, sizeof(s_link));
     taskEXIT_CRITICAL(&s_mux);
@@ -185,9 +213,26 @@ void fd_zalo_link_start(void)
     ++s_link_gen;
     s_link_server = fd_ota_server_gen();
     s_link_active = true;
+    s_link_checked = s_unlink_requested = false;
     s_link_expiry = s_link_next = 0;
     memset(&s_link, 0, sizeof(s_link));
     s_link.state = FD_LINK_LOADING;
+    taskEXIT_CRITICAL(&s_mux);
+    fd_zalo_link_tick();
+}
+void fd_zalo_link_unlink(void)
+{
+    bool paired = fd_ota_is_paired();
+    taskENTER_CRITICAL(&s_mux);
+    if (!s_link_active || s_link.state != FD_LINK_DONE || !paired || s_link_server != fd_ota_server_gen()) {
+        taskEXIT_CRITICAL(&s_mux); return;
+    }
+    /* If a status fetch is in flight, generation rejects its result; tick starts unlink after it exits. */
+    ++s_link_gen;
+    s_unlink_requested = true;
+    s_link.state = FD_LINK_UNLINKING;
+    s_link.err[0] = 0;
+    s_link_next = 0;
     taskEXIT_CRITICAL(&s_mux);
     fd_zalo_link_tick();
 }
@@ -197,7 +242,7 @@ void fd_zalo_link_tick(void)
     bool connected = fd_net_is_connected();
     int64_t t = esp_timer_get_time();
     taskENTER_CRITICAL(&s_mux);
-    if (!s_link_active || s_link_busy || s_link.state == FD_LINK_DONE) { taskEXIT_CRITICAL(&s_mux); return; }
+    if (!s_link_active || s_link_busy) { taskEXIT_CRITICAL(&s_mux); return; }
     if (!paired || s_link_server != fd_ota_server_gen()) {
         s_link.state = FD_LINK_ERROR;
         s_link.code[0] = 0;

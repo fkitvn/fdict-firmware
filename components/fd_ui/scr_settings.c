@@ -340,7 +340,6 @@ static void build(lv_obj_t *scr)
     ui_screen_title(body, _("SETTINGS"));
     pair_card(body);
     s_zalo_card = item(body, LV_SYMBOL_REFRESH, _("ZALO_LINK_TITLE"), go_cb, (void *)(intptr_t)FD_SCR_ZALO_LINK, NULL);
-    item(body, LV_SYMBOL_OK, _("WARRANTY_INFO"), warr_cb, NULL, NULL);
     item(body, LV_SYMBOL_WIFI, "WiFi", go_cb, (void *)(intptr_t)FD_SCR_WIFI, &s_wifi_sub);
     item(body, LV_SYMBOL_KEYBOARD, _("LANGUAGE"), go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
@@ -349,6 +348,7 @@ static void build(lv_obj_t *scr)
     item(body, LV_SYMBOL_REFRESH, _("SCREEN_ROTATION"), go_cb, (void *)(intptr_t)FD_SCR_ROTATION, &s_rot_sub);
     switch_row(body, LV_SYMBOL_IMAGE, _("GRAYSCALE_MODE"), fd_display_get_grayscale(), gray_cb);
     item(body, LV_SYMBOL_EYE_CLOSE, _("PIN_CODE"), go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
+    item(body, LV_SYMBOL_OK, _("WARRANTY_INFO"), warr_cb, NULL, NULL);
     item(body, LV_SYMBOL_LIST, _("ABOUT"), go_cb, (void *)(intptr_t)FD_SCR_ABOUT, NULL);
     item(body, LV_SYMBOL_WARNING, _("DEV_SECTION"), go_cb, (void *)(intptr_t)FD_SCR_DEVMODE, &s_dev_sub);   /* 2.2.2: man rieng */
     lv_obj_t *rst = item(body, LV_SYMBOL_TRASH, _("FACTORY_RESET"), factory_cb, NULL, NULL);
