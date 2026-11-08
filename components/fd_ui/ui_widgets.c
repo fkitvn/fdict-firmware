@@ -292,6 +292,26 @@ void ui_answer_cell_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m, uint3
     lv_obj_center(ic);
 }
 
+lv_obj_t *ui_abcd_cell(lv_obj_t *parent, int cell, const char *text, lv_obj_t **out_label)
+{
+    char txt[200];
+    snprintf(txt, sizeof(txt), "%c. %s", 'A' + (cell & 3), text ? text : "");
+    lv_obj_t *b = ui_answer_cell(parent, FD_COLOR_PRIMARY, txt, out_label);
+    lv_obj_t *dot = lv_obj_get_child(b, 0);   /* khong cham tron: an cho toi khi phan hoi */
+    if (dot) { lv_obj_set_style_bg_opa(dot, LV_OPA_TRANSP, 0); lv_obj_set_width(dot, 0); }
+    return b;
+}
+
+void ui_abcd_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m)
+{
+    if (!cell) return;
+    lv_obj_t *dot = lv_obj_get_child(cell, 0);
+    if (dot && m != UI_ANS_OTHER) lv_obj_set_width(dot, 20);   /* cho cho dau OK/X */
+    ui_answer_cell_mark(cell, label, m, m == UI_ANS_CORRECT ? 0x16A34A : 0xDC2626);
+}
+
+int ui_abcd_button(int btn_index) { return (btn_index >= 0 && btn_index < 4) ? btn_index : -1; }
+
 /* 2.3.5: cong "Dang nhap de tiep tuc" dung chung cho MOI mo-dun hoc: chi kiem tra token cuc bo (buoc dang nhap = ghep thiet bi),
  * da dang nhap thi hoc offline tu kho dong bo. */
 static void gate_home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }

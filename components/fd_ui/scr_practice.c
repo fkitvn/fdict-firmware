@@ -458,8 +458,7 @@ static void answer(int i)
     /* Phan hoi (ui_answer_cell_mark): OK trong cham mau cua o dung; chon sai -> X trong cham o da chon + mo + gach chu. */
     for (int k = 0; k < 4; k++) {
         if (!s_ans[k]) continue;
-        uint32_t gl = 0xFFFFFF;   /* 4.1.8: cham mau chung FD_COLOR_PRIMARY */
-        ui_answer_cell_mark(s_ans[k], s_lbl[k], k == c ? UI_ANS_CORRECT : (k == i ? UI_ANS_WRONG : UI_ANS_OTHER), gl);
+        ui_abcd_mark(s_ans[k], s_lbl[k], k == c ? UI_ANS_CORRECT : (k == i ? UI_ANS_WRONG : UI_ANS_OTHER));
     }
     if (s_ipa) lv_obj_set_hidden(s_ipa, false);   /* Viet-Anh: hien IPA tu dung sau khi tra loi */
     fd_audio_feedback(i == c);   /* am dung/sai truoc, phat am tu (neu co) xep sau trong hang doi */
@@ -556,10 +555,8 @@ static void show_practice(void)
     if (cw < 40) cw = 40;
     for (int cell = 0; cell < 4; cell++) {
         /* 4.1.8: mot mau dong nhat + nhan A/B/C/D (TL A, TR B, BL C, BR D); nut 1..4 -> A..D */
-        char txt[160];
-        snprintf(txt, sizeof(txt), "%c. %s", 'A' + cell, q->choice[cell]);
         lv_obj_t *l;
-        lv_obj_t *b = ui_answer_cell(g, FD_COLOR_PRIMARY, txt, &l);
+        lv_obj_t *b = ui_abcd_cell(g, cell, q->choice[cell], &l);   /* 4.1.9: khong cham tron */
         lv_obj_set_size(b, cw, por ? 64 : 48);   /* 2 o/hang: rong = (rong luoi - khe 6) / 2 */
         if (por && l) lv_obj_set_height(l, 60);   /* doc: toi da 3 dong Noto 14, qua thi "..." */
         if (l) lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
@@ -689,7 +686,8 @@ static bool on_button(const fd_evt_button_t *b)
     if (b->action != FD_BTN_CLICK || s_gate) return false;
     if (s_view == V_PRACTICE) {
         /* 4.1.8: nut 1->A, 2->B, 3->C, 4->D (khong qua bang mau/xoay) */
-        if (b->index >= 0 && b->index < 4) answer(b->index);
+        int cell = ui_abcd_button(b->index);
+        if (cell >= 0) answer(cell);
         return true;
     }
     if (s_view == V_RESULT && !s_dlg) {

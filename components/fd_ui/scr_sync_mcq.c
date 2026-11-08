@@ -199,8 +199,7 @@ static void answer(int i)
     if (i == c) s_score++;
     for (int k = 0; k < 4; k++) {
         if (!s_ans[k]) continue;
-        uint32_t gl = ui_key_glyph(ui_cell_colour(k));
-        ui_answer_cell_mark(s_ans[k], s_lbl[k], k == c ? UI_ANS_CORRECT : (k == i ? UI_ANS_WRONG : UI_ANS_OTHER), gl);
+        ui_abcd_mark(s_ans[k], s_lbl[k], k == c ? UI_ANS_CORRECT : (k == i ? UI_ANS_WRONG : UI_ANS_OTHER));
     }
     fd_audio_feedback(i == c);
     if (s_kind == MCQ_CLOZE && c >= 0 && c < 4) mcq_say(q->choice[c]);   /* Dien tu: doc tu dung SAU khi tra loi */
@@ -252,9 +251,8 @@ static void show_quiz(void)
     int32_t cw = (lv_obj_get_content_width(g) - 6) / 2;
     if (cw < 40) cw = 40;
     for (int cell = 0; cell < 4; cell++) {
-        int k = ui_cell_colour(cell);
         lv_obj_t *l;
-        lv_obj_t *b = ui_answer_cell(g, ui_key_rgb(k), q->choice[cell], &l);
+        lv_obj_t *b = ui_abcd_cell(g, cell, q->choice[cell], &l);   /* 4.1.9: giong Luyen tap - A/B/C/D, mot mau */
         lv_obj_set_size(b, cw, por ? 64 : 48);
         if (por && l) lv_obj_set_height(l, 60);
         if (l) lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
@@ -324,7 +322,7 @@ static bool on_button_common(const fd_evt_button_t *b)
 {
     if (!b || s_gate || s_view != V_QUIZ || s_answered) return false;
     if (b->action != FD_BTN_CLICK) return false;
-    int cell = ui_key_cell(b->index);
+    int cell = ui_abcd_button(b->index);   /* nut 1..4 -> A..D, khong phu thuoc xoay */
     if (cell < 0) return false;
     answer(cell);
     return true;

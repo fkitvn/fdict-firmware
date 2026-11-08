@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.1.9] - 2026-11-08
+Sửa nút đổi chiều tra trong Từ điển. Phân loại từ và Điền từ dùng đáp án ABCD giống Luyện tập, bỏ chấm tròn. Phân loại từ có nhiều loại từ hơn. Bỏ dòng học ngoại tuyến ở Sắp xếp câu.
+
 ## [4.1.8] - 2026-11-08
 Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay lại. Luyện tập đáp án một màu, nhãn ABCD. Đồng bộ dùng cả câu ví dụ.
 

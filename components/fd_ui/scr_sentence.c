@@ -430,9 +430,6 @@ static void show_play(void)
     label(s_body, tmp, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     const char *pr = s_loc ? s_ex.sentence : s_ex.hint;   /* cau nguon theo huong */
     if (pr[0]) label(s_body, pr, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
-    fd_sen_status_t st;
-    fd_sen_get(&st);
-    if (st.source != FD_SEN_SRC_ONLINE) label(s_body, _("SEN_OFFLINE"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     s_ans = row(s_body, true);
     lv_obj_set_style_min_height(s_ans, 36, 0);
     lv_obj_set_style_border_width(s_ans, 1, 0);

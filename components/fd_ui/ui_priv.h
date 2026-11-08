@@ -57,6 +57,11 @@ uint32_t ui_key_glyph(int k);         /* mau chu OK/X trong cham */
  * Tra ve nut (lv_button, hang flex); *out_label = nhan chu dap an. */
 lv_obj_t *ui_answer_cell(lv_obj_t *parent, uint32_t key_colour, const char *text, lv_obj_t **out_label);
 typedef enum { UI_ANS_CORRECT, UI_ANS_WRONG, UI_ANS_OTHER } ui_ans_mark_t;
+/* 4.1.9: o dap an kieu A/B/C/D (Luyen tap, Phan loai tu, Dien tu): mot mau, nhan "A. ...", khong cham tron.
+ * cell 0..3 = TL A, TR B, BL C, BR D; nut vat ly 1..4 -> A..D (ui_abcd_button). */
+lv_obj_t *ui_abcd_cell(lv_obj_t *parent, int cell, const char *text, lv_obj_t **out_label);
+void ui_abcd_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m);
+int ui_abcd_button(int btn_index);   /* -1 neu ngoai 0..3 */
 void ui_answer_cell_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m, uint32_t glyph_colour);   /* OK/X trong cham mau */
 /* Hien/an overlay vung vuot mep theo che do nha phat trien (goi trong task LVGL). */
 void ui_swipe_overlay_sync(void);

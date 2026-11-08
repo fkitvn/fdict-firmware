@@ -238,9 +238,14 @@ static void show_home(void)
     lv_obj_set_size(hdr, lv_pct(100), LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(hdr, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(hdr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    label(hdr, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    /* 4.1.9 FIX: label() dat rong 100% -> nut chieu tra bi day ra ngoai hang (khong cham duoc). Tieu de co gian, nut giu kich thuoc. */
+    lv_obj_t *ttl = label(hdr, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_set_width(ttl, LV_SIZE_CONTENT);
+    lv_obj_set_flex_grow(ttl, 1);
+    lv_label_set_long_mode(ttl, LV_LABEL_LONG_DOT);
     lv_obj_t *db = lv_button_create(hdr);
-    lv_obj_set_size(db, LV_SIZE_CONTENT, 30);
+    lv_obj_set_size(db, LV_SIZE_CONTENT, 34);
+    lv_obj_set_ext_click_area(db, 6);
     lv_obj_set_style_pad_hor(db, 10, 0);
     lv_obj_set_style_radius(db, 8, 0);
     lv_obj_set_style_shadow_width(db, 0, 0);

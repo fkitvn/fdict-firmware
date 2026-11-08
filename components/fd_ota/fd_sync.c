@@ -1086,6 +1086,7 @@ static const pos_map_t POS_MAP[] = {
     {"conjunction", "Liên từ", "Conjunction"}, {"conj.", "Liên từ", "Conjunction"},
     {"interjection", "Thán từ", "Interjection"},
     {"determiner", "Hạn định từ", "Determiner"}, {"article", "Mạo từ", "Article"},
+    {"phrasal verb", "Cụm động từ", "Phrasal verb"}, {"phr. v.", "Cụm động từ", "Phrasal verb"},
     {"phrase", "Cụm từ", "Phrase"},
 };
 
@@ -1105,6 +1106,13 @@ static const char *pos_label(const char *raw, bool vi)
     }
     return buf;
 }
+
+/* Tap loai tu tieng Anh da dang cho dap an nhieu (nhan tieng Viet, trung POS_MAP) */
+static const char *const POS_POOL[] = {
+    "Danh từ", "Động từ", "Tính từ", "Trạng từ", "Đại từ", "Giới từ",
+    "Liên từ", "Thán từ", "Hạn định từ", "Mạo từ", "Cụm động từ", "Cụm từ",
+};
+#define POS_POOL_N ((int)(sizeof(POS_POOL) / sizeof(POS_POOL[0])))
 
 static bool pos_same(const char *a, const char *b)
 {
@@ -1135,10 +1143,10 @@ fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n)
         int slot = rnd(4), got = 1;
         d->answer = (int8_t)slot;
         ucpy(d->choice[slot], sizeof(d->choice[slot]), ans);
+        /* 4.1.9: 3 dap an nhieu lay ngau nhien tu tap loai tu da dang (POS_POOL), khong chi loai tu co trong kho */
         for (int tries = 0; tries < 80 && got < 4; tries++) {
-            const word_t *x = &s_w[rnd(s_nw)];
-            const char *t = pos_label(x->pos, use_vi);
-            if (!x->pos[0] || pos_same(t, ans)) continue;
+            const char *t = POS_POOL[rnd(POS_POOL_N)];
+            if (pos_same(t, ans)) continue;
             bool dup = false;
             for (int k = 0; k < 4; k++) if (d->choice[k][0] && pos_same(d->choice[k], t)) dup = true;
             if (dup) continue;
