@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.1.1] - 2026-11-08
+
+- Hiển thị trạng thái và xác nhận gỡ liên kết Zalo của tài khoản; gỡ xong có thể lấy mã liên kết mới.
+- Chuyển Thông tin bảo hành xuống ngay dưới Mã PIN; bảo hành và đăng nhập không thay đổi.
+
 ## [4.1.0] - 2026-11-08
 
 - Liên kết Zalo riêng trong Cài đặt: QR, mã dùng một lần và đếm ngược 5 phút.
