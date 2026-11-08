@@ -32,3 +32,26 @@ assert 'to activate warranty' not in next(line for line in translations.splitlin
 print('PASS: generated translations retain login/link labels and non-activation guidance')
 
 assert '{"ZALO_WAITING", "Zalo not linked"}' in translations
+
+login = (r / 'components/fd_ui/scr_pair.c').read_text(encoding='utf-8')
+for geometry in ['lv_obj_set_style_pad_hor(col, 12, 0);', 'lv_obj_set_style_pad_row(col, 4, 0);',
+                 'lv_obj_set_scrollable(col, false);', 'lv_obj_set_style_pad_all(s_wrap, 12, 0);',
+                 'lv_obj_set_size(row, lv_pct(100), 44);', 'lv_obj_set_style_pad_column(row, 8, 0);',
+                 'lv_obj_set_size(sp, 1, 0);', 'lv_obj_set_flex_grow(sp, 1);']:
+    assert geometry in ui
+    assert geometry.replace('s_wrap', 's_qr_wrap') in login
+assert 'lv_qrcode_set_size(s_qr, s_low ? 100 : QR_PX);' in ui
+assert '#define QR_PX 135' in ui
+assert 'button(row, 0xE5E7EB, &back_label, back_cb)' in ui
+assert 'button(row, FD_COLOR_PRIMARY, &s_action_lbl, action_cb)' in ui
+assert 's_low ? 4 : 6' in ui
+assert 'lv_obj_set_hidden(s_code, !show || s_low);' in ui
+assert '"%s · %d:%02d"' in ui
+assert ui.index('label(col, _("ZALO_LINK_TITLE"))') < ui.index('s_qr = lv_qrcode_create') < ui.index('s_msg = label') < ui.index('lv_obj_t *row = lv_obj_create(col)')
+# Height budgets for 320x240 landscape and 240x320 portrait (14px font line <= 20px).
+assert 20 + 126 + 20 + 44 + 16 + 8 <= 240
+assert 20 + 161 + 20 + 20 + 44 + 20 + 12 <= 320
+import re
+version = re.search(r'set\(PROJECT_VER "FDict One - ([0-9.]+)"\)', (r / 'CMakeLists.txt').read_text()).group(1)
+assert re.search(r'^## \[([^]]+)\]', (r / 'CHANGELOG.md').read_text(encoding='utf-8'), re.M).group(1) == version
+print('PASS: login-matched layout, two bottom actions, manual code, orientation budgets and CI version gate')
