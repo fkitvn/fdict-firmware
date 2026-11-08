@@ -9,7 +9,7 @@
  *  - Ket qua hoc offline: moi cau tra loi = 1 dong JSON {eid,k,wid,ok,ts} noi vao /data/sync/events.log (fsync);
  *    gui (sync, events) (lo <= 50, eid chong trung), chi xoa dong khi server ack.
  *  - 401: fd_ota xoa token (ve Chua ghep), GIU du lieu + outbox; 429: fd_ota cho Retry-After, sau do backoff.
- * Hoc offline 100%: Quiz / Flash card / Sap xep cau doc tu kho nay (khong mang).
+ * Hoc offline 100%: Luyen tap / Flash card / Sap xep cau doc tu kho nay (khong mang).
  * Dinh dang store.tsv (UTF-8, tab, 1 ban ghi/dong):
  *   #FDS1<TAB>rev<TAB>epoch_tai
  *   S<TAB>uu_tien_tu_moi(0/1)<TAB>uu_tien_chua_thuoc(0/1)<TAB>chu_de,chu_de
@@ -57,8 +57,8 @@ void fd_sync_kick(void);                 /* co ket qua moi: gui outbox som */
 void fd_sync_force(void);                /* nut "Dong bo ngay": gui outbox + tai lai toan bo */
 void fd_sync_get(fd_sync_status_t *out);
 bool fd_sync_ready(void);                /* kho co >= 4 tu (du tao trac nghiem) */
-/* Tao phien Quiz tu kho (theo uu tien hoc). n <= FD_STUDY_MAX. session_id "lq-..." (ket qua = su kien fd_sync_event). */
-fd_study_err_t fd_sync_build_quiz(fd_study_session_t *s, bool vi_en, int n);
+/* Tao phien Luyen tap (Practice) tu kho (theo uu tien hoc). n <= FD_STUDY_MAX. session_id "lq-..." (ket qua = su kien fd_sync_event). */
+fd_study_err_t fd_sync_build_practice(fd_study_session_t *s, bool vi_en, int n);
 /* Trac nghiem phan loai tu (POS) / dien tu cho trong tu kho dong bo (4 dap an). */
 fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n);
 fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n);

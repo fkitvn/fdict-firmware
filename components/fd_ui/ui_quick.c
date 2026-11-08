@@ -27,7 +27,9 @@ static lv_obj_t *s_words_lbl, *s_fs_lbl, *s_sync_btn;   /* 4.1.4: hang thong tin
 static uint32_t s_sync_wait;   /* force_done can dat (0 = khong cho) */
 static void info_update(void);
 static lv_obj_t *sym(lv_obj_t *p, const char *s);
-static bool s_sync_user;       /* nguoi dung bam: loi -> toast */
+static bool s_sync_user;
+static uint32_t s_sync_t0;     /* lv_tick luc bam (timeout 30 s) */
+#define SYNC_TIMEOUT_MS 30000       /* nguoi dung bam: loi -> toast */
 
 bool ui_quick_is_open(void) { return s_ov != NULL; }
 
@@ -199,7 +201,15 @@ static void sync_tmr_cb(lv_timer_t *t)
     if (!s_sync_wait) return;
     fd_sync_status_t st;
     fd_sync_get(&st);
-    if ((int32_t)(st.force_done - s_sync_wait) < 0) return;   /* chua xong */
+    if ((int32_t)(st.force_done - s_sync_wait) < 0) {   /* chua xong */
+        if (lv_tick_elaps(s_sync_t0) < SYNC_TIMEOUT_MS) return;
+        s_sync_wait = 0;   /* qua 30 s: dung cho (ket qua den muon chi cap nhat kho) */
+        sync_show(false);
+        info_update();
+        if (s_sync_user) fd_ui_toast("Đồng bộ quá lâu, vui lòng thử lại");
+        s_sync_user = false;
+        return;
+    }
     s_sync_wait = 0;
     sync_show(false);
     info_update();
@@ -207,7 +217,7 @@ static void sync_tmr_cb(lv_timer_t *t)
         char m[64];
         snprintf(m, sizeof(m), "Đồng bộ chưa được (%s)", st.err[0] ? st.err : "lỗi");
         fd_ui_toast(m);
-    }
+    } else if (st.force_ok && s_sync_user) fd_ui_toast("Đã đồng bộ thành công");
     s_sync_user = false;
     (void)t;
 }
@@ -223,6 +233,7 @@ static void sync_cb(lv_event_t *e)
     s_sync_wait = st.force_done + 1;
     if (!s_sync_wait) s_sync_wait = 1;
     s_sync_user = true;
+    s_sync_t0 = lv_tick_get();
     sync_show(true);
     fd_sync_force();   /* POST /api/study/sync: gui ket qua + tai lai bo tu/cai dat */
 }

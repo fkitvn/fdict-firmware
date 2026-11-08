@@ -51,6 +51,8 @@ void            fd_t9kb_set_timeout(lv_obj_t *kb, uint32_t ms);
 
 /** Chuyen T9 <-> QWERTY (commit ky tu dang cho; QWERTY tao lan dau, sau do chi an/hien; giai phong cung kb). */
 void             fd_t9kb_set_layout(lv_obj_t *kb, fd_t9kb_layout_t layout);
+/* QWERTY tinh gon: chi a-z, xoa, cach, OK (khong so/ky hieu/T9). */
+void             fd_t9kb_set_qwerty_plain(lv_obj_t *kb);
 fd_t9kb_layout_t fd_t9kb_get_layout(lv_obj_t *kb);
 
 /* Cac thao tac cho phim cung (B1..B4) - tuy chon. */

@@ -56,7 +56,7 @@ static void prefs_load(void)
         nvs_get_u8(h, SEN_DIR_KEY, &d);
         nvs_close(h);
     }
-    s_reps = v <= 2 ? v : 0;
+    s_reps = (v == 1 || v == 2) ? 1 : 0;   /* Bat/Tat: gia tri cu 1/2 = Bat */
     s_cnt = c == 5 ? 5 : 10;
     s_vi = d == 1;
 }
@@ -182,10 +182,10 @@ static void show_setup(void)
     lv_obj_t *sc = ui_setup_begin(s_body, _("SENTENCE"));   /* 2.3.6: mau cai dat chung */
     static const char *const CNT[] = {"5", "10"};
     static const char *const DIR[] = {"SEN_DIR_VI_EN", "SEN_DIR_EN_VI"};
-    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    static const char *const RP[] = {"OFF", "ON"};
     ui_setup_opt_row(sc, _("SEN_COUNT"), CNT, 2, s_cnt == 10 ? 1 : 0, opt_cb, OPT_CNT, UI_OPT_WIDE);
     ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 2, s_vi ? 1 : 0, opt_cb, OPT_DIR, UI_OPT_WIDE);
-    ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 3, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
+    ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
     ui_setup_start(s_body, begin_cb);
 }
 

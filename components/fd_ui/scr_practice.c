@@ -1,4 +1,5 @@
-/* Hoc tap = Trac nghiem tu API may chu (.cursor/docs/study/CONTRACT-firmware.md). KHONG con dung bo tu tren may.
+/* Luyen tap (Practice; truoc 4.1.6 ten "Quiz", file scr_quiz.c). Giu NVS fd/quiz_cfg + fd/pron_cfg, su kien sync k="quiz".
+ * Hoc tap = Trac nghiem tu API may chu (.cursor/docs/study/CONTRACT-firmware.md). KHONG con dung bo tu tren may.
  *   SETUP  : chieu, so cau (10/20/Vo tan), nguon (Bo the / Offline; 23/10 bo Mockup), nut [Bat dau] ghim day man (cai dat cuon phia tren; 23/10 bo nut tai bo tu offline). Nho trong NVS fd/quiz_cfg.
  *   LOAD   : POST /api/study/start trong task fd_study (khong chan LVGL); man nay doc trang thai bang lv_timer.
  *   MSG    : chua ghep (-> Ghép thiết bị) / chua Wi-Fi (-> Mở Wi-Fi) / loi mang (Thử lại).
@@ -23,7 +24,7 @@
 #define C_OK  0x16A34A
 #define C_BAD 0xDC2626
 
-typedef enum { V_SETUP, V_LOAD, V_MSG, V_QUIZ, V_RESULT } view_t;
+typedef enum { V_SETUP, V_LOAD, V_MSG, V_PRACTICE, V_RESULT } view_t;
 static view_t s_view;
 static lv_obj_t *s_body, *s_dlg;
 static lv_obj_t *s_ans[4];
@@ -44,7 +45,7 @@ static bool s_wait;                  /* V_LOAD giua bai: cho nap phien tiep */
 static bool s_answered;
 
 static void show_setup(void);
-static void show_quiz(void);
+static void show_practice(void);
 static void next_cb(lv_timer_t *t);
 static void answer(int i);
 static void ans_cb(lv_event_t *e);
@@ -148,12 +149,12 @@ static void cfg_load(void)
     }
     if (nvs_get_u32(h, "pron_cfg", &v) == ESP_OK) {
         uint32_t r = (v >> 8) & 0xFF;
-        s_reps = (v >> 24) == PRON_VER ? (r == 1 || r == 2 ? (uint8_t)r : 0) : 0;
+        s_reps = (v >> 24) == PRON_VER ? (r == 1 || r == 2 ? 1 : 0) : 0;
         s_pron_keep = v & 0x00FF00FFu;
         if ((v >> 24) != PRON_VER) migrate = true;
     }
     nvs_close(h);
-    if (migrate) { cfg_save(); ESP_LOGI("scr_quiz", "pron_cfg: chuyen cau hinh cu -> Tu dong phat = Tat"); }
+    if (migrate) { cfg_save(); ESP_LOGI("scr_practice", "pron_cfg: chuyen cau hinh cu -> Tu dong phat = Tat"); }
 }
 
 static void cfg_save(void)
@@ -303,7 +304,7 @@ static void start_cb(lv_event_t *e)
 
 /* ---------- Phat am Hoc tap: CHI Pico (khong file bo tu / cache, khong tai nen); lap x1/x2 chinh tren man cau hoi ---------- */
 /* manual: bam loa (Tat -> 1 lan); tu dong: Tat -> khong phat */
-static void quiz_say(const char *t, bool manual)
+static void practice_say(const char *t, bool manual)
 {
     if (!manual && s_reps == 0) return;
     const fd_pron_cfg_t c = {FD_PRON_PICO_ONLY, s_reps ? s_reps : 1, false};
@@ -317,14 +318,14 @@ static void show_setup(void)
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 4, 0);
     /* 23/10: cai dat trong vung cuon (flex_grow) phia tren; nut Bat dau ghim day man, khong de len hang cuoi */
-    lv_obj_t *sc = ui_setup_begin(s_body, _("STUDY"));
+    lv_obj_t *sc = ui_setup_begin(s_body, _("PRACTICE"));
 
     static const char *const DIR[] = {"EN_VI", "VI_EN"};
     static const char *const NS[] = {"10", "20", "ENDLESS"};
     opt_row(sc, _("DIRECTION"), OPT_DIR, DIR, 2, s_dir);
-    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    static const char *const RP[] = {"OFF", "ON"};
     opt_row(sc, _("QUESTIONS"), OPT_N, NS, 3, s_ncfg);
-    opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 3, s_reps);
+    opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 2, s_reps);
     ui_setup_start(s_body, start_cb);
 }
 
@@ -406,7 +407,7 @@ static void show_result(void)
 }
 
 /* Ket thuc bai -> tong ket. complete: phien lam do dang cung gui; !complete (thoat Vo tan): giu tien do .part */
-static void end_quiz(bool complete)
+static void end_practice(bool complete)
 {
     stop_timer();
     fd_study_finish(complete);
@@ -421,33 +422,33 @@ static void poll_cb(lv_timer_t *t)
     fd_study_get(&st);
     if (s_view != V_LOAD) return;
     if (s_wait) {   /* giua bai: cho phien tiep */
-        if (fd_study_q(s_pos)) { s_wait = false; show_quiz(); }
-        else if (fd_study_exhausted()) { s_wait = false; end_quiz(true); }
+        if (fd_study_q(s_pos)) { s_wait = false; show_practice(); }
+        else if (fd_study_exhausted()) { s_wait = false; end_practice(true); }
         return;
     }
     if (st.state == FD_STUDY_READY) {
         s_pos = s_score = s_done = 0;
         s_said_pos = -1;
-        show_quiz();
+        show_practice();
     } else if (st.state == FD_STUDY_ERROR) show_msg(&st);
 }
 
-/* ---------- QUIZ ---------- */
+/* ---------- PRACTICE (Luyen tap) ---------- */
 
 static void next_cb(lv_timer_t *t)
 {
     (void)t;
     s_next_t = NULL;   /* repeat 1: LVGL tu xoa */
     int len = fd_study_len();
-    if (++s_pos >= len && len) end_quiz(true);
-    else if (fd_study_q(s_pos)) show_quiz();
-    else if (fd_study_exhausted()) end_quiz(true);   /* Vo tan: het nguon */
+    if (++s_pos >= len && len) end_practice(true);
+    else if (fd_study_q(s_pos)) show_practice();
+    else if (fd_study_exhausted()) end_practice(true);   /* Vo tan: het nguon */
     else { show_load(_("LOADING_QUESTIONS"), V_LOAD); s_wait = true; }
 }
 
 static void answer(int i)
 {
-    if (s_answered || s_dlg || s_view != V_QUIZ) return;
+    if (s_answered || s_dlg || s_view != V_PRACTICE) return;
     const fd_study_q_t *q = fd_study_q(s_pos);
     if (!q) return;
     s_answered = true;
@@ -462,7 +463,7 @@ static void answer(int i)
     }
     if (s_ipa) lv_obj_set_hidden(s_ipa, false);   /* Viet-Anh: hien IPA tu dung sau khi tra loi */
     fd_audio_feedback(i == c);   /* am dung/sai truoc, phat am tu (neu co) xep sau trong hang doi */
-    if (s_dir == 1 && c >= 0 && c < 4) quiz_say(q->choice[c], false);   /* Viet-Anh: doc tu dung SAU khi tra loi (khong lo dap an); khong doi thoi gian 0.9/1.5 s */
+    if (s_dir == 1 && c >= 0 && c < 4) practice_say(q->choice[c], false);   /* Viet-Anh: doc tu dung SAU khi tra loi (khong lo dap an); khong doi thoi gian 0.9/1.5 s */
     fd_study_answer(s_pos, i);   /* tien do .part / phien xong -> outbox (sau khi doc q: slot co the duoc giai phong) */
     s_next_t = lv_timer_create(next_cb, i == c ? 900 : 1500, NULL);
     lv_timer_set_repeat_count(s_next_t, 1);
@@ -475,19 +476,19 @@ static void speak_cb(lv_event_t *e)
 {
     (void)e;
     const fd_study_q_t *q = fd_study_q(s_pos);
-    if (s_dir == 0 && q) quiz_say(q->prompt, true);
+    if (s_dir == 0 && q) practice_say(q->prompt, true);
 }
 
-static void show_quiz(void)
+static void show_practice(void)
 {
     const fd_study_q_t *q = fd_study_q(s_pos);
     if (!q) { show_setup(); return; }
-    s_view = V_QUIZ;
+    s_view = V_PRACTICE;
     body_reset();
     s_answered = false;
     /* 1.3.1: Anh-Viet + Tu dong phat 1/2 lan -> doc tu cua MOI cau moi (dau bai, cau tiep, sau khi cho phien); 1 lan/cau.
      * fd_pron khong co API huy: yeu cau xep hang sau am dung/sai cua cau truoc. Viet-Anh: van doc sau khi tra loi (khong lo dap an). */
-    if (s_dir == 0 && s_said_pos != s_pos) { s_said_pos = s_pos; quiz_say(q->prompt, false); }
+    if (s_dir == 0 && s_said_pos != s_pos) { s_said_pos = s_pos; practice_say(q->prompt, false); }
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 4, 0);
 
@@ -576,9 +577,9 @@ static void dlg_close(void)
 }
 
 /* Thoat giua bai: Vo tan -> tong ket (phien xong da vao outbox, phien do dang giu .part); 10/20 -> ve cai dat (giu .part) */
-static void quit_quiz(void)
+static void quit_practice(void)
 {
-    if (!fd_study_len() && s_done > 0) { end_quiz(false); return; }
+    if (!fd_study_len() && s_done > 0) { end_practice(false); return; }
     fd_study_finish(false);
     show_setup();
 }
@@ -587,8 +588,8 @@ static void dlg_cb(lv_event_t *e)
 {
     bool ok = (bool)(intptr_t)lv_event_get_user_data(e);
     dlg_close();
-    if (ok) quit_quiz();
-    else if (s_view == V_QUIZ && s_answered && !s_next_t) {
+    if (ok) quit_practice();
+    else if (s_view == V_PRACTICE && s_answered && !s_next_t) {
         s_next_t = lv_timer_create(next_cb, 900, NULL);
         lv_timer_set_repeat_count(s_next_t, 1);
     }
@@ -665,13 +666,13 @@ static bool on_back(void)
 {
     if (s_gate) return false;
     if (s_dlg) { dlg_close(); return true; }
-    if (s_view == V_QUIZ) {
+    if (s_view == V_PRACTICE) {
         stop_timer();
         dlg_open();
         return true;
     }
     if (s_view == V_LOAD) {
-        if (s_wait) { s_wait = false; quit_quiz(); return true; }
+        if (s_wait) { s_wait = false; quit_practice(); return true; }
         fd_study_cancel();
         show_setup();
         return true;
@@ -684,7 +685,7 @@ static bool on_back(void)
 static bool on_button(const fd_evt_button_t *b)
 {
     if (b->action != FD_BTN_CLICK || s_gate) return false;
-    if (s_view == V_QUIZ) {
+    if (s_view == V_PRACTICE) {
         int cell = ui_key_cell(b->index);
         if (cell >= 0) answer(cell);
         return true;
@@ -696,7 +697,7 @@ static bool on_button(const fd_evt_button_t *b)
     return false;
 }
 
-const ui_screen_t g_scr_study = {
-    .name = "quiz", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_back = on_back,
+const ui_screen_t g_scr_practice = {
+    .name = "practice", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_back = on_back,
     .on_button = on_button,
 };

@@ -3,6 +3,14 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.1.6] - 2026-11-08
+
+- Đồng bộ ngay: báo "Đã đồng bộ thành công"; quá 30 giây thì dừng và báo lỗi.
+- Từ điển: bàn phím chỉ còn chữ a-z, xoá, cách, tìm; sửa biểu tượng thu gọn bị ô vuông.
+- Tự động phát: chuyển thành Bật/Tắt ở 5 module học.
+- Đổi tên Quiz thành Luyện tập (Practice); tên module ở Trang chủ xuống dòng gọn, không cắt chữ.
+- Tên tiếng Anh: Word order, Parts of speech, Gap fill.
+
 ## [4.1.5] - 2026-11-08
 
 - Từ điển: bàn phím QWERTY luôn mở khi vào; có nút thu gọn để xem lịch sử tra, chạm ô nhập để mở lại.

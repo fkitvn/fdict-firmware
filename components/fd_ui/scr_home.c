@@ -45,7 +45,7 @@ static const struct {
     fd_scr_t target;
 } TILES[] = {
     {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
-    {&img_tile_study, "STUDY", FD_SCR_STUDY},          /* 2.3.0: "Quiz" (truoc la Hoc tap) */
+    {&img_tile_study, "PRACTICE", FD_SCR_PRACTICE},    /* 4.1.6: "Luyen tap" (truoc la Quiz) */
     {&img_tile_sentence, "SENTENCE", FD_SCR_SENTENCE},
     {&img_tile_wordtype, "WORD_TYPE", FD_SCR_POS},        /* 2.3.5: Phan loai tu */
     {&img_tile_cloze, "FILL_BLANK", FD_SCR_CLOZE},  /* 2.3.5: Dien tu */
@@ -122,8 +122,7 @@ static void tile(lv_obj_t *grid, int i, int32_t tile_w)
     /* O phang: bo het style theme (nen amber, shadow, outline focus, grow/recolor khi nhan),
      * icon 3D nam truc tiep tren nen man. Chi giu vet nhan: nen bo goc amber nhat. */
     lv_obj_remove_style_all(b);
-    bool por = (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL));
-    lv_obj_set_size(b, tile_w, por ? TILE_H_PORT : TILE_H);
+    lv_obj_set_size(b, tile_w, TILE_H_PORT);   /* 4.1.6: ca ngang cung cao 2 dong ten */
     lv_obj_set_style_radius(b, 12, LV_PART_MAIN | LV_STATE_ANY);   /* bo goc 12 px moi trang thai, ca khi nhan (khoi phuc 18/10 10:54) */
     lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(b, 0, 0);
@@ -132,17 +131,17 @@ static void tile(lv_obj_t *grid, int i, int32_t tile_w)
     lv_obj_set_style_bg_color(b, lv_color_hex(FD_COLOR_PRIMARY), LV_STATE_PRESSED);
     lv_obj_set_style_bg_opa(b, LV_OPA_20, LV_STATE_PRESSED);
     lv_obj_set_style_pad_all(b, 2, 0);
-    if (por) lv_obj_set_style_pad_ver(b, 0, 0);   /* doc: bo le doc cua o */
+    lv_obj_set_style_pad_ver(b, 0, 0);   /* bo le doc: icon 48 + 2 dong ten */
     lv_obj_set_flex_flow(b, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(b, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(b, por ? 0 : 2, 0);
+    lv_obj_set_style_pad_row(b, 0, 0);
     lv_obj_t *ic = lv_image_create(b);   /* icon 3D 48x48: 2 + 48 + 2 + nhan Noto 14 vua TILE_H */
     lv_image_set_src(ic, TILES[i].icon);
     lv_obj_t *l = lv_label_create(b);
     lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
     lv_obj_set_style_text_color(l, lv_color_hex(0x111827), 0);
-    lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, por ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);   /* doc: ten mo-dun xuong dong o khoang trang (o cao 2 dong); ngang: 1 dong DOT */
-    if (por) lv_obj_set_style_text_line_space(l, -4, 0);   /* doc: 2 dong ten sat hon */
+    lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);   /* 4.1.6: ca doc lan ngang: xuong dong o khoang trang, toi da 2 dong can giua (khong cat "..." / giua tu) */
+    lv_obj_set_style_text_line_space(l, -4, 0);   /* 2 dong ten sat hon */
     lv_label_set_text(l, _(TILES[i].label));
     lv_obj_add_event_cb(b, go_cb, LV_EVENT_CLICKED, (void *)(intptr_t)TILES[i].target);
 }
@@ -204,7 +203,7 @@ static void build(lv_obj_t *scr)
     lv_obj_t *grid = lv_obj_create(body);
     lv_obj_remove_style_all(grid);
     const int n_tiles = (int)(sizeof(TILES) / sizeof(TILES[0])), rows = (n_tiles + 2) / 3;
-    int32_t th = (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL)) ? TILE_H_PORT : TILE_H;
+    int32_t th = TILE_H_PORT;   /* 4.1.6: ngang cung 2 dong ten */
     lv_obj_set_size(grid, 3 * tile_w + 2 * TILE_GAP_COL, rows * th + (rows - 1) * ((lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL)) ? TILE_GAP_ROW_PORT : TILE_GAP_ROW));
     lv_obj_set_scrollable(grid, false);
     lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);

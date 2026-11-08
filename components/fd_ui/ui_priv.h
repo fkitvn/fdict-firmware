@@ -22,7 +22,7 @@ typedef struct {
 } ui_screen_t;
 
 extern const ui_screen_t g_scr_home, g_scr_settings, g_scr_wifi,
-    g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_study, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
+    g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_practice, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
     g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty, g_scr_zalo_link;
 
 /* Ma thiet bi: MAC eFuse 12 hex (same stable ID used in pairing QR). */
@@ -44,7 +44,7 @@ void ui_nav_refresh(void);
 /* Bat/tat che do nha phat trien (luu NVS fd/devmode, log "devmode: on/off"). */
 void ui_devmode_set(bool on);
 
-/* scr_quiz.c: nut cung -> mau phim (KEY_GPIO_COLOUR) -> o (COLOUR_CELL theo xoay hien tai). */
+/* scr_practice.c: nut cung -> mau phim (KEY_GPIO_COLOUR) -> o (COLOUR_CELL theo xoay hien tai). */
 int ui_key_colour(int idx);            /* 0 trang, 1 cam, 2 xanh la, 3 do; -1 neu sai */
 int ui_key_cell(int idx);              /* 0 TL, 1 TR, 2 BL, 3 BR; -1 neu sai */
 const char *ui_key_colour_name(int k);
@@ -98,7 +98,7 @@ lv_obj_t *ui_batt_label_create_ex(lv_obj_t *parent, bool always);
  * Xoa noi dung body. Nut kieu chung (primary = nen amber). */
 void ui_pair_gate(lv_obj_t *body);
 
-/* 2.3.6: mau man cai dat truoc khi hoc DUNG CHUNG (Flash card, Quiz, Sap xep cau, Phan loai tu, Dien tu).
+/* 2.3.6: mau man cai dat truoc khi hoc DUNG CHUNG (Flash card, Luyen tap, Sap xep cau, Phan loai tu, Dien tu).
  * ui_setup_begin: dat bo cuc body (cot, khong cuon) + tieu de; tra ve vung cuon chua cac hang lua chon.
  * ui_setup_opt_row: [nhan] [nut 1][nut 2]..., user_data nut = (grp << 4) | i; opts la khoa i18n.
  * ui_setup_start: nut [Bat dau] gon (36 px, ~60% rong, giua) ghim day man. */

@@ -1,4 +1,4 @@
-/* Flash card (synced deck, khong header, nen sang). 23/10: vao man -> CAI DAT truoc phien (cung kieu Hoc tap/scr_quiz):
+/* Flash card (synced deck, khong header, nen sang). 23/10: vao man -> CAI DAT truoc phien (cung kieu Luyen tap/scr_practice):
  *   SETUP: So the (10/20/Tat ca), Thu tu (Theo danh sach/Ngau nhien), Mat truoc (Tu/Nghia), Tu dong phat (Tat/1/2 lan);
  *          cac lua chon trong vung cuon, nut [Bat dau] 46 px ghim day man. Nho trong NVS fd/fc_cfg.
  *   CARD : the hai mat (cham de lat, < Truoc / Sau >, bo dem); thu tu ngau nhien them nut Tron.
@@ -65,7 +65,7 @@ static void cfg_load(void)
         s_rnd = ((v >> 8) & 0xFF) ? 1 : 0;
         s_mfront = ((v >> 16) & 0xFF) ? 1 : 0;
         uint32_t r = (v >> 24) & 0x0F;
-        s_reps = r <= 2 ? (uint8_t)r : 0;
+        s_reps = (r == 1 || r == 2) ? 1 : 0;   /* Bat/Tat: 1 hoac 2 lan cu = Bat (phat 1 lan) */
     }
     nvs_close(h);
 }
@@ -353,7 +353,7 @@ static void show_card(void)
     show_pos(true);
 }
 
-/* ---------- SETUP (cung kieu man cai dat Hoc tap, scr_quiz.c) ---------- */
+/* ---------- SETUP (cung kieu man cai dat Luyen tap, scr_practice.c) ---------- */
 enum { OPT_N, OPT_ORD, OPT_FRONT, OPT_REP };
 static void show_setup(void);
 
@@ -403,11 +403,11 @@ static void show_setup(void)
     static const char *const NS[] = {"10", "20", "ALL"};
     static const char *const ORD[] = {"IN_ORDER", "RANDOM"};
     static const char *const FR[] = {"WORD", "MEANING"};
-    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    static const char *const RP[] = {"OFF", "ON"};
     opt_row(sc, _("CARDS"), OPT_N, NS, 3, s_ncfg);
     opt_row(sc, _("ORDER"), OPT_ORD, ORD, 2, s_rnd);
     opt_row(sc, _("FRONT_SIDE"), OPT_FRONT, FR, 2, s_mfront);
-    opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 3, s_reps);
+    opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 2, s_reps);
 
     ui_setup_start(s_body, start_cb);
 }
@@ -419,7 +419,7 @@ static void build(lv_obj_t *scr)
     s_body = ui_page_create(scr);
     s_pad_hor0 = lv_obj_get_style_pad_left(s_body, LV_PART_MAIN);
     lv_obj_set_style_pad_column(s_body, 6, 0);
-    s_gate = !fd_ota_is_paired();   /* 2.3.0: can ghep (nhu Quiz) */
+    s_gate = !fd_ota_is_paired();   /* 2.3.0: can ghep (nhu Luyen tap) */
     if (s_gate) { ui_pair_gate(s_body); return; }
     cfg_load();
     show_setup();

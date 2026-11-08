@@ -323,6 +323,31 @@ static void qw_create(t9_ctx_t *c)
     c->qwerty = k;
 }
 
+/* Ban QWERTY tinh gon (chi chu a-z, xoa, cach, OK): Tu dien - chi nhap text thuong. Wi-Fi van dung ban day du. */
+static const char *const qw_map_plain[] = {
+    "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
+    "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
+    "z", "x", "c", "v", "b", "n", "m", LV_SYMBOL_BACKSPACE, "\n",
+    " ", LV_SYMBOL_OK, ""
+};
+static const lv_buttonmatrix_ctrl_t qw_ctrl_plain[] = {
+    QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
+    QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
+    QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_CHK | 2,
+    5, QW_CTRL | 2
+};
+
+void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)
+{
+    fd_t9kb_set_layout(kb, FD_T9KB_LAYOUT_QWERTY);
+    t9_ctx_t *c = ctx_of(kb);
+    if (!c || !c->qwerty) return;
+    lv_keyboard_set_map(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER, qw_map_plain, qw_ctrl_plain);
+    lv_keyboard_set_map(c->qwerty, LV_KEYBOARD_MODE_TEXT_UPPER, qw_map_plain, qw_ctrl_plain);
+    lv_keyboard_set_map(c->qwerty, LV_KEYBOARD_MODE_SPECIAL, qw_map_plain, qw_ctrl_plain);
+    lv_keyboard_set_mode(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER);
+}
+
 void fd_t9kb_set_layout(lv_obj_t *kb, fd_t9kb_layout_t layout)
 {
     t9_ctx_t *c = ctx_of(kb);

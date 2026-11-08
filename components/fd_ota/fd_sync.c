@@ -847,7 +847,7 @@ static int order_words(ord_t *o, int cap, bool filt)
 
 static int rnd(int n) { return n > 1 ? (int)(esp_random() % (uint32_t)n) : 0; }
 
-fd_study_err_t fd_sync_build_quiz(fd_study_session_t *s, bool vi_en, int n)
+fd_study_err_t fd_sync_build_practice(fd_study_session_t *s, bool vi_en, int n)
 {
     if (!s) return FD_STUDY_ERR_FORMAT;
     memset(s, 0, sizeof(*s));

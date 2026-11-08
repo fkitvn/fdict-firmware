@@ -199,9 +199,11 @@ static void show_home(void)
     lv_obj_set_style_shadow_width(tg, 0, 0);
     lv_obj_set_style_radius(tg, 8, 0);
     lv_obj_t *tgl = lv_label_create(tg);
+    lv_obj_set_style_text_font(tgl, &lv_font_montserrat_14, 0);   /* LV_SYMBOL_* chi co trong Montserrat (Noto -> o vuong) */
     lv_obj_center(tgl);
     s_kb = fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
-    if (s_kb) fd_t9kb_set_layout(s_kb, FD_T9KB_LAYOUT_QWERTY);
+    if (s_kb) fd_t9kb_set_qwerty_plain(s_kb);   /* chi chu thuong + xoa/cach/OK */
+    lv_textarea_set_accepted_chars(s_ta, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ");   /* chi chu + cach */
     lv_obj_add_event_cb(tg, kb_toggle_cb, LV_EVENT_CLICKED, tgl);
     lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, tgl);
     kb_set_open(tgl, true);

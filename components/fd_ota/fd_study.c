@@ -139,7 +139,7 @@ static fd_study_err_t fetch_one(const char *dir, bool local, fd_study_session_t 
     bool vi = !strcmp(dir, "vi-en");
     *http = 0;
     *from_cache = false;
-    if (fd_sync_build_quiz(out, vi, 10) == FD_STUDY_ERR_NONE) return FD_STUDY_ERR_NONE;
+    if (fd_sync_build_practice(out, vi, 10) == FD_STUDY_ERR_NONE) return FD_STUDY_ERR_NONE;
     return FD_STUDY_ERR_NO_DECK;
 }
 

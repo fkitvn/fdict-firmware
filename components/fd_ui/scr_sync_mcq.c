@@ -31,7 +31,7 @@ static void reps_load(void)
     nvs_handle_t h;
     uint8_t v = 0;
     if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) { nvs_get_u8(h, rep_key(), &v); nvs_close(h); }
-    s_reps = v <= 2 ? v : 0;
+    s_reps = (v == 1 || v == 2) ? 1 : 0;   /* Bat/Tat: gia tri cu 1/2 = Bat */
 }
 static void reps_save(void)
 {
@@ -158,9 +158,9 @@ static void show_setup(void)
     body_reset();
     lv_obj_t *sc = ui_setup_begin(s_body, _(title_key()));   /* 2.3.6: mau cai dat chung (nhu Quiz) */
     static const char *const NS[] = {"10", "20", "ENDLESS"};
-    static const char *const RP[] = {"OFF", "REPEAT_1", "REPEAT_2"};
+    static const char *const RP[] = {"OFF", "ON"};
     ui_setup_opt_row(sc, _("QUESTIONS"), NS, 3, s_ncfg, opt_cb, OPT_N, 0);
-    ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 3, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
+    ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
     ui_setup_start(s_body, start_cb);
 }
 

@@ -14,7 +14,7 @@ typedef enum {
     FD_SCR_ROTATION,    /* Cai dat > Huong xoay man hinh */
     FD_SCR_BRIGHTNESS,  /* Cai dat > Do sang man hinh */
     FD_SCR_FLASHCARD,   /* Flash cards from synced decks */
-    FD_SCR_STUDY,       /* Offline/cloud study and statistics */
+    FD_SCR_PRACTICE,    /* Luyen tap (Practice, truoc la Quiz) */
     FD_SCR_SYNC,        /* Offline/cloud study and statistics */
     FD_SCR_STATS,       /* Offline/cloud study and statistics */
     FD_SCR_VOLUME,      /* Cai dat > Am luong */
