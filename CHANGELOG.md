@@ -3,6 +3,11 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.1.5] - 2026-11-08
+
+- Từ điển: bàn phím QWERTY luôn mở khi vào; có nút thu gọn để xem lịch sử tra, chạm ô nhập để mở lại.
+- Lật từ: lật hết các từ trong một lượt thì quay về màn chuẩn bị trước khi học.
+
 ## [4.1.4] - 2026-11-08
 
 - Bảng kéo xuống: hàng thông tin "N Từ vựng" và dung lượng "xx / yy MB (zz%)".

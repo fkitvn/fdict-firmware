@@ -17,6 +17,7 @@ static bool s_gate;
 static char s_word[FD_DICTNET_WORD_LEN];
 
 static void show_home(void);
+static lv_obj_t *s_kb;   /* 4.1.5: ban phim (an/hien) */
 static void show_result_ok(const fd_dictnet_status_t *st);
 static void show_error(const fd_dictnet_status_t *st);
 
@@ -27,6 +28,7 @@ static void stop_poll(void)
 
 static void body_reset(void)
 {
+    s_kb = NULL;
     stop_poll();
     s_ta = NULL;
     if (s_body) lv_obj_clean(s_body);
@@ -153,6 +155,18 @@ static void show_result_ok(const fd_dictnet_status_t *st)
     lv_obj_add_event_cb(b, back_home_cb, LV_EVENT_CLICKED, NULL);
 }
 
+static lv_obj_t *s_kb;
+static void kb_set_open(lv_obj_t *icon, bool open)
+{
+    if (s_kb) lv_obj_set_hidden(s_kb, !open);
+    if (icon) lv_label_set_text(icon, open ? LV_SYMBOL_DOWN : LV_SYMBOL_KEYBOARD);
+}
+static void kb_toggle_cb(lv_event_t *e)
+{
+    kb_set_open((lv_obj_t *)lv_event_get_user_data(e), s_kb && lv_obj_is_hidden(s_kb));
+}
+static void kb_open_cb(lv_event_t *e) { kb_set_open((lv_obj_t *)lv_event_get_user_data(e), true); }
+
 static void hist_cb(lv_event_t *e)
 {
     const char *w = (const char *)lv_event_get_user_data(e);
@@ -179,7 +193,18 @@ static void show_home(void)
     lv_textarea_set_placeholder_text(s_ta, "hello");
     lv_obj_set_style_pad_all(s_ta, 8, 0);
 
-    fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
+    /* 4.1.5: mac dinh ban phim QWERTY luon mo; nut thu gon de hien lich su tra, cham o nhap -> mo lai */
+    lv_obj_t *tg = lv_button_create(row);
+    lv_obj_set_size(tg, 40, 40);
+    lv_obj_set_style_shadow_width(tg, 0, 0);
+    lv_obj_set_style_radius(tg, 8, 0);
+    lv_obj_t *tgl = lv_label_create(tg);
+    lv_obj_center(tgl);
+    s_kb = fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
+    if (s_kb) fd_t9kb_set_layout(s_kb, FD_T9KB_LAYOUT_QWERTY);
+    lv_obj_add_event_cb(tg, kb_toggle_cb, LV_EVENT_CLICKED, tgl);
+    lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, tgl);
+    kb_set_open(tgl, true);
 
     /* 2.3.6 FIX reboot: truoc day hist[30] (30 x 280 B = 8.4 KB) nam tren stack task LVGL (8 KB) -> tran stack -> reset.
      * Bo dem tinh trong PSRAM: khong ton stack hoac RAM noi. */

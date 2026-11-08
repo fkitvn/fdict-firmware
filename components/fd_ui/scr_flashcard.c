@@ -169,9 +169,12 @@ static void show_pos(bool say)
     note_seen();
 }
 
+static void back_setup_async(void *arg);
+/* 4.1.5: het 1 luot (qua the cuoi) -> ve man SETUP truoc khi hoc */
 static void go_next(void)
 {
-    s_pos = (s_pos + 1) % s_n;
+    if (s_pos + 1 >= s_n) { lv_async_call(back_setup_async, NULL); return; }
+    s_pos = s_pos + 1;
     show_pos(true);
 }
 
@@ -186,6 +189,7 @@ static void flip_cb(lv_event_t *e)
 static void step_cb(lv_event_t *e)
 {
     int d = (int)(intptr_t)lv_event_get_user_data(e);
+    if (d > 0 && s_pos + 1 >= s_n) { lv_async_call(back_setup_async, NULL); return; }
     s_pos = (s_pos + d + s_n) % s_n;
     show_pos(true);
 }
