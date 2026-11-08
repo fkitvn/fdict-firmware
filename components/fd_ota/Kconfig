@@ -19,11 +19,11 @@ menu "FDict One OTA"
 
     config FD_PAIR_LAB_WEB_URL
         string "LAB: trang ghep tren web (QR, them ?id=&hw=&fw=&b=)"
-        default "https://fdict-dev.joinnow.vn/pairing-device"
+        default "https://fdict-dev.joinnow.vn/device-login"
 
     config FD_PAIR_WEB_URL
         string "Production: trang ghep tren web (QR, them ?code=<ma>)"
-        default "https://your-server.example/pairing-device"
+        default "https://your-server.example/device-login"
 
     config FD_OTA_HW
         string "Ma phan cung (hw)"

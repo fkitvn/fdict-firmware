@@ -215,7 +215,7 @@ Workflow đọc `vars.DICT_API_URL`, nếu trống thì đọc `secrets.DICT_API
 
 Lỗi thường gặp: `DICT_API_URL rong` nghĩa là chưa đặt, hoặc đặt ở environment khác `production`.
 
-Địa chỉ máy chủ **không nằm trong repo**. Khi build, script sinh overlay tạm `build-ci/sdkconfig.ci` từ `DICT_API_URL` để đặt các option `CONFIG_FD_OTA_BASE_URL`, `CONFIG_FD_PAIR_WEB_URL` (`/pairing-device`) và `CONFIG_FD_API_BASE_URL` (`/api/device/v1`). Các cấu hình còn lại lấy từ `sdkconfig.defaults` và `sdkconfig.defaults.esp32s3`. Token và URL không bao giờ được in ra log.
+Địa chỉ máy chủ **không nằm trong repo**. Khi build, script sinh overlay tạm `build-ci/sdkconfig.ci` từ `DICT_API_URL` để đặt các option `CONFIG_FD_OTA_BASE_URL`, `CONFIG_FD_PAIR_WEB_URL` (`/device-login`) và `CONFIG_FD_API_BASE_URL` (`/api/device/v1`). Các cấu hình còn lại lấy từ `sdkconfig.defaults` và `sdkconfig.defaults.esp32s3`. Token và URL không bao giờ được in ra log.
 
 ### Cắt một bản mới
 

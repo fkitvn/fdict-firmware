@@ -119,7 +119,7 @@ vi:
   PAIR_GET_CODE: Lấy mã
   PAIR_GET_NEW_CODE: Lấy mã mới
   PAIR_HINT: Đăng nhập để tiếp tục sử dụng
-  PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại để đăng nhập · %d:%02d'
+  PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại để đăng nhập'
   PAIR_STEP_ID: 'Đăng nhập'
   POLICY_QR: Chính sách đổi trả
   PAIR_TO_STUDY: Bạn chưa đăng nhập

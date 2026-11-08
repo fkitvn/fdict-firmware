@@ -50,11 +50,17 @@ static void build(lv_obj_t *scr)
     lv_obj_t *col = ui_page_create(scr);
     lv_obj_set_style_bg_color(scr, lv_color_white(), 0);
     lv_obj_set_style_pad_hor(col, 12, 0);
-    lv_obj_set_style_pad_row(col, 4, 0);
+    lv_obj_set_style_pad_ver(col, 4, 0);
+    lv_obj_set_style_pad_row(col, 2, 0);
     lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_scrollable(col, false);
     lv_obj_t *title = label(col, _("WARRANTY_INFO"));
     lv_obj_set_style_text_font(title, &fd_font_noto_18, 0);
+    /* Same immutable eFuse ID as the pairing QR; independent of API state. */
+    char device_id[16];
+    ui_device_ident(device_id, sizeof(device_id));
+    lv_obj_t *device = label(col, "");
+    lv_label_set_text_fmt(device, "%s: %s", _("DEVICE_ID"), device_id);
     s_status = label(col, _("LOADING"));
     s_hint = label(col, _("WARRANTY_ZALO_HINT"));
     s_qr_wrap = lv_obj_create(col);

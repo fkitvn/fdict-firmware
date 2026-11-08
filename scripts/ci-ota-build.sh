@@ -79,7 +79,7 @@ if [[ -n "${DICT_BASE:-}" ]]; then
   [[ "$base" =~ ^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]] || die "DICT_BASE khong hop le"
   {
     echo "CONFIG_FD_OTA_BASE_URL=\"$base\""
-    echo "CONFIG_FD_PAIR_WEB_URL=\"$base/pairing-device\""
+    echo "CONFIG_FD_PAIR_WEB_URL=\"$base/device-login\""
     echo "CONFIG_FD_API_BASE_URL=\"$base/api/device/v1\""
   } > "$OVERLAY"
   echo "Overlay URL: CONFIG_FD_OTA_BASE_URL, CONFIG_FD_PAIR_WEB_URL, CONFIG_FD_API_BASE_URL (tu DICT_BASE)"

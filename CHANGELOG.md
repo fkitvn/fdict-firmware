@@ -3,6 +3,12 @@
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
 Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
+## [4.0.1] - 2026-11-08
+
+- Đăng nhập: hướng dẫn, QR, đếm ngược rồi đến hai nút thao tác.
+- Hiện Mã thiết bị trong Thông tin bảo hành ở mọi trạng thái.
+- QR đăng nhập dùng /device-login, giữ nguyên thông tin thiết bị.
+
 ## [4.0.0] - 2026-11-08
 
 - Hai slot OTA 3 MiB, LittleFS 8,06 MiB; hiển thị dung lượng LittleFS trong Thông tin phiên bản.

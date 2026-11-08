@@ -25,7 +25,7 @@ extern const ui_screen_t g_scr_home, g_scr_settings, g_scr_wifi,
     g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_study, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
     g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty;
 
-/* Ma thiet bi: <MAC 12 hex>-<build_id> (scr_pair.c) */
+/* Ma thiet bi: MAC eFuse 12 hex (same stable ID used in pairing QR). */
 void ui_device_ident(char *out, size_t n);
 /* Avatar tron chu cai dau cua ten (scr_pair.c); bubble su kien len cha. */
 lv_obj_t *ui_avatar_initials(lv_obj_t *parent, const char *name, int px, uint32_t bg);

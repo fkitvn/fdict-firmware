@@ -119,7 +119,7 @@ en:
   PAIR_GET_CODE: Get code
   PAIR_GET_NEW_CODE: Get new code
   PAIR_HINT: Sign in to continue
-  PAIR_SCAN_WITH_PHONE: 'Scan with your phone to sign in · %d:%02d'
+  PAIR_SCAN_WITH_PHONE: 'Scan with your phone to sign in'
   PAIR_STEP_ID: Sign in
   POLICY_QR: Return policy
   PAIR_TO_STUDY: You are not signed in

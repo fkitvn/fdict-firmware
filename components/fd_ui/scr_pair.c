@@ -159,7 +159,7 @@ static void show(void)
         s_nowifi = false;
         if (s_want && !busy) { s_want = false; fd_ota_pair_start(); busy = true; p.state = FD_PAIR_REQUESTING; }
     }
-    char b[128];   /* UTF-8 login instruction + countdown; never truncate at 48 bytes */
+    char b[128];   /* status or standalone countdown; instruction is above QR */
     uint32_t col = 0x6B7280;
     const char *help = "", *bt = _("PAIR_GET_NEW_CODE");
     if (s_nowifi) {
@@ -170,7 +170,8 @@ static void show(void)
     } else switch (p.state) {
     case FD_PAIR_REQUESTING: snprintf(b, sizeof(b), _("PAIR_GETTING_CODE")); break;
     case FD_PAIR_CODE:
-        snprintf(b, sizeof(b), _("PAIR_SCAN_WITH_PHONE"), p.expires_s / 60, p.expires_s % 60);   /* wraps instruction + countdown within the content width */
+        help = _("PAIR_SCAN_WITH_PHONE");
+        snprintf(b, sizeof(b), "%d:%02d", p.expires_s / 60, p.expires_s % 60);
         break;
     case FD_PAIR_ERROR:
         col = 0xDC2626;
@@ -327,9 +328,9 @@ static void build(lv_obj_t *scr)
     lv_obj_t *col = ui_page_create(scr);
     lv_obj_set_style_bg_color(scr, lv_color_white(), 0);
     lv_obj_set_style_text_color(scr, lv_color_hex(0x111827), 0);
-    /* Wrapped UTF-8 login text uses the full content width (296 px in 320px landscape).
-     * Short landscape: QR 100 + 26 quiet/border + up to 2 text lines (~40) + 44 buttons
-     * + 12 row gaps + 8 padding = 230 px. Portrait keeps the larger 135px QR. */
+    /* QR session order: instruction, QR, standalone countdown, buttons.
+     * Landscape: 20 + 126 + 20 + 44 + 16 gaps + 8 padding = 234 px.
+     * Portrait: up to 40 + 161 + 20 + 44 + 16 gaps + 12 padding = 293 px. */
     bool low = lv_display_get_vertical_resolution(lv_obj_get_display(scr)) < 300;
     lv_obj_set_style_pad_hor(col, 12, 0);
     lv_obj_set_style_pad_ver(col, low ? 4 : 6, 0);
@@ -345,7 +346,8 @@ static void build(lv_obj_t *scr)
     s_hello = center_lbl(col, &fd_font_noto_18, 0x111827);
     s_sub = center_lbl(col, NULL, 0x16A34A);
     lv_label_set_text(s_sub, _("PAIRED_WITH_ACCOUNT"));
-    /* chua ghep */
+    /* chua ghep: instruction -> QR -> countdown -> action buttons */
+    s_help = center_lbl(col, &fd_font_noto_14, 0x111827);
     s_qr_wrap = lv_obj_create(col);   /* nen trang + vien = quiet zone */
     lv_obj_remove_style_all(s_qr_wrap);
     lv_obj_set_size(s_qr_wrap, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -362,12 +364,12 @@ static void build(lv_obj_t *scr)
     lv_qrcode_set_light_color(s_qr, lv_color_white());
     lv_obj_set_hidden(s_qr_wrap, true);
     s_qr_sess = 0;
-    s_help = center_lbl(col, NULL, 0x111827);
-    s_msg = center_lbl(col, NULL, 0x6B7280);
+
+    s_msg = center_lbl(col, &fd_font_noto_14, 0x6B7280);
     /* Hang nut duoi cung (cao 44, bang nhau): [Tro lai (xam, trai)] [nut chinh / Huy ghep doi (do, phai)] */
     lv_obj_t *sp = lv_obj_create(col);   /* dem co gian: day hang nut xuong day man */
     lv_obj_remove_style_all(sp);
-    lv_obj_set_width(sp, 1);
+    lv_obj_set_size(sp, 1, 0);   /* no intrinsic height; only consume remaining room */
     lv_obj_set_flex_grow(sp, 1);
     lv_obj_t *row = lv_obj_create(col);
     lv_obj_remove_style_all(row);
