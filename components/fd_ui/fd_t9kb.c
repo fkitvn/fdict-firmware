@@ -9,6 +9,7 @@
  */
 #include "fd_t9kb.h"
 #include "ui_theme.h"
+#include "ui_priv.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -294,6 +295,7 @@ static void kb_delete_cb(lv_event_t *e)
 
 /* ---------- QWERTY ---------- */
 /* Thay lv_keyboard_def_event_cb: chan "T9" va OK, con lai giao cho handler mac dinh. */
+static const char *const qw_map_plain[];
 static void qw_event_cb(lv_event_t *e)
 {
     t9_ctx_t *c = (t9_ctx_t *)lv_event_get_user_data(e);
@@ -304,6 +306,8 @@ static void qw_event_cb(lv_event_t *e)
     if (!txt) return;
     if (strcmp(txt, QW_T9) == 0) { fd_t9kb_set_layout(c->kb, FD_T9KB_LAYOUT_T9); return; }
     if (strcmp(txt, LV_SYMBOL_OK) == 0) { fd_t9kb_done(c->kb); return; }
+    /* 4.1.8: phim Quay lai tren ban gon (vuot lui bi ban phim chan) */
+    if (lv_keyboard_get_map_array(k) == qw_map_plain && strcmp(txt, LV_SYMBOL_LEFT) == 0) { ui_nav_back(); return; }
     lv_keyboard_def_event_cb(e);
 }
 
@@ -328,13 +332,13 @@ static const char *const qw_map_plain[] = {
     "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
     "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
     "z", "x", "c", "v", "b", "n", "m", LV_SYMBOL_BACKSPACE, "\n",
-    " ", LV_SYMBOL_OK, ""
+    LV_SYMBOL_LEFT, " ", LV_SYMBOL_OK, ""
 };
 static const lv_buttonmatrix_ctrl_t qw_ctrl_plain[] = {
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_CHK | 2,
-    3, QW_CTRL | 4   /* 4.1.7: phim cach gon, OK (tra) rong hon */
+    QW_CTRL | 2, 3, QW_CTRL | 4   /* 4.1.8: Quay lai | cach | OK */
 };
 
 void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)

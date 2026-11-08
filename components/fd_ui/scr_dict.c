@@ -7,6 +7,8 @@
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "fd_t9kb.h"
+#include "fd_telex.h"
+#include <stdint.h>
 #include "lvgl.h"
 #include <ctype.h>
 #include <string.h>
@@ -15,6 +17,8 @@ static lv_obj_t *s_body, *s_ta;
 static lv_timer_t *s_poll;
 static bool s_gate;
 static char s_word[FD_DICTNET_WORD_LEN];
+static uint8_t s_dir = FD_DICTNET_DIR_EN_VI;   /* 4.1.8: Anh-Viet / Viet-Anh */
+static bool s_telex_busy;
 
 static void show_home(void);
 static lv_obj_t *s_kb;   /* 4.1.5: ban phim (an/hien) */
@@ -66,7 +70,7 @@ static void back_home_cb(lv_event_t *e)
 
 static void poll_cb(lv_timer_t *t);
 
-static void begin_lookup(const char *word)
+static void begin_lookup_dir(const char *word, uint8_t dir)
 {
     char buf[FD_DICTNET_WORD_LEN];
     strlcpy(buf, word ? word : "", sizeof(buf));
@@ -80,7 +84,7 @@ static void begin_lookup(const char *word)
         show_error(&st);
         return;
     }
-    if (!fd_dictnet_lookup(s_word)) {
+    if (!fd_dictnet_lookup_dir(s_word, dir)) {
         fd_dictnet_status_t st;
         fd_dictnet_get(&st);
         if (st.state == FD_DICTNET_ERROR) show_error(&st);
@@ -91,6 +95,8 @@ static void begin_lookup(const char *word)
     label(s_body, _("LOADING"), &fd_font_noto_18, FD_COLOR_TEXT);
     s_poll = lv_timer_create(poll_cb, 200, NULL);
 }
+
+static void begin_lookup(const char *word) { begin_lookup_dir(word, s_dir); }
 
 static void poll_cb(lv_timer_t *t)
 {
@@ -167,10 +173,57 @@ static void kb_toggle_cb(lv_event_t *e)
 }
 static void kb_open_cb(lv_event_t *e) { kb_set_open((lv_obj_t *)lv_event_get_user_data(e), true); }
 
+static char s_hwords[FD_DICTNET_HIST_MAX][FD_DICTNET_WORD_LEN];
+static uint8_t s_hdirs[FD_DICTNET_HIST_MAX];
 static void hist_cb(lv_event_t *e)
 {
-    const char *w = (const char *)lv_event_get_user_data(e);
-    begin_lookup(w);
+    int i = (int)(intptr_t)lv_event_get_user_data(e);
+    if (i < 0 || i >= FD_DICTNET_HIST_MAX) return;
+    begin_lookup_dir(s_hwords[i], s_hdirs[i]);   /* tra lai theo dung chieu da luu */
+}
+
+/* Telex (chi o che do Viet - Anh): bien doi tu cuoi khi go 1 chu ASCII. Gia dinh con tro o cuoi (o nhap 1 dong). */
+static void ta_insert_cb(lv_event_t *e)
+{
+    if (s_dir != FD_DICTNET_DIR_VI_EN || s_telex_busy) return;
+    lv_obj_t *ta = lv_event_get_target(e);
+    const char *in = (const char *)lv_event_get_param(e);
+    if (!in || !in[0] || in[1]) return;
+    char key = in[0];
+    if (!((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z'))) return;
+    const char *cur = lv_textarea_get_text(ta);
+    int32_t cps = 0;
+    for (const char *p = cur; *p; p++) if (((unsigned char)*p & 0xC0) != 0x80) cps++;
+    if (lv_textarea_get_cursor_pos(ta) != cps) return;
+    const char *sp = strrchr(cur, ' ');
+    size_t pre = sp ? (size_t)(sp - cur + 1) : 0;
+    uint32_t w[FD_DICTNET_WORD_LEN];
+    int n = fd_telex_utf8_decode(cur + pre, w, FD_DICTNET_WORD_LEN - 1);
+    int m = fd_telex_feed(w, n, FD_DICTNET_WORD_LEN - 1, key);
+    if (m < 0) return;
+    char out[FD_DICTNET_WORD_LEN * 3];
+    if (pre >= sizeof(out)) return;
+    memcpy(out, cur, pre);
+    fd_telex_utf8_encode(w, m, out + pre, (int)(sizeof(out) - pre));
+    if (strlen(out) >= FD_DICTNET_WORD_LEN) return;   /* vuot bo dem tu -> go binh thuong */
+    s_telex_busy = true;
+    lv_textarea_set_text(ta, out);
+    s_telex_busy = false;
+    lv_textarea_set_insert_replace(ta, "");   /* sau set_text: huy ky tu goc */
+}
+
+static void dir_apply(lv_obj_t *lbl)
+{
+    if (lbl) lv_label_set_text(lbl, s_dir == FD_DICTNET_DIR_VI_EN ? "Việt - Anh" : "Anh - Việt");
+    if (!s_ta) return;
+    /* Viet - Anh: bo loc ky tu (cho phep chu co dau tu Telex); Anh - Viet: chi a-z + cach */
+    lv_textarea_set_accepted_chars(s_ta, s_dir == FD_DICTNET_DIR_VI_EN ? NULL : "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ");
+}
+static void dir_cb(lv_event_t *e)
+{
+    s_dir = s_dir == FD_DICTNET_DIR_VI_EN ? FD_DICTNET_DIR_EN_VI : FD_DICTNET_DIR_VI_EN;
+    if (s_ta) lv_textarea_set_text(s_ta, "");
+    dir_apply((lv_obj_t *)lv_event_get_user_data(e));
 }
 
 static void show_home(void)
@@ -179,7 +232,24 @@ static void show_home(void)
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 6, 0);
-    label(s_body, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    /* 4.1.8: tieu de + nut chieu tra (Anh - Viet / Viet - Anh) tren cung hang */
+    lv_obj_t *hdr = lv_obj_create(s_body);
+    lv_obj_remove_style_all(hdr);
+    lv_obj_set_size(hdr, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(hdr, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(hdr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    label(hdr, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_t *db = lv_button_create(hdr);
+    lv_obj_set_size(db, LV_SIZE_CONTENT, 30);
+    lv_obj_set_style_pad_hor(db, 10, 0);
+    lv_obj_set_style_radius(db, 8, 0);
+    lv_obj_set_style_shadow_width(db, 0, 0);
+    lv_obj_set_style_bg_color(db, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_t *dl = lv_label_create(db);
+    lv_obj_set_style_text_font(dl, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(dl, lv_color_white(), 0);
+    lv_obj_center(dl);
+    lv_obj_add_event_cb(db, dir_cb, LV_EVENT_CLICKED, dl);
 
     lv_obj_t *row = lv_obj_create(s_body);
     lv_obj_remove_style_all(row);
@@ -204,7 +274,8 @@ static void show_home(void)
     lv_obj_center(tgl);
     s_kb = fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
     if (s_kb) fd_t9kb_set_qwerty_plain(s_kb);   /* chi chu thuong + xoa/cach/OK */
-    lv_textarea_set_accepted_chars(s_ta, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ");   /* chi chu + cach */
+    lv_obj_add_event_cb(s_ta, ta_insert_cb, LV_EVENT_INSERT, NULL);
+    dir_apply(dl);
     lv_obj_add_event_cb(tg, kb_toggle_cb, LV_EVENT_CLICKED, tgl);
     lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, tgl);
     kb_set_open(tgl, true);
@@ -230,7 +301,9 @@ static void show_home(void)
             lv_obj_set_style_shadow_width(b, 0, 0);
             lv_obj_set_style_radius(b, 8, 0);
             static char line[FD_DICTNET_WORD_LEN + FD_DICTNET_MEAN_LEN + 8];
-            snprintf(line, sizeof(line), "%.*s - %.*s", FD_DICTNET_WORD_LEN - 1, hist[i].en, FD_DICTNET_MEAN_LEN - 1, hist[i].vi);
+            bool ve = hist[i].dir == FD_DICTNET_DIR_VI_EN;
+            if (ve) snprintf(line, sizeof(line), "%.*s - %.*s", FD_DICTNET_MEAN_LEN - 1, hist[i].vi, FD_DICTNET_WORD_LEN - 1, hist[i].en);
+            else snprintf(line, sizeof(line), "%.*s - %.*s", FD_DICTNET_WORD_LEN - 1, hist[i].en, FD_DICTNET_MEAN_LEN - 1, hist[i].vi);
             lv_obj_t *l = lv_label_create(b);
             lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
             lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
@@ -238,9 +311,9 @@ static void show_home(void)
             lv_label_set_text(l, line);
             lv_obj_center(l);
             /* user_data must outlive; copy into static hist buffer via strdup-like static store */
-            static char words[FD_DICTNET_HIST_MAX][FD_DICTNET_WORD_LEN];
-            strlcpy(words[i], hist[i].en, sizeof(words[i]));
-            lv_obj_add_event_cb(b, hist_cb, LV_EVENT_CLICKED, words[i]);
+            strlcpy(s_hwords[i], ve ? hist[i].vi : hist[i].en, sizeof(s_hwords[i]));
+            s_hdirs[i] = hist[i].dir;
+            lv_obj_add_event_cb(b, hist_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         }
     }
 }

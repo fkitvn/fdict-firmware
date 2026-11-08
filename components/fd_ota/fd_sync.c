@@ -239,6 +239,7 @@ static bool load_store_locked(void)
             int k = atoi(fl[10]);
             if (k < 0) k = 0;
             if (k > (n - 11) / 2) k = (n - 11) / 2;
+            if (fl[9][0]) k++;   /* 4.1.8: cau vi du goc (ex) cung la 1 cau dung duoc */
             w->nsen = (uint8_t)k;
             w->off = (uint32_t)off;
             if (!w->en[0] || !w->vi[0] || !is_wid(w->id)) continue;
@@ -581,7 +582,7 @@ static int pull_all(char *rx, char *err, size_t errn)
                 }
                 fputc('\n', f);
                 nw++;
-                ns += k;
+                ns += k + (js(w, "ex")[0] ? 1 : 0);
             }
             const cJSON *nx = cJSON_GetObjectItemCaseSensitive(r, "next_offset");
             int next = cJSON_IsNumber(nx) ? nx->valueint : -1;
@@ -992,6 +993,21 @@ int fd_sync_build_cards(fd_fc_card_t *out, int cap)
     return m;
 }
 
+/* 4.1.8: danh sach cau cua 1 dong W: s[] (en, vi) + ex (vi du goc, khong ban dich) neu khong trung. */
+static int line_sents(char **fl, int nf, const char **en, const char **vi, int cap)
+{
+    int k = nf >= 11 ? atoi(fl[10]) : 0;
+    if (k < 0 || 11 + 2 * k > nf) k = 0;
+    int n = 0;
+    for (int j = 0; j < k && n < cap; j++) { en[n] = fl[11 + 2 * j]; vi[n] = fl[12 + 2 * j]; n++; }
+    if (nf >= 10 && fl[9][0] && n < cap) {
+        bool dup = false;
+        for (int j = 0; j < n; j++) if (!strcasecmp(en[j], fl[9])) dup = true;
+        if (!dup) { en[n] = fl[9]; vi[n] = ""; n++; }
+    }
+    return n;
+}
+
 /* Tach cau thanh the: 3..FD_SEN_TOK the, moi the < FD_SEN_TOK_LEN; dau cau cuoi .?! rieng. */
 static bool make_ex(const char *en, const char *vi, fd_sen_ex_t *e)
 {
@@ -1036,12 +1052,13 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
         if (L && line[L - 1] == '\n') line[--L] = 0;
         char *fl[32];
         int n = split_tabs(line, fl, 32);
-        int k = n >= 11 ? atoi(fl[10]) : 0;
-        if (k <= 0 || 11 + 2 * k > n) continue;
+        const char *sen[9], *svi[9];
+        int k = line_sents(fl, n, sen, svi, 9);
+        if (k <= 0) continue;
         int pick = rnd(k);
         for (int t = 0; t < k; t++) {
             int j = (pick + t) % k;
-            if (make_ex(fl[11 + 2 * j], fl[12 + 2 * j], &out[got])) {
+            if (make_ex(sen[j], svi[j], &out[got])) {
                 snprintf(out[got].id, sizeof(out[got].id), "l%s%d", w->id, j);
                 if (wid) strlcpy(wid[got], w->id, FD_SYNC_WID_LEN);
                 if (!out[got].hint[0]) ucpy(out[got].hint, sizeof(out[got].hint), w->vi);
@@ -1206,15 +1223,16 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
         if (L && line[L - 1] == '\n') line[--L] = 0;
         char *fl[32];
         int nf = split_tabs(line, fl, 32);
-        int k = nf >= 11 ? atoi(fl[10]) : 0;
-        if (k <= 0 || 11 + 2 * k > nf) continue;
+        const char *sens[9], *svi[9];
+        int k = line_sents(fl, nf, sens, svi, 9);
+        if (k <= 0) continue;
         int pick = rnd(k);
         bool ok = false;
         fd_study_q_t *d = &s->q[s->n];
         memset(d, 0, sizeof(*d));
         for (int t = 0; t < k; t++) {
             int j = (pick + t) % k;
-            const char *sen = fl[11 + 2 * j];
+            const char *sen = sens[j];
             if (cloze_blank(sen, w->en, d->prompt, sizeof(d->prompt))) { ok = true; break; }
         }
         if (!ok) continue;

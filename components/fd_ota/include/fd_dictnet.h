@@ -15,7 +15,11 @@ typedef struct {
     char vi[FD_DICTNET_MEAN_LEN];
     char ipa[FD_DICTNET_IPA_LEN];
     char pos[FD_DICTNET_POS_LEN];
+    uint8_t dir;         /* FD_DICTNET_DIR_*: chieu tra luc tao muc nay */
 } fd_dictnet_entry_t;
+
+#define FD_DICTNET_DIR_EN_VI 0
+#define FD_DICTNET_DIR_VI_EN 1
 
 typedef enum {
     FD_DICTNET_IDLE = 0,
@@ -49,6 +53,8 @@ typedef struct {
 bool fd_dictnet_init(void);   /* false: clean failure, safe to retry */
 /* Tra cuu + (mac dinh) auto-add. false = dang ban. */
 bool fd_dictnet_lookup(const char *word);
+/* dir = FD_DICTNET_DIR_*; VI_EN: word la tieng Viet, ket qua en = tu tieng Anh. */
+bool fd_dictnet_lookup_dir(const char *word, uint8_t dir);
 void fd_dictnet_get(fd_dictnet_status_t *out);
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap);
 /* Xoa lich su tra (RAM + /data/dict_hist.json/.tmp). Goi khi dang xuat / khoi phuc cai dat goc. */

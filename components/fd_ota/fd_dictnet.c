@@ -115,6 +115,7 @@ static fd_dictnet_err_t hist_load(void)
         ucpy(e->vi, sizeof(e->vi), vi ? vi : "");
         ucpy(e->ipa, sizeof(e->ipa), jstr(it, "ipa"));
         ucpy(e->pos, sizeof(e->pos), jstr(it, "pos"));
+        e->dir = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(it, "d")) ? FD_DICTNET_DIR_VI_EN : FD_DICTNET_DIR_EN_VI;
     }
     cJSON_Delete(r);
     return FD_DICTNET_ERR_NONE;
@@ -143,7 +144,8 @@ static cJSON *entry_json(const fd_dictnet_entry_t *e)
     if (!cJSON_AddStringToObject(o, "en", e->en) ||
         !cJSON_AddStringToObject(o, "vi", e->vi) ||
         !cJSON_AddStringToObject(o, "ipa", e->ipa) ||
-        !cJSON_AddStringToObject(o, "pos", e->pos)) {
+        !cJSON_AddStringToObject(o, "pos", e->pos) ||
+        (e->dir == FD_DICTNET_DIR_VI_EN && !cJSON_AddTrueToObject(o, "d"))) {
         cJSON_Delete(o);
         return NULL;
     }
@@ -331,7 +333,9 @@ static void flush_queue(void)
     free(line);
     free(keep);
 }
-static void do_lookup(const char *word)
+static uint8_t s_dir; /* chieu cua lookup dang xep hang (guarded by lock) */
+
+static void do_lookup(const char *word, uint8_t dir)
 {
     lock();
     memset(&s_st, 0, sizeof(s_st));
@@ -350,7 +354,8 @@ static void do_lookup(const char *word)
     cJSON *b = cJSON_CreateObject();
     int code = -3;
     if (b) {
-        if (cJSON_AddStringToObject(b, "q", word))
+        if (cJSON_AddStringToObject(b, "q", word) &&
+            (dir != FD_DICTNET_DIR_VI_EN || cJSON_AddStringToObject(b, "dir", "vi-en")))
             code = post_device("/api/study/dict/lookup", b, rx, 4096);
         cJSON_Delete(b);
     }
@@ -371,6 +376,7 @@ static void do_lookup(const char *word)
 
     bool added = false, queued = false;
     if (!err) {
+        e.dir = dir;
         fd_dictnet_err_t persist_err = hist_push(&e);
         lock(); s_st.state = FD_DICTNET_ADD; unlock();
         added = do_add(&e);
@@ -407,9 +413,10 @@ static void task(void *arg)
         if (cmd == CMD_FLUSH) flush_queue();
         else if (cmd == CMD_LOOKUP) {
             char word[FD_DICTNET_WORD_LEN];
-            lock(); ucpy(word, sizeof(word), s_st.result.en); unlock();
+            uint8_t dir;
+            lock(); ucpy(word, sizeof(word), s_st.result.en); dir = s_dir; unlock();
             /* word stashed in result.en before queueing */
-            do_lookup(word);
+            do_lookup(word, dir);
         }
     }
 }
@@ -455,6 +462,11 @@ failed:
 
 bool fd_dictnet_lookup(const char *word)
 {
+    return fd_dictnet_lookup_dir(word, FD_DICTNET_DIR_EN_VI);
+}
+
+bool fd_dictnet_lookup_dir(const char *word, uint8_t dir)
+{
     if (!word || !word[0]) return false;
     if (!fd_dictnet_init()) return false;
     lock();
@@ -462,6 +474,7 @@ bool fd_dictnet_lookup(const char *word)
     memset(&s_st, 0, sizeof(s_st));
     s_st.state = FD_DICTNET_LOOKUP;
     ucpy(s_st.result.en, sizeof(s_st.result.en), word);
+    s_dir = dir;
     unlock();
     int cmd = CMD_LOOKUP;
     if (xQueueSend(s_q, &cmd, 0) == pdTRUE) return true;
