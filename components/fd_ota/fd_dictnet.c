@@ -365,8 +365,10 @@ static void do_lookup(const char *word, uint8_t dir)
     if (code == 200) {
         errno = 0;
         cJSON *r = cJSON_Parse(rx);
-        if (!r || !parse_entry(r, &e) || !e.vi[0])
-            err = !r && errno == ENOMEM ? FD_DICTNET_ERR_NOMEM : FD_DICTNET_ERR_FORMAT;
+        if (!r)
+            err = errno == ENOMEM ? FD_DICTNET_ERR_NOMEM : FD_DICTNET_ERR_FORMAT;
+        else if (!parse_entry(r, &e) || !e.vi[0])
+            err = FD_DICTNET_ERR_NOT_FOUND;
         cJSON_Delete(r);
     } else if (code == 404) err = FD_DICTNET_ERR_NOT_FOUND;
     else if (code == 401) err = FD_DICTNET_ERR_UNPAIRED;

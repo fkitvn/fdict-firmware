@@ -362,6 +362,8 @@ static void srv_msg_poll(void)
     if (g == s_srv_seen) return;
     s_srv_seen = g;
     if (!m[0]) return;
+    /* Tu dien tu hien loi tren man (404: khong tim thay; loi mang/may chu: LOOKUP_ERROR). Bo hop thong bao chung de tranh trung. 401/410 van hien de chuyen sang Ghep. */
+    if (s_cur == FD_SCR_DICT && code != 401 && code != 410) return;
     srv_close();
     s_srv_box = lv_obj_create(lv_layer_top());
     lv_obj_set_width(s_srv_box, lv_pct(92));

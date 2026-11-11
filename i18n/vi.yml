@@ -135,6 +135,7 @@ vi:
   LOOKUP_NEED_WIFI: Cần Wi-Fi để tra từ
   LOOKUP_NOT_FOUND: Không tìm thấy từ này
   LOOKUP_ERROR: Không tra được từ
+  LOOKUP_SEARCHING: Đang tra cứu
   PASSWORD: Mật khẩu
   PIN_CODE: Mã PIN
   PIN_ENTER_CURRENT: Nhập mã PIN hiện tại
@@ -290,4 +291,6 @@ vi:
   STATS_STREAK: 'Chuỗi ngày học'
   STATS_ANS_FMT: '%d/%d đúng'
   STATS_DAYS_FMT: '%d ngày'
+  STATS_SCAN_USES: 'Lượt scan AI'
+  STATS_SCAN_WORDS: 'Từ scan thành công'
   PHONE_QR_HINT: Quét mã bằng điện thoại để scan từ vựng

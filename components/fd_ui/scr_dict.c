@@ -11,10 +11,13 @@
 #include <stdint.h>
 #include "lvgl.h"
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 
-static lv_obj_t *s_body, *s_ta;
+static lv_obj_t *s_body, *s_ta, *s_load_lbl;
 static lv_timer_t *s_poll;
+static uint8_t s_load_dots;
+static bool s_load_adding;
 static bool s_gate;
 static char s_word[FD_DICTNET_WORD_LEN];
 static uint8_t s_dir = FD_DICTNET_DIR_EN_VI;   /* 4.1.8: Anh-Viet / Viet-Anh */
@@ -24,6 +27,7 @@ static void show_home(void);
 static lv_obj_t *s_kb;   /* 4.1.5: ban phim (an/hien) */
 static void show_result_ok(const fd_dictnet_status_t *st);
 static void show_error(const fd_dictnet_status_t *st);
+static void poll_cb(lv_timer_t *t);
 
 static void stop_poll(void)
 {
@@ -35,6 +39,7 @@ static void body_reset(void)
     s_kb = NULL;
     stop_poll();
     s_ta = NULL;
+    s_load_lbl = NULL;
     if (s_body) lv_obj_clean(s_body);
 }
 
@@ -68,7 +73,112 @@ static void back_home_cb(lv_event_t *e)
     show_home();
 }
 
-static void poll_cb(lv_timer_t *t);
+static void load_status_apply(void)
+{
+    if (!s_load_lbl) return;
+    if (s_load_adding) {
+        lv_label_set_text(s_load_lbl, _("LOOKUP_ADDING"));
+        return;
+    }
+    char buf[96];
+    snprintf(buf, sizeof(buf), "%s%.*s", _("LOOKUP_SEARCHING"), (int)(s_load_dots % 4), "...");
+    lv_label_set_text(s_load_lbl, buf);
+}
+
+static void magnifier_anim_cb(void *obj, int32_t v)
+{
+    lv_obj_t *g = obj;
+    int32_t x = ((v - 500) * 14) / 500;
+    int32_t up = v <= 500 ? v : 1000 - v;
+    int32_t y = 5 - (up * 10) / 500;
+    lv_obj_set_style_translate_x(g, x, 0);
+    lv_obj_set_style_translate_y(g, y, 0);
+}
+
+static void show_loading(void)
+{
+    body_reset();
+    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(s_body, 10, 0);
+
+    /* Kinh lup ve bang hinh LVGL (khong anh): kinh tron + canh nghieng, dao nhe nhu dang so. */
+    lv_obj_t *glass = lv_obj_create(s_body);
+    lv_obj_remove_style_all(glass);
+    lv_obj_set_size(glass, 76, 76);
+    lv_obj_set_scrollable(glass, false);
+    lv_obj_set_style_clip_corner(glass, false, 0);
+
+    lv_obj_t *lens = lv_obj_create(glass);
+    lv_obj_remove_style_all(lens);
+    lv_obj_set_size(lens, 44, 44);
+    lv_obj_set_pos(lens, 10, 6);
+    lv_obj_set_scrollable(lens, false);
+    lv_obj_set_style_radius(lens, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(lens, 4, 0);
+    lv_obj_set_style_border_color(lens, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_set_style_bg_color(lens, lv_color_hex(FD_COLOR_PRIMARY_TINT), 0);
+    lv_obj_set_style_bg_opa(lens, LV_OPA_80, 0);
+
+    lv_obj_t *shine = lv_obj_create(lens);
+    lv_obj_remove_style_all(shine);
+    lv_obj_set_size(shine, 10, 10);
+    lv_obj_set_pos(shine, 8, 7);
+    lv_obj_set_scrollable(shine, false);
+    lv_obj_set_style_radius(shine, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(shine, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(shine, LV_OPA_COVER, 0);
+
+    lv_obj_t *handle = lv_obj_create(glass);
+    lv_obj_remove_style_all(handle);
+    lv_obj_set_size(handle, 22, 6);
+    lv_obj_set_pos(handle, 44, 46);
+    lv_obj_set_scrollable(handle, false);
+    lv_obj_set_style_radius(handle, 3, 0);
+    lv_obj_set_style_bg_color(handle, lv_color_hex(FD_COLOR_PRIMARY_DARK), 0);
+    lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, 0);
+    lv_obj_set_style_transform_pivot_x(handle, 0, 0);
+    lv_obj_set_style_transform_pivot_y(handle, 3, 0);
+    lv_obj_set_style_transform_rotation(handle, 450, 0);
+
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, glass);
+    lv_anim_set_exec_cb(&a, magnifier_anim_cb);
+    lv_anim_set_values(&a, 0, 1000);
+    lv_anim_set_duration(&a, 1300);
+    lv_anim_set_reverse_duration(&a, 1300);
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+    lv_anim_start(&a);
+
+    s_load_adding = false;
+    s_load_dots = 0;
+    s_load_lbl = label(s_body, _("LOOKUP_SEARCHING"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_set_style_text_align(s_load_lbl, LV_TEXT_ALIGN_CENTER, 0);
+
+    if (s_word[0]) {
+        const lv_font_t *wf = s_dir == FD_DICTNET_DIR_EN_VI ? &fd_font_mont_32 : &fd_font_noto_18;
+        lv_obj_t *chip = lv_obj_create(s_body);
+        lv_obj_remove_style_all(chip);
+        lv_obj_set_width(chip, lv_pct(100));
+        lv_obj_set_height(chip, LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_color(chip, lv_color_hex(FD_COLOR_PRIMARY_TINT), 0);
+        lv_obj_set_style_bg_opa(chip, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(chip, 10, 0);
+        lv_obj_set_style_pad_hor(chip, 12, 0);
+        lv_obj_set_style_pad_ver(chip, 8, 0);
+        lv_obj_set_scrollable(chip, false);
+        lv_obj_t *w = lv_label_create(chip);
+        lv_obj_set_style_text_font(w, wf, 0);
+        lv_obj_set_style_text_color(w, lv_color_hex(FD_COLOR_TEXT), 0);
+        lv_obj_set_style_text_align(w, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(w, lv_pct(100));
+        lv_label_set_long_mode(w, LV_LABEL_LONG_DOT);
+        lv_label_set_text(w, s_word);
+    }
+
+    s_poll = lv_timer_create(poll_cb, 200, NULL);
+}
 
 static void begin_lookup_dir(const char *word, uint8_t dir)
 {
@@ -90,10 +200,7 @@ static void begin_lookup_dir(const char *word, uint8_t dir)
         if (st.state == FD_DICTNET_ERROR) show_error(&st);
         return;
     }
-    body_reset();
-    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    label(s_body, _("LOADING"), &fd_font_noto_18, FD_COLOR_TEXT);
-    s_poll = lv_timer_create(poll_cb, 200, NULL);
+    show_loading();
 }
 
 static void begin_lookup(const char *word) { begin_lookup_dir(word, s_dir); }
@@ -103,7 +210,13 @@ static void poll_cb(lv_timer_t *t)
     (void)t;
     fd_dictnet_status_t st;
     fd_dictnet_get(&st);
-    if (st.state == FD_DICTNET_LOOKUP || st.state == FD_DICTNET_ADD) return;
+    if (st.state == FD_DICTNET_LOOKUP || st.state == FD_DICTNET_ADD) {
+        bool adding = st.state == FD_DICTNET_ADD;
+        if (adding != s_load_adding) { s_load_adding = adding; s_load_dots = 0; }
+        else if (!adding) s_load_dots = (uint8_t)((s_load_dots + 1) % 4);
+        load_status_apply();
+        return;
+    }
     stop_poll();
     if (st.state == FD_DICTNET_OK) show_result_ok(&st);
     else show_error(&st);

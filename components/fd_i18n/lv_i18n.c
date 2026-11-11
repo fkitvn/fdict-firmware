@@ -154,6 +154,7 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"LOOKUP_NEED_WIFI", "Wi-Fi needed to look up words"},
     {"LOOKUP_NOT_FOUND", "Word not found"},
     {"LOOKUP_ERROR", "Lookup failed"},
+    {"LOOKUP_SEARCHING", "Looking up"},
     {"PASSWORD", "Password"},
     {"PIN_CODE", "PIN code"},
     {"PIN_ENTER_CURRENT", "Enter current PIN"},
@@ -308,6 +309,8 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"STATS_STREAK", "Study streak"},
     {"STATS_ANS_FMT", "%d/%d correct"},
     {"STATS_DAYS_FMT", "%d days"},
+    {"STATS_SCAN_USES", "AI scan uses"},
+    {"STATS_SCAN_WORDS", "Words saved from scan"},
     {"PHONE_QR_HINT", "Scan with your phone to study vocabulary"},
     {NULL, NULL} // End mark
 };
@@ -468,6 +471,7 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"LOOKUP_NEED_WIFI", "Cần Wi-Fi để tra từ"},
     {"LOOKUP_NOT_FOUND", "Không tìm thấy từ này"},
     {"LOOKUP_ERROR", "Không tra được từ"},
+    {"LOOKUP_SEARCHING", "Đang tra cứu"},
     {"PASSWORD", "Mật khẩu"},
     {"PIN_CODE", "Mã PIN"},
     {"PIN_ENTER_CURRENT", "Nhập mã PIN hiện tại"},
@@ -622,6 +626,8 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"STATS_STREAK", "Chuỗi ngày học"},
     {"STATS_ANS_FMT", "%d/%d đúng"},
     {"STATS_DAYS_FMT", "%d ngày"},
+    {"STATS_SCAN_USES", "Lượt scan AI"},
+    {"STATS_SCAN_WORDS", "Từ scan thành công"},
     {"PHONE_QR_HINT", "Quét mã bằng điện thoại để scan từ vựng"},
     {NULL, NULL} // End mark
 };

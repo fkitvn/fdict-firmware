@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.0] - 2026-11-12
+Từ điển bỏ thông báo lỗi trùng khi không tìm thấy từ và có màn hình đang tra cứu mới. Thống kê thêm lượt scan AI và số từ scan thành công. Đồng bộ gửi kèm pin sóng wifi và phiên bản.
+
 ## [4.2.0] - 2026-11-11
 Bỏ liên kết Zalo. Màn hình quét mã QR gọn hơn và cần đăng nhập. Nút quay lại tự động đồng bộ. Trang chủ báo sẵn sàng học ngoại tuyến khi có từ vựng.
 

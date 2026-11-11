@@ -127,6 +127,8 @@ static void show(const fd_sync_stats_t *st)
     snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->today_correct, st->today_answers); kv(_("STATS_TODAY"), v);
     snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->week_correct, st->week_answers); kv(_("STATS_WEEK"), v);
     snprintf(v, sizeof(v), _("STATS_DAYS_FMT"), st->streak_days); kv(_("STATS_STREAK"), v);
+    snprintf(v, sizeof(v), "%d", st->scan_uses); kv(_("STATS_SCAN_USES"), v);
+    snprintf(v, sizeof(v), "%d", st->scan_words); kv(_("STATS_SCAN_WORDS"), v);
     lv_obj_t *r = btn_row();
     ui_gate_btn(r, _("BACK"), false, home_cb);
     ui_gate_btn(r, _("RETRY"), true, retry_cb);
