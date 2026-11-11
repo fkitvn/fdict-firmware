@@ -93,7 +93,7 @@ vi:
   N_MIN: '%d phút'
   N_SEC: '%d giây'
   OFFLINE_CONNECT_HINT: Kết nối Wi-Fi để tự tải câu hỏi.
-  OFFLINE_DATA_READY: Có dữ liệu offline
+  OFFLINE_DATA_READY: Sẵn sàng để học ngoại tuyến
   OFFLINE_NO_WIFI: 'Không có Wifi, học offline'
   OPEN: Mở
   OPEN_WIFI: Mở Wi-Fi
@@ -247,7 +247,6 @@ vi:
   SEN_TAP_HINT: 'Chạm các từ theo đúng thứ tự'
   SEN_OFFLINE: 'Đang học ngoại tuyến'
   SEN_SYNC_LATER: 'Kết quả sẽ đồng bộ khi có mạng'
-  HOME_SYNCED_AT: 'Đã đồng bộ vào lúc %s'
   SEN_PLAY_AUDIO: 'Phát âm thanh sau mỗi câu'
   SEN_COUNT: 'Số câu mỗi lượt'
   SEN_DIR: 'Hướng dịch'
