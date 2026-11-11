@@ -7,14 +7,12 @@
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_ota.h"
-#include "fd_zlink.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "fd_store.h"
 #include "fd_pin.h"
 #include "fd_study.h"
 #include "ui_priv.h"
-LV_IMAGE_DECLARE(img_zalo);   /* 4.1.7: logo Zalo (img_zalo.c) */
 
 static lv_obj_t *s_wifi_sub;
 static lv_obj_t *s_rot_sub;
@@ -24,7 +22,7 @@ static lv_obj_t *s_to_sub;
 static lv_obj_t *s_pin_sub;
 static lv_obj_t *s_dev_sub;   /* 2.2.2: Che do nha phat trien -> man rieng */
 static lv_obj_t *s_lang_sub;   /* 1.3.0: Ngon ngu / Language */
-static lv_obj_t *s_pair_card, *s_pair_sub, *s_zalo_card;
+static lv_obj_t *s_pair_card, *s_pair_sub;
 
 static void go_cb(lv_event_t *e)
 {
@@ -196,7 +194,6 @@ static volatile bool s_reset_failed;
 static void factory_worker(void *arg)
 {
     (void)arg;
-    fd_zalo_link_stop();
     if (fd_net_is_connected() && fd_ota_is_paired()) {
         char id[16], body[48], response[96];
         fd_ota_get_device_id(id, sizeof(id));
@@ -329,7 +326,6 @@ static void refresh(void)
     lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
     lv_label_set_text(s_dev_sub, fd_ui_devmode_get() ? _("ON") : _("OFF"));
     if (s_pair_card) pair_icon_fill();
-    if (s_zalo_card) lv_obj_set_state(s_zalo_card, LV_STATE_DISABLED, !fd_ota_is_paired());
     lv_label_set_text_fmt(s_rot_sub, "%d°", fd_display_rotation_deg(fd_display_get_rotation()));
 }
 
@@ -342,24 +338,6 @@ static void build(lv_obj_t *scr)
     /* Tieu de lon can giua (font subset 32 px co dau, chi dung o day) */
     ui_screen_title(body, _("SETTINGS"));
     pair_card(body);
-    s_zalo_card = item(body, LV_SYMBOL_REFRESH, _("ZALO_LINK_TITLE"), go_cb, (void *)(intptr_t)FD_SCR_ZALO_LINK, NULL);
-    {   /* 4.1.7: icon Zalo (o xanh bo goc + chu "Zalo" trang, img_zalo A8) thay ky hieu */
-        lv_obj_t *old = lv_obj_get_child(s_zalo_card, 0);
-        if (old) lv_obj_delete(old);
-        lv_obj_t *zb = lv_obj_create(s_zalo_card);
-        lv_obj_remove_style_all(zb);
-        lv_obj_set_size(zb, 24, 24);
-        lv_obj_set_style_radius(zb, 6, 0);
-        lv_obj_set_style_bg_opa(zb, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(zb, lv_color_hex(0x0068FF), 0);
-        lv_obj_set_clickable(zb, false);
-        lv_obj_t *zi = lv_image_create(zb);
-        lv_image_set_src(zi, &img_zalo);
-        lv_obj_set_style_image_recolor(zi, lv_color_white(), 0);
-        lv_obj_set_style_image_recolor_opa(zi, LV_OPA_COVER, 0);
-        lv_obj_center(zi);
-        lv_obj_move_to_index(zb, 0);
-    }
     item(body, LV_SYMBOL_WIFI, "WiFi", go_cb, (void *)(intptr_t)FD_SCR_WIFI, &s_wifi_sub);
     item(body, LV_SYMBOL_KEYBOARD, _("LANGUAGE"), go_cb, (void *)(intptr_t)FD_SCR_LANG, &s_lang_sub);
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
@@ -378,7 +356,7 @@ static void build(lv_obj_t *scr)
 
 static void destroy(void) {
     if (!s_resetting) dlg_dismiss();
-    s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = s_zalo_card = NULL;
+    s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
 }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
 

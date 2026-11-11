@@ -25,7 +25,6 @@ static bool s_want;        /* can lay ma (chua ghep / bam nut) - cho WiFi neu ch
 static bool s_nowifi, s_stop_sent;
 static char s_shown_name[64] = "\x01";
 static uint32_t s_srv_seen;   /* fd_ota_server_gen da xu ly */
-/* 2 buoc */
 static lv_obj_t *s_back_lbl;
 
 /* Ma thiet bi co dinh = MAC goc eFuse (12 hex thuong), vd 84c7bb78c178. Khong doi khi build/OTA/xoa NVS. */

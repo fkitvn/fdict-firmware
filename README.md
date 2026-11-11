@@ -32,14 +32,15 @@ _English summary at the end._
 
 - Giao diện LVGL 9, hỗ trợ màn hình dọc 240x320 và ngang 320x240 (xoay trong Cài đặt), font Noto Sans tiếng Việt.
 - **Flash card**: màn cài đặt trước phiên (số thẻ, thứ tự, mặt trước, tự động phát âm), thẻ hai mặt chạm để lật.
-- **Học tập**: trắc nghiệm 4 đáp án dạng lưới 2x2 (Anh–Việt / Việt–Anh), số câu 10 / 20 / Vô tận, tự phát âm Tắt / 1 lần / 2 lần.
+- **Luyện tập**: trắc nghiệm 4 đáp án dạng lưới 2x2 (Anh–Việt / Việt–Anh), số câu 10 / 20 / Vô tận, tự phát âm Tắt / 1 lần / 2 lần.
+- **Từ điển**: tra hai chiều Anh–Việt, gõ tiếng Việt.
+- **Sắp xếp câu**, **Phân loại từ**, **Điền từ**.
 - **Học offline**: bài học tải từ máy chủ được lưu cache trên LittleFS; kết quả lưu vào hàng chờ và tự gửi khi có mạng.
 - **Phát âm offline** bằng SVOX Pico TTS (en-US); dữ liệu giọng nằm ở phân vùng flash `voice` riêng. Khi có mạng có thể tải âm thanh từ máy chủ về cache.
 - Wi-Fi: quét mạng, lưu nhiều mạng, nhập mật khẩu trên màn hình.
 - Ghép thiết bị với tài khoản web bằng mã QR.
 - Cập nhật firmware OTA qua HTTPS, kiểm tra SHA256 và tự rollback nếu bản mới lỗi.
 - Cài đặt: độ sáng, âm lượng, thời gian tắt màn hình, mã PIN, hướng xoay, thông tin phiên bản; nút Ngủ (deep sleep) trong bảng cài đặt nhanh; hiển thị % pin.
-- Một số màn khác (Đoán hình, Điền ký tự, Phát âm, Nhại từ…) hiện vẫn là bản mẫu (mockup).
 
 ## Phần cứng
 
@@ -77,13 +78,12 @@ Mỗi slot ứng dụng 3 MiB, nên file ứng dụng `.bin` phải nhỏ hơn 3
 
 `sdkconfig` được sinh từ `sdkconfig.defaults*` và **không commit** (đã có trong `.gitignore`).
 
-Firmware không chứa địa chỉ máy chủ thật. Đặt URL trong `idf.py menuconfig`:
+Firmware có chứa địa chỉ máy chủ:
 
-- `FDict One OTA → Production base URL` (`CONFIG_FD_OTA_BASE_URL`, HTTPS, không kèm `/api`)
-- `FDict One OTA → Production: trang ghep tren web` (`CONFIG_FD_PAIR_WEB_URL`)
-- `CONFIG_FD_API_BASE_URL` (API thiết bị)
+- URL production (`CONFIG_FD_OTA_BASE_URL`, HTTPS, không kèm `/api`; `CONFIG_FD_PAIR_WEB_URL`; `CONFIG_FD_API_BASE_URL`) đặt trong `idf.py menuconfig` hoặc `sdkconfig` (file này nằm trong `.gitignore`, không commit). Trong Kconfig, mặc định là placeholder `https://your-server.example`. Khi build CI (push nhánh `prod`), script phủ overlay tạm từ `DICT_BASE` (`DICT_API_URL`) để gán URL production.
+- URL Lab (`CONFIG_FD_OTA_LAB_BASE_URL`, mặc định `https://fdict-dev.joinnow.vn`; `CONFIG_FD_PAIR_LAB_WEB_URL`) nằm trong `components/fd_ota/Kconfig`.
 
-Giá trị mặc định là placeholder `https://your-server.example`. _Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) dùng `CONFIG_FD_OTA_LAB_BASE_URL` (mặc định `https://fdict-dev.joinnow.vn`, HTTPS + certificate bundle như production).
+_Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) có thể trỏ thiết bị tới Lab, nhưng **quy trình dev hiện tại không dùng OTA**. Trên nhánh dev, firmware chỉ build và nạp qua cáp USB (`idf.py build`, `idf.py -p <PORT> flash monitor`, hoặc `tools\flash-monitor.ps1`). Không phát bản OTA cho Lab. Xem [Quy tắc build firmware: dev và prod](#quy-tắc-build-firmware-dev-và-prod).
 
 Không commit token, mật khẩu Wi-Fi hay `sdkconfig` chứa thông tin riêng. Hợp đồng API phía thiết bị: `.cursor/docs/study`, `.cursor/docs/decks`, `.cursor/docs/tts`.
 
@@ -215,7 +215,7 @@ Workflow đọc `vars.DICT_API_URL`, nếu trống thì đọc `secrets.DICT_API
 
 Lỗi thường gặp: `DICT_API_URL rong` nghĩa là chưa đặt, hoặc đặt ở environment khác `production`.
 
-Địa chỉ máy chủ **không nằm trong repo**. Khi build, script sinh overlay tạm `build-ci/sdkconfig.ci` từ `DICT_API_URL` để đặt các option `CONFIG_FD_OTA_BASE_URL`, `CONFIG_FD_PAIR_WEB_URL` (`/device-login`) và `CONFIG_FD_API_BASE_URL` (`/api/device/v1`). Các cấu hình còn lại lấy từ `sdkconfig.defaults` và `sdkconfig.defaults.esp32s3`. Token và URL không bao giờ được in ra log.
+URL production **không commit** vào repo. Khi build CI, script sinh overlay tạm `build-ci/sdkconfig.ci` từ `DICT_API_URL` để đặt `CONFIG_FD_OTA_BASE_URL`, `CONFIG_FD_PAIR_WEB_URL` (`/device-login`) và `CONFIG_FD_API_BASE_URL` (`/api/device/v1`). Các cấu hình còn lại lấy từ `sdkconfig.defaults` và `sdkconfig.defaults.esp32s3`. URL Lab mặc định nằm trong `components/fd_ota/Kconfig`. Token và URL không bao giờ được in ra log.
 
 ### Cắt một bản mới
 
@@ -287,11 +287,16 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 
 ## English
 
-**FDict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, 2x2 multiple-choice quizzes, auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
+**FDict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, Practice (Luyện tập) 2x2 quizzes, Dictionary (Từ điển), Word order (Sắp xếp câu), Parts of speech (Phân loại từ), Gap fill (Điền từ), auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
 
 - **Build:** ESP-IDF 6.1, `idf.py set-target esp32s3 && idf.py build`; flash with `idf.py -p <PORT> flash monitor`.
-- **Configure:** server URLs are Kconfig options (`menuconfig`), placeholders by default; `sdkconfig` is git-ignored.
+- **Configure:** production server URLs are Kconfig options (`menuconfig` / git-ignored `sdkconfig`), placeholders in Kconfig by default, and are injected at CI from `DICT_BASE`. The Lab base URL default (`https://fdict-dev.joinnow.vn`) is in `components/fd_ota/Kconfig`. Dev workflow flashes over USB only; it does not publish OTA.
 - **First-time flashing:** write `fdict-firmware-v<ver>-<build>-full.bin` at `0x0` over USB (esptool or a web flasher).
 - **app.bin vs full.bin:** app.bin (~1.5 MB, < 3 MiB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
 - **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>-app.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
 - **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The FDict (device: FDict One) / fkit.vn names and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.
+
+## Quy tắc build firmware: dev và prod
+
+- **Dev (nhánh dev):** firmware chỉ build bằng cách cắm cáp USB, build và nạp thẳng vào máy (`idf.py build`, `idf.py -p <PORT> flash monitor`, hoặc `tools\flash-monitor.ps1` trong fdict-firmware). Không dùng OTA, không tạo bảng cập nhật hay bản phát hành OTA.
+- **Prod (nhánh prod):** bảng cập nhật OTA và file OTA chỉ được tạo khi push lên nhánh prod. Workflow `.github/workflows/ota-prod.yml` của fdict-firmware chỉ chạy khi push nhánh `prod`. Gộp dev vào prod rồi push là phát cho khách ngay.
