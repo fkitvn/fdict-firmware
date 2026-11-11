@@ -30,7 +30,7 @@ typedef enum {
     FD_SCR_DEVMODE,     /* 2.2.2 Cai dat > Che do nha phat trien (cong tac + cong cu kiem tra) */
     FD_SCR_BTNTEST,     /* 2.2.2 ... > Thu 4 nut bam */
     FD_SCR_WARRANTY,    /* Cai dat > Thong tin bao hanh */
-    FD_SCR_ZALO_LINK,
+    FD_SCR_PHONE_QR,    /* Bang nhanh > Dien thoai: QR mo trang web tren dien thoai */
     FD_SCR_COUNT,
 } fd_scr_t;
 

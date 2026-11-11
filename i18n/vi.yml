@@ -228,18 +228,9 @@ vi:
   WARRANTY_NEEDED: Chưa kích hoạt
   WARRANTY_STATUS_ERROR: 'Không lấy được thông tin bảo hành (%s).'
   WARRANTY_UNTIL: 'Đến %s'
-  WARRANTY_ZALO_HINT: 'Truy cập Mini App Zalo: Fdict - Học từ vựng'
   WIFI_WRONG_PASSWORD: Sai mật khẩu cho “%s”. Chọn mạng để nhập lại.
   WILL_RESTART_WHEN_IDLE: Sẽ khởi động lại khi rảnh
   WORD: Từ
-  ZALO_CODE_ERROR: Không lấy được mã
-  ZALO_CODE_EXPIRED: Mã đã hết hạn
-  ZALO_CODE_EXPIRES: 'Hết hạn sau %d:%02d'
-  ZALO_CODE_HINT: Quét bằng Zalo hoặc nhập mã trong Mini App
-  ZALO_GETTING_CODE: Đang lấy mã...
-  ZALO_LINKED: Đã liên kết Zalo
-  ZALO_NEW_CODE: Lấy mã mới
-  ZALO_WAITING: Chưa liên kết Zalo
   SENTENCE: 'Sắp xếp câu'
   SEN_LOADING: 'Đang tải câu…'
   SEN_PROGRESS: 'Câu %d/%d'
@@ -300,10 +291,4 @@ vi:
   STATS_STREAK: 'Chuỗi ngày học'
   STATS_ANS_FMT: '%d/%d đúng'
   STATS_DAYS_FMT: '%d ngày'
-  ZALO_UNLINK: Gỡ liên kết
-  ZALO_UNLINK_CONFIRM: Gỡ liên kết Zalo?
-  ZALO_UNLINK_HINT: Gỡ Zalo khỏi tài khoản FDict trên mọi thiết bị. Bảo hành và đăng nhập không thay đổi.
-  ZALO_UNLINKING: Đang gỡ liên kết...
-  ZALO_UNLINK_ERROR: Chưa gỡ được liên kết Zalo. Vui lòng thử lại.
-  ZALO_LINK_TITLE: Liên kết Zalo
-  ZALO_LOGIN_REQUIRED: Vui lòng đăng nhập trước
+  PHONE_QR_HINT: Quét mã bằng điện thoại để scan từ vựng

@@ -67,7 +67,7 @@ class MemoryRegression(unittest.TestCase):
         self.assertNotIn("while (1)", main)
     def test_warranty_fetch_only_on_details(self):
         for p in ["main/app_main.c", "components/fd_ui/scr_settings.c", "components/fd_ui/scr_pair.c", "components/fd_ui/scr_about.c"]:
-            self.assertNotIn("fd_zlink_", text(p))
+            self.assertNotIn("fd_warranty_", text(p))
         about = text("components/fd_ui/scr_about.c")
         self.assertNotIn("R_WARR", about)
         self.assertNotIn("WARRANTY", about)
@@ -75,20 +75,14 @@ class MemoryRegression(unittest.TestCase):
         self.assertIn('_("WARRANTY_INFO"), warr_cb, NULL, NULL', settings)
         self.assertNotIn("s_warr_sub", settings)
     def test_warranty_readonly_api_and_errors(self):
-        worker = text("components/fd_ota/fd_zlink.c")
+        worker = text("components/fd_ota/fd_warranty.c")
         self.assertIn('"/api/devices/warranty/lookup"', worker)
-        for old in ["zalo-link/start", "zalo-link/poll", "wait_wifi(90)", "for (;;)"]:
+        for old in ["wait_wifi(90)", "for (;;)"]:
             self.assertNotIn(old, worker)
         for state in ["FD_WARR_LOADING", "FD_WARR_READY", "FD_WARR_ERROR"]:
             self.assertIn(state, worker)
         self.assertIn("vTaskDelete(NULL)", worker)
         self.assertIn("cJSON_IsBool(activated)", worker)
-    def test_warranty_qr_and_guide(self):
-        ui = text("components/fd_ui/scr_warranty.c")
-        self.assertIn('"https://zalo.me/s/3845974445044166380/"', ui)
-        self.assertIn("st.state == FD_WARR_READY && !st.activated", ui)
-        self.assertIn("lv_qrcode_set_size(qr, 96)", ui)
-        self.assertIn("Truy cập Mini App Zalo: Fdict - Học từ vựng", text("i18n/vi.yml"))
     def test_login_font_width_and_height(self):
         f = text("components/fd_fonts/fd_font_noto_14.c")
         def numbers(name):
@@ -120,15 +114,6 @@ class MemoryRegression(unittest.TestCase):
                 self.assertLessEqual(len(lines),2,(w,phrase,lines))
                 self.assertLessEqual(qr+26+len(lines)*20+44+12+(8 if h==240 else 12),h)
                 print(f"layout {w}x{h}: {width(phrase)}px -> {len(lines)} line(s): {ascii(phrase)}")
-        guide = "Truy cập Mini App Zalo: Fdict - Học từ vựng"
-        lines = [""]
-        for word in guide.split():
-            candidate = (lines[-1]+" "+word).strip()
-            if width(candidate)>296 and lines[-1]: lines.append(word)
-            else: lines[-1]=candidate
-        self.assertLessEqual(len(lines),2)
-        self.assertLessEqual(24+20+len(lines)*20+96+24+12+12,240)
-        print(f"warranty 320x240: {width(guide)}px -> {len(lines)} line(s), QR 96+24 quiet zone")
 
 
 if __name__ == "__main__": unittest.main(verbosity=2)

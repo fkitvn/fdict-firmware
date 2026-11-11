@@ -1,7 +1,7 @@
 /* Settings > Warranty information: fetch on entry/retry only; read-only API. */
 #include <stdio.h>
 #include "fd_fonts.h"
-#include "fd_zlink.h"
+#include "fd_warranty.h"
 #include "ui_priv.h"
 
 static lv_obj_t *s_status, *s_retry;
@@ -11,7 +11,7 @@ static void fill(void)
 {
     if (!s_status) return;
     fd_warranty_status_t st;
-    fd_zlink_status_get(&st);
+    fd_warranty_status_get(&st);
     lv_obj_set_hidden(s_retry, st.state != FD_WARR_ERROR);
     char b[128];
     uint32_t color = 0x6B7280;
@@ -29,7 +29,7 @@ static void fill(void)
     lv_label_set_text(s_status, b);
     lv_obj_set_style_text_color(s_status, lv_color_hex(color), 0);
 }
-static void retry_cb(lv_event_t *e) { (void)e; fd_zlink_refresh(); fill(); }
+static void retry_cb(lv_event_t *e) { (void)e; fd_warranty_refresh(); fill(); }
 static void tm_cb(lv_timer_t *t) { (void)t; fill(); } /* UI polling only, no requests */
 
 static lv_obj_t *label(lv_obj_t *parent, const char *value)
@@ -63,7 +63,7 @@ static void build(lv_obj_t *scr)
     lv_obj_t *rt = lv_label_create(s_retry);
     lv_label_set_text(rt, _("RETRY")); lv_obj_center(rt);
     lv_obj_add_event_cb(s_retry, retry_cb, LV_EVENT_CLICKED, NULL);
-    fd_zlink_refresh();
+    fd_warranty_refresh();
     fill();
     s_tm = lv_timer_create(tm_cb, 300, NULL);
 }

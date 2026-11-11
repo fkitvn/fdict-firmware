@@ -1,4 +1,4 @@
-idf_component_register(SRCS "fd_ota.c" "fd_zlink.c" "fd_study.c" "fd_deck.c" "fd_flashcard.c" "fd_sentence.c" "fd_sync.c" "fd_dictnet.c"
+idf_component_register(SRCS "fd_ota.c" "fd_warranty.c" "fd_study.c" "fd_deck.c" "fd_flashcard.c" "fd_sentence.c" "fd_sync.c" "fd_dictnet.c"
                     INCLUDE_DIRS "include"
                     REQUIRES esp_https_ota esp_http_client esp_partition app_update esp_app_format esp_system esp_timer
                              esp_hw_support nvs_flash mbedtls esp-tls lwip fd_events fd_net fd_power fd_store)

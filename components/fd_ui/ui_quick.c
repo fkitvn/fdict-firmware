@@ -238,6 +238,44 @@ static void sync_cb(lv_event_t *e)
     fd_sync_force();   /* POST /api/study/sync: gui ket qua + tai lai bo tu/cai dat */
 }
 
+/* Nut Quet ma (icon scan): mo man QR trang web (scr_phone_qr.c) */
+static void phone_cb(lv_event_t *e)
+{
+    (void)e;
+    ui_quick_close(false);
+    if (ui_nav_current() != &g_scr_phone_qr) fd_ui_show(FD_SCR_PHONE_QR);
+}
+
+/* Icon quet ma (scan) ve bang obj (font khong co glyph QR/scan): khung 22x22 gom 4 goc chu L (vien 2 px, 2 canh)
+ * + vach quet ngang o giua. Nhe: 6 obj, khong anh. */
+static lv_obj_t *scan_icon(lv_obj_t *b, lv_color_t c)
+{
+    lv_obj_t *w = lv_obj_create(b);
+    lv_obj_remove_style_all(w);
+    lv_obj_set_size(w, 22, 22);
+    lv_obj_set_clickable(w, false);
+    static const lv_align_t al[4] = {LV_ALIGN_TOP_LEFT, LV_ALIGN_TOP_RIGHT, LV_ALIGN_BOTTOM_LEFT, LV_ALIGN_BOTTOM_RIGHT};
+    static const lv_border_side_t sd[4] = {LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_LEFT, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_RIGHT,
+                                           LV_BORDER_SIDE_BOTTOM | LV_BORDER_SIDE_LEFT, LV_BORDER_SIDE_BOTTOM | LV_BORDER_SIDE_RIGHT};
+    for (int i = 0; i < 4; i++) {
+        lv_obj_t *k = lv_obj_create(w);
+        lv_obj_remove_style_all(k);
+        lv_obj_set_size(k, 8, 8);
+        lv_obj_set_style_border_width(k, 2, 0);
+        lv_obj_set_style_border_color(k, c, 0);
+        lv_obj_set_style_border_side(k, sd[i], 0);
+        lv_obj_align(k, al[i], 0, 0);
+    }
+    lv_obj_t *bar = lv_obj_create(w);
+    lv_obj_remove_style_all(bar);
+    lv_obj_set_size(bar, 14, 2);
+    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(bar, c, 0);
+    lv_obj_center(bar);
+    lv_obj_center(w);
+    return w;
+}
+
 __attribute__((unused)) static void set_cb(lv_event_t *e)
 {
     (void)e;
@@ -513,6 +551,8 @@ void ui_quick_open(void)
     s_sync_btn = qbtn(r, bw, sync_cb);   /* 4.1.4: Dong bo ngay (thay Cai dat) */
     sync_show(s_sync_wait != 0);
     lv_obj_add_event_cb(s_sync_btn, sync_tmr_del_cb, LV_EVENT_DELETE, lv_timer_create(sync_tmr_cb, 300, NULL));
+    lv_obj_t *mb = qbtn(r, bw, phone_cb);   /* Dien thoai: QR mo trang web tren dien thoai */
+    scan_icon(mb, lv_color_hex(FD_COLOR_ON_PRIMARY));   /* icon quet ma */
 
 #if CONFIG_FD_SLEEP_BTN
     lv_obj_t *pb = qbtn(r, bw, sleep_cb);   /* Ngu: icon mat trang (Material Symbols bedtime) */

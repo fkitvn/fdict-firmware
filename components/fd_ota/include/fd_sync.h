@@ -1,5 +1,5 @@
 #pragma once
-/* 2.3.0 Dong bo (module "Dong bo"): mini app Zalo / cloud la NGUON DUNG cho cai dat + bo tu.
+/* 2.3.0 Dong bo (module "Dong bo"): web app / cloud la NGUON DUNG cho cai dat + bo tu.
  * Khi co Wi-Fi + da ghep (task "fd_sync", tu chay nen):
  *  4.1.3: MOI lenh di qua 1 API POST /api/study/sync {device_id, events?, rev?, offset?, limit?}
  *    -> {acked, rev/etag, settings, unchanged | words[] (co the rong), next_offset}.
@@ -36,7 +36,7 @@ typedef struct {
     int words, sentences, collections;
     int pending;             /* ket qua hoc chua gui */
     time_t last_sync;        /* lan doi chieu thanh cong cuoi voi server (0 = chua / chua co gio) */
-    bool prio_new, prio_unl; /* cai dat tu mini app */
+    bool prio_new, prio_unl; /* cai dat tu web app */
     int topics;              /* so chu de quan tam */
     bool manual;             /* dang chay "Dong bo ngay" */
     uint32_t force_done;     /* 4.1.4: so lan "Dong bo ngay" da chay xong (UI cho ket qua) */
