@@ -135,6 +135,7 @@ en:
   LOOKUP_NEED_WIFI: Wi-Fi needed to look up words
   LOOKUP_NOT_FOUND: Word not found
   LOOKUP_ERROR: Lookup failed
+  LOOKUP_SEARCHING: Looking up
   PASSWORD: Password
   PIN_CODE: PIN code
   PIN_ENTER_CURRENT: Enter current PIN
@@ -290,4 +291,6 @@ en:
   STATS_STREAK: 'Study streak'
   STATS_ANS_FMT: '%d/%d correct'
   STATS_DAYS_FMT: '%d days'
+  STATS_SCAN_USES: 'AI scan uses'
+  STATS_SCAN_WORDS: 'Words saved from scan'
   PHONE_QR_HINT: Scan with your phone to study vocabulary

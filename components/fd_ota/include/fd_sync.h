@@ -50,6 +50,7 @@ typedef struct {
     char err[24];            /* no_wifi, unpaired, no_account, http_NNN, net, format */
     int words, n_new, learning, mastered, collections, sentences;
     int today_answers, today_correct, week_answers, week_correct, week_sessions, streak_days;
+    int scan_uses, scan_words;   /* luot scan AI / tu luu tu scan (server) */
 } fd_sync_stats_t;
 
 void fd_sync_init(void);                 /* goi 1 lan sau khi mount /data (nap kho + outbox, tao task) */

@@ -11,6 +11,9 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
+#include "esp_app_desc.h"
+#include "esp_ota_ops.h"
+#include "fd_batt.h"
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "freertos/FreeRTOS.h"
@@ -418,6 +421,35 @@ void fd_sync_event(const char *kind, const char *wid, bool correct)
     if (!ok) ESP_LOGW(TAG, "khong ghi duoc ket qua vao outbox");
 }
 
+/* Telemetry nhe, cung nguon voi GET /api/ota/check: pin, rssi, fw_version, build_id. */
+#define TEL_MAX 128
+
+static int json_telemetry(char *dst, size_t cap)
+{
+    int bat = fd_batt_get_pct();
+    if (bat < 0) bat = 0;
+    else if (bat > 100) bat = 100;
+    int rssi = fd_net_rssi();
+    if (rssi > 0) rssi = 0;
+    else if (rssi < -150) rssi = -150;
+    char build[12];
+    build[0] = 0;
+    esp_app_get_elf_sha256(build, sizeof(build));
+    const char *ver = esp_app_get_description()->version;
+    char ver_j[36];
+    size_t n = 0;
+    if (ver) {
+        for (; ver[n] && n + 1 < sizeof(ver_j); n++) {
+            unsigned char c = (unsigned char)ver[n];
+            if (c < 32 || c == '"' || c == '\\') break;
+            ver_j[n] = (char)c;
+        }
+    }
+    ver_j[n] = 0;
+    return snprintf(dst, cap, ",\"fw_version\":\"%s\",\"build_id\":\"%s\",\"battery\":%d,\"rssi\":%d",
+                    ver_j, build, bat, rssi);
+}
+
 /* Gui outbox theo lo; chi xoa dong server da ack. Tra HTTP cuoi (200 = sach / khong con gi), <0 mang. */
 static int push_all(char *rx)
 {
@@ -430,12 +462,14 @@ static int push_all(char *rx)
         char *b = read_all(EVLOG, EV_MAX_BYTES * 2, &len);
         xSemaphoreGive(s_evmx);
         if (!b) break;
-        size_t cap = 64 + len < 64 + PUSH_BATCH * 200 ? 64 + len : 64 + PUSH_BATCH * 200;
+        size_t cap = 64 + TEL_MAX + (len < PUSH_BATCH * 200 ? len : PUSH_BATCH * 200);
         char *body = ps_alloc(cap + 64);
         int n = 0;
         size_t bn = 0;
         if (body) {
-            bn = (size_t)snprintf(body, cap, "{\"device_id\":\"%s\",\"limit\":1,\"events\":[", id);
+            char tel[TEL_MAX];
+            json_telemetry(tel, sizeof(tel));
+            bn = (size_t)snprintf(body, cap, "{\"device_id\":\"%s\"%s,\"limit\":1,\"events\":[", id, tel);
             for (size_t i = 0, s = 0; i < len && n < PUSH_BATCH; i++) {
                 if (b[i] != '\n') continue;
                 size_t m = i - s;
@@ -502,7 +536,7 @@ static int jint(const cJSON *o, const char *k)
 /* Tai snapshot day du (moi trang kiem tra rev khong doi). Tra 0 OK, HTTP/-1 loi; err dien ma. */
 static int pull_all(char *rx, char *err, size_t errn)
 {
-    char id[16], body[160], tmp[512];
+    char id[16], body[280], tmp[512];
     fd_ota_get_device_id(id, sizeof(id));
     mkdir(SDIR, 0775);
     for (int attempt = 0; attempt < 3; attempt++) {
@@ -512,7 +546,9 @@ static int pull_all(char *rx, char *err, size_t errn)
         long bytes = 0;
         bool restart = false, fail = false;
         for (;;) {
-            snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"offset\":%d,\"limit\":%d}", id, offset, PAGE);
+            char tel[TEL_MAX];
+            json_telemetry(tel, sizeof(tel));
+            snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"offset\":%d,\"limit\":%d%s}", id, offset, PAGE, tel);
             code = fd_ota_api_post(SYNC_PATH, body, rx, RX_CAP);
             if (code != 200) { code_err(code, err, errn); fail = true; break; }
             cJSON *r = cJSON_Parse(rx);
@@ -633,10 +669,11 @@ static bool do_sync(char *rx, bool force)
     }
     bool need = force;
     if (!need) {
-        char id[16], body[128], cur[32];
+        char id[16], body[280], cur[32], tel[TEL_MAX];
         fd_ota_get_device_id(id, sizeof(id));
         lock(); strlcpy(cur, s_rev, sizeof(cur)); unlock();
-        snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"rev\":\"%s\",\"limit\":1,\"events\":[]}", id, cur);
+        json_telemetry(tel, sizeof(tel));
+        snprintf(body, sizeof(body), "{\"device_id\":\"%s\",\"rev\":\"%s\",\"limit\":1,\"events\":[]%s}", id, cur, tel);
         int c = fd_ota_api_post(SYNC_PATH, body, rx, RX_CAP);   /* rev trung -> {unchanged:true}: re */
         if (c != 200) { code_err(c, err, sizeof(err)); set_err(err); return false; }
         cJSON *r = cJSON_Parse(rx);
@@ -693,6 +730,8 @@ static void do_stats(char *rx)
             s_stats.week_correct = jint(wk, "correct");
             s_stats.week_sessions = jint(wk, "sessions");
             s_stats.streak_days = jint(r, "streak_days");
+            s_stats.scan_uses = jint(r, "scan_uses");
+            s_stats.scan_words = jint(r, "scan_words");
             unlock();
         }
         cJSON_Delete(r);
