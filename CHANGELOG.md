@@ -5,8 +5,8 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
-## [4.1.10] - 2026-11-11
-Bỏ liên kết Zalo. Màn hình quét mã QR mở trên điện thoại gọn và đẹp hơn. Cần đăng nhập trước khi mở trên điện thoại.
+## [4.2.0] - 2026-11-11
+Bỏ liên kết Zalo. Màn hình quét mã QR gọn hơn và cần đăng nhập. Nút quay lại tự động đồng bộ. Trang chủ báo sẵn sàng học ngoại tuyến khi có từ vựng.
 
 ## [4.1.9] - 2026-11-08
 Sửa nút đổi chiều tra trong Từ điển. Phân loại từ và Điền từ dùng đáp án ABCD giống Luyện tập, bỏ chấm tròn. Phân loại từ có nhiều loại từ hơn. Bỏ dòng học ngoại tuyến ở Sắp xếp câu.

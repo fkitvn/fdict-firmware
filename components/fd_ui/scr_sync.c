@@ -53,7 +53,7 @@ static void refresh(void)
     if (st.last_sync > 0) {
         struct tm lt;
         localtime_r(&st.last_sync, &lt);
-        strftime(t, sizeof(t), "%H:%M %d/%m/%Y", &lt);
+        strftime(t, sizeof(t), "%H:%M", &lt);   /* 4.1.10: chi gio dong bo (24h), bo ngay */
     } else strlcpy(t, _("SYNC_NEVER"), sizeof(t));
     lv_label_set_text(s_v[3], t);
     bool run = st.state == FD_SYNC_CHECKING || st.state == FD_SYNC_PULLING || st.state == FD_SYNC_PUSHING || st.manual;

@@ -93,7 +93,7 @@ en:
   N_MIN: '%d min'
   N_SEC: '%d sec'
   OFFLINE_CONNECT_HINT: Connect Wi-Fi to download questions automatically.
-  OFFLINE_DATA_READY: Offline data ready
+  OFFLINE_DATA_READY: Ready for offline learning
   OFFLINE_NO_WIFI: 'No Wi-Fi, studying offline'
   OPEN: Open
   OPEN_WIFI: Open Wi-Fi
@@ -247,7 +247,6 @@ en:
   SEN_TAP_HINT: 'Tap the words in order'
   SEN_OFFLINE: 'Offline mode'
   SEN_SYNC_LATER: 'Results will sync when online'
-  HOME_SYNCED_AT: 'Synced at %s'
   SEN_PLAY_AUDIO: 'Play audio after each sentence'
   SEN_COUNT: 'Sentences per session'
   SEN_DIR: 'Direction'

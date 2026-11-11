@@ -71,26 +71,30 @@ static void refresh(void)
     lv_color_t col = lv_color_hex(FD_COLOR_ALERT);
     bool tap = true, ready = false;
     fd_deck_status_t dk;
-    fd_deck_get(&dk);   /* chi doc trang thai co san, khong goi mang */
+    fd_deck_get(&dk);   /* chi doc trang thai co san, khong goi mang (dk.outbox = ket qua cho gui) */
+    /* 4.1.10: so tu offline lay tu KHO TU DONG BO fd_sync (ss.words = so tu dang nap trong kho tren may, cap nhat
+     * ngay khi dong bo xong / xoa kho). Truoc day dung fd_deck.have (bo cu, khong con duoc tai) -> luon bao chua co du lieu. */
+    fd_sync_status_t ss;
+    fd_sync_get(&ss);   /* doc duoi mutex fd_sync; refresh chay trong task LVGL (on_tick 1 s + on_event + build) */
+    bool have_words = ss.have && ss.words > 0;
+    static int s_logged_words = -1;
+    if (ss.words != s_logged_words) { s_logged_words = ss.words; ESP_LOGI("scr_home", "kho tu dong bo: %d tu -> %s", ss.words, have_words ? "san sang hoc offline" : "chua co du lieu offline"); }
     char syn[48];
     if (dk.outbox > 0) snprintf(syn, sizeof(syn), _("SYNC_PENDING_N"), dk.outbox);
-    else snprintf(syn, sizeof(syn), "%s", dk.have ? _("OFFLINE_DATA_READY") : _("NO_OFFLINE_DATA_YET"));
+    else snprintf(syn, sizeof(syn), "%s", have_words ? _("OFFLINE_DATA_READY") : _("NO_OFFLINE_DATA_YET"));
     static char buf[96];
-    if (fd_net_is_connected()) {   /* 2.3.4: bo CONNECTED / OFFLINE_DATA_READY; hien lan dong bo cuoi */
+    /* 4.1.10: Home KHONG hien gio dong bo nua. Co tu trong kho (>0) -> chi 'San sang de hoc ngoai tuyen' (ca khi co
+     * hay mat WiFi; trang thai WiFi van xem o icon WiFi tren thanh trang thai). 0 tu: co WiFi -> 'Chua co du lieu offline',
+     * mat WiFi -> chu trang thai WiFi (cham de mo WiFi). Ket qua cho gui (fd_deck outbox) van uu tien hien 'Cho dong bo N'. */
+    if (have_words) {
+        txt = syn;
+        col = lv_palette_darken(LV_PALETTE_GREEN, 2);
+        tap = !fd_net_is_connected();   /* mat WiFi: van cham de mo man WiFi */
+        ready = fd_net_is_connected() && fd_ota_is_paired() && dk.outbox == 0;
+    } else if (fd_net_is_connected()) {
         bool paired = fd_ota_is_paired();
-        fd_sync_status_t ss;
-        fd_sync_get(&ss);
-        char at[48];
-        if (dk.outbox > 0 || !dk.have || ss.last_sync <= 0) snprintf(at, sizeof(at), "%s", syn);
-        else {
-            struct tm lt;
-            char t[24];
-            localtime_r(&ss.last_sync, &lt);
-            strftime(t, sizeof(t), "%H:%M %d/%m", &lt);
-            snprintf(at, sizeof(at), _("HOME_SYNCED_AT"), t);
-        }
-        if (paired) snprintf(buf, sizeof(buf), "%s", at);
-        else snprintf(buf, sizeof(buf), "%s · %s", _("NOT_PAIRED"), at);
+        if (paired) snprintf(buf, sizeof(buf), "%s", syn);
+        else snprintf(buf, sizeof(buf), "%s · %s", _("NOT_PAIRED"), syn);
         txt = buf;
         if (paired) col = lv_palette_darken(LV_PALETTE_GREEN, 2);
         tap = false;
