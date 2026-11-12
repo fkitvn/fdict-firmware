@@ -432,7 +432,7 @@ static int json_telemetry(char *dst, size_t cap)
     int rssi = fd_net_rssi();
     if (rssi > 0) rssi = 0;
     else if (rssi < -150) rssi = -150;
-    char build[12];
+    char build[11]; /* 10 ky tu hex, giong s_build trong fd_ota.c (BUILD_ID_RE) */
     build[0] = 0;
     esp_app_get_elf_sha256(build, sizeof(build));
     const char *ver = esp_app_get_description()->version;

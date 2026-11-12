@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.1] - 2026-11-12
+Sửa mã build gửi kèm khi đồng bộ để máy chủ ghi nhận đúng.
+
 ## [4.3.0] - 2026-11-12
 Từ điển bỏ thông báo lỗi trùng khi không tìm thấy từ và có màn hình đang tra cứu mới. Thống kê thêm lượt scan AI và số từ scan thành công. Đồng bộ gửi kèm pin sóng wifi và phiên bản.
 
