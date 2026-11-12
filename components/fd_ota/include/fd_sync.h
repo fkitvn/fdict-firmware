@@ -74,3 +74,36 @@ void fd_sync_event(const char *kind, const char *wid, bool correct);
 /* Thong ke: LUON goi server (gui outbox truoc). Khong Wi-Fi -> ERROR "no_wifi". */
 void fd_sync_stats_fetch(void);
 void fd_sync_stats_get(fd_sync_stats_t *out);
+
+/* 4.3.2: cai dat chon bo tu DUNG CHUNG 5 module hoc (Lat tu, Luyen tap, Sap xep cau, Phan loai tu, Dien tu). */
+#define FD_SYNC_MAX_COLS      32
+#define FD_SYNC_COL_NAME_LEN  48
+#define FD_SYNC_PICK_F_SEN    1u  /* can cau vi du (Sap xep cau) */
+#define FD_SYNC_PICK_F_TEXT   2u  /* can en+vi (Lat tu) */
+
+typedef enum {
+    FD_SYNC_PICK_ALL = 0,       /* Tat ca */
+    FD_SYNC_PICK_NEW = 1,       /* Tu moi them (status = 0) */
+    FD_SYNC_PICK_COMBINED = 2,  /* Ket hop: cac bo tu da chon */
+} fd_sync_pick_mode_t;
+
+typedef struct {
+    char id[FD_SYNC_WID_LEN];
+    char name[FD_SYNC_COL_NAME_LEN];
+    bool def;
+} fd_sync_col_t;
+
+typedef struct {
+    fd_sync_pick_mode_t mode;
+    int nsel;                    /* so bo dang chon khi Ket hop */
+} fd_sync_pick_t;
+
+int  fd_sync_col_count(void);
+bool fd_sync_col_get(int i, fd_sync_col_t *out);
+void fd_sync_pick_get(fd_sync_pick_t *out);
+void fd_sync_pick_set_mode(fd_sync_pick_mode_t mode);
+void fd_sync_pick_toggle_col(int col_idx);
+bool fd_sync_pick_col_on(int col_idx);
+/* Nhat tu theo cai dat bo tu chung. flags: FD_SYNC_PICK_F_SEN / F_TEXT. */
+int  fd_sync_pick_words(int *idx, int cap, unsigned flags);
+int  fd_sync_pick_count(unsigned flags);

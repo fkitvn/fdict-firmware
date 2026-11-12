@@ -17,6 +17,7 @@
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "fd_study.h"
+#include "fd_sync.h"
 #include "esp_log.h"
 #include "nvs.h"
 #include "ui_priv.h"
@@ -45,6 +46,7 @@ static bool s_wait;                  /* V_LOAD giua bai: cho nap phien tiep */
 static bool s_answered;
 
 static void show_setup(void);
+static void setup_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_setup(); }
 static void show_practice(void);
 static void next_cb(lv_timer_t *t);
 static void answer(int i);
@@ -261,7 +263,7 @@ static void opt_cb(lv_event_t *e)
     else if (grp == OPT_N) s_ncfg = (uint8_t)v;
     else if (grp == OPT_DIR) s_dir = (uint8_t)v;
     else if (grp == OPT_REP) { s_reps = (uint8_t)v; cfg_save(); }   /* nut Tat/1 lan/2 lan -> 0/1/2 */
-    show_setup();
+    lv_async_call(setup_async, NULL);
 }
 
 static void opt_row(lv_obj_t *p, const char *name, int grp, const char *const *opts, int n, int sel)
@@ -291,6 +293,7 @@ static const char *const SRC_API[3] = {"mockup", "deck", "offline"};
 static void start_cb(lv_event_t *e)
 {
     (void)e;
+    if (fd_sync_pick_count(0) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
     cfg_save();
     /* 23/10: bo hang Nguon. Co WiFi + da ghep -> bo the online; khong mang -> bo tu offline da luu (neu co). */
     /* 23/10: cache-first - con phien chua dung trong cache cho chieu nay -> hien ngay, fd_deck tai bu o nen. */
@@ -319,6 +322,7 @@ static void show_setup(void)
     lv_obj_set_style_pad_row(s_body, 4, 0);
     /* 23/10: cai dat trong vung cuon (flex_grow) phia tren; nut Bat dau ghim day man, khong de len hang cuoi */
     lv_obj_t *sc = ui_setup_begin(s_body, _("PRACTICE"));
+    ui_setup_deck(sc, setup_async);
 
     static const char *const DIR[] = {"EN_VI", "VI_EN"};
     static const char *const NS[] = {"10", "20", "ENDLESS"};

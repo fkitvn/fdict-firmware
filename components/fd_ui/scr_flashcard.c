@@ -376,6 +376,7 @@ static void opt_cb(lv_event_t *e)
 static void start_cb(lv_event_t *e)
 {
     (void)e;
+    if (fd_sync_pick_count(FD_SYNC_PICK_F_TEXT) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
     cfg_save();
     lv_async_call(start_async, NULL);
 }
@@ -399,6 +400,7 @@ static void show_setup(void)
     lv_obj_set_style_pad_row(s_body, 4, 0);
     /* cai dat trong vung cuon (flex_grow) phia tren; nut Bat dau ghim day man */
     lv_obj_t *sc = ui_setup_begin(s_body, _("FLASH_CARD"));
+    ui_setup_deck(sc, setup_async);
 
     static const char *const NS[] = {"10", "20", "ALL"};
     static const char *const ORD[] = {"IN_ORDER", "RANDOM"};

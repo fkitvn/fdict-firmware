@@ -8,6 +8,7 @@
 #include "fd_fonts.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "fd_voice.h"
 #include "ui_priv.h"
 #include "fd_tts.h"
@@ -455,3 +456,55 @@ lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb)
     if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
     return b;
 }
+/* 4.3.2: hang chon bo tu dung chung (Luu NVS, chia se 5 module hoc). refresh = setup_async. */
+static void (*s_deck_refresh)(void *);
+
+static void deck_mode_cb(lv_event_t *e)
+{
+    int v = (int)(intptr_t)lv_event_get_user_data(e) & 0xF;
+    fd_sync_pick_set_mode((fd_sync_pick_mode_t)v);
+    if (s_deck_refresh) lv_async_call(s_deck_refresh, NULL);
+}
+
+static void deck_col_cb(lv_event_t *e)
+{
+    int i = (int)(intptr_t)lv_event_get_user_data(e);
+    fd_sync_pick_toggle_col(i);
+    if (s_deck_refresh) lv_async_call(s_deck_refresh, NULL);
+}
+
+void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *))
+{
+    s_deck_refresh = refresh;
+    fd_sync_pick_t p;
+    fd_sync_pick_get(&p);
+    static const char *const MD[] = {"ALL", "NEW_ADDED", "COMBINED"};
+    ui_setup_opt_row(sc, _("DECK"), MD, 3, (int)p.mode, deck_mode_cb, 0, UI_OPT_WIDE | UI_OPT_WRAP);
+    if (p.mode != FD_SYNC_PICK_COMBINED) return;
+
+    bool por = setup_portrait();
+    int32_t bh = por ? 36 : 34;
+    int nc = fd_sync_col_count();
+    for (int i = 0; i < nc; i++) {
+        fd_sync_col_t c;
+        if (!fd_sync_col_get(i, &c)) continue;
+        bool on = fd_sync_pick_col_on(i);
+        lv_obj_t *b = lv_button_create(sc);
+        lv_obj_set_height(b, bh);
+        lv_obj_set_width(b, lv_pct(100));
+        lv_obj_set_style_radius(b, 10, 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
+        lv_obj_set_style_border_width(b, on ? 0 : 1, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
+        lv_obj_set_style_pad_hor(b, 8, 0);
+        lv_obj_t *bl = lv_label_create(b);
+        lv_obj_set_style_text_color(bl, on ? lv_color_white() : lv_color_hex(FD_COLOR_TEXT), 0);
+        lv_label_set_text(bl, c.name[0] ? c.name : c.id);
+        lv_obj_set_width(bl, lv_pct(100));
+        lv_label_set_long_mode(bl, LV_LABEL_LONG_DOT);
+        lv_obj_center(bl);
+        lv_obj_add_event_cb(b, deck_col_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+    }
+}
+

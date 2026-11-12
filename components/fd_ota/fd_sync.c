@@ -62,6 +62,16 @@ static SemaphoreHandle_t s_evmx;  /* events.log */
 static QueueHandle_t s_q;
 static word_t *s_w;               /* FD_SYNC_MAX_WORDS, PSRAM */
 static int s_nw;
+typedef struct {
+    char id[FD_SYNC_WID_LEN];
+    char name[FD_SYNC_COL_NAME_LEN];
+    bool def;
+} col_t;
+static col_t *s_c;
+static int s_nc;
+static fd_sync_pick_mode_t s_pk_mode;
+static int s_pk_nsel;
+static char s_pk_sel[FD_SYNC_MAX_COLS][FD_SYNC_WID_LEN];
 static char s_rev[32];
 static fd_sync_status_t s_st;
 static fd_sync_stats_t s_stats;
@@ -115,6 +125,173 @@ static void code_err(int code, char *out, size_t n)
 }
 
 /* ---------- NVS: cai dat nho + lan dong bo cuoi ---------- */
+/* ---------- 4.3.2: chon bo tu dung chung ---------- */
+static void nvs_save_pick(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_u8(h, "pk_mode", (uint8_t)s_pk_mode);
+    char buf[FD_SYNC_MAX_COLS * FD_SYNC_WID_LEN];
+    size_t n = 0;
+    buf[0] = 0;
+    for (int i = 0; i < s_pk_nsel; i++) {
+        int w = snprintf(buf + n, sizeof(buf) - n, "%s%s", n ? "," : "", s_pk_sel[i]);
+        if (w < 0 || (size_t)w >= sizeof(buf) - n) break;
+        n += (size_t)w;
+    }
+    nvs_set_str(h, "pk_cols", buf);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void nvs_load_pick(nvs_handle_t h)
+{
+    uint8_t m = 0;
+    if (nvs_get_u8(h, "pk_mode", &m) == ESP_OK && m <= (uint8_t)FD_SYNC_PICK_COMBINED)
+        s_pk_mode = (fd_sync_pick_mode_t)m;
+    char buf[FD_SYNC_MAX_COLS * FD_SYNC_WID_LEN];
+    size_t len = sizeof(buf);
+    if (nvs_get_str(h, "pk_cols", buf, &len) != ESP_OK) return;
+    s_pk_nsel = 0;
+    char *p = buf;
+    while (p && *p && s_pk_nsel < FD_SYNC_MAX_COLS) {
+        char *c = strchr(p, ',');
+        if (c) *c = 0;
+        while (*p == ' ') p++;
+        if (*p) {
+            ucpy(s_pk_sel[s_pk_nsel], sizeof(s_pk_sel[0]), p);
+            if (s_pk_sel[s_pk_nsel][0]) s_pk_nsel++;
+        }
+        p = c ? c + 1 : NULL;
+    }
+}
+
+static bool cid_selected_locked(const char *cid)
+{
+    if (s_pk_nsel <= 0) return false;
+    if (!cid || !cid[0]) return false;
+    for (int i = 0; i < s_pk_nsel; i++)
+        if (!strcmp(s_pk_sel[i], cid)) return true;
+    return false;
+}
+
+/* Goi khi dang giu lock. */
+static bool word_matches_pick_locked(const word_t *w, unsigned flags)
+{
+    if (!w) return false;
+    if ((flags & FD_SYNC_PICK_F_SEN) && w->nsen == 0) return false;
+    if ((flags & FD_SYNC_PICK_F_TEXT) && (!w->en[0] || !w->vi[0])) return false;
+    if (s_pk_mode == FD_SYNC_PICK_NEW && w->st != 0) return false;
+    if (s_pk_mode == FD_SYNC_PICK_COMBINED && !cid_selected_locked(w->cid)) return false;
+    return true;
+}
+
+int fd_sync_col_count(void)
+{
+    if (!s_mx) return 0;
+    lock();
+    int n = s_c ? s_nc : 0;
+    unlock();
+    return n;
+}
+
+bool fd_sync_col_get(int i, fd_sync_col_t *out)
+{
+    if (!out || !s_mx) return false;
+    lock();
+    bool ok = s_c && i >= 0 && i < s_nc;
+    if (ok) {
+        memset(out, 0, sizeof(*out));
+        ucpy(out->id, sizeof(out->id), s_c[i].id);
+        ucpy(out->name, sizeof(out->name), s_c[i].name);
+        out->def = s_c[i].def;
+    }
+    unlock();
+    return ok;
+}
+
+void fd_sync_pick_get(fd_sync_pick_t *out)
+{
+    if (!out) return;
+    lock();
+    out->mode = s_pk_mode;
+    out->nsel = s_pk_nsel;
+    unlock();
+}
+
+void fd_sync_pick_set_mode(fd_sync_pick_mode_t mode)
+{
+    if (mode > FD_SYNC_PICK_COMBINED) mode = FD_SYNC_PICK_ALL;
+    lock();
+    fd_sync_pick_mode_t prev = s_pk_mode;
+    s_pk_mode = mode;
+    if (mode == FD_SYNC_PICK_COMBINED && prev != FD_SYNC_PICK_COMBINED && s_pk_nsel == 0 && s_c) {
+        s_pk_nsel = 0;
+        for (int i = 0; i < s_nc && s_pk_nsel < FD_SYNC_MAX_COLS; i++) {
+            if (!s_c[i].id[0]) continue;
+            ucpy(s_pk_sel[s_pk_nsel], sizeof(s_pk_sel[0]), s_c[i].id);
+            s_pk_nsel++;
+        }
+    }
+    unlock();
+    nvs_save_pick();
+}
+
+void fd_sync_pick_toggle_col(int col_idx)
+{
+    lock();
+    if (!s_c || col_idx < 0 || col_idx >= s_nc) { unlock(); return; }
+    const char *id = s_c[col_idx].id;
+    int found = -1;
+    for (int i = 0; i < s_pk_nsel; i++) {
+        if (!strcmp(s_pk_sel[i], id)) { found = i; break; }
+    }
+    if (found >= 0) {
+        for (int i = found; i < s_pk_nsel - 1; i++)
+            memcpy(s_pk_sel[i], s_pk_sel[i + 1], sizeof(s_pk_sel[0]));
+        s_pk_nsel--;
+        memset(s_pk_sel[s_pk_nsel], 0, sizeof(s_pk_sel[0]));
+    } else if (s_pk_nsel < FD_SYNC_MAX_COLS) {
+        ucpy(s_pk_sel[s_pk_nsel], sizeof(s_pk_sel[0]), id);
+        s_pk_nsel++;
+    }
+    s_pk_mode = FD_SYNC_PICK_COMBINED;
+    unlock();
+    nvs_save_pick();
+}
+
+bool fd_sync_pick_col_on(int col_idx)
+{
+    bool on = false;
+    lock();
+    if (s_c && col_idx >= 0 && col_idx < s_nc)
+        on = cid_selected_locked(s_c[col_idx].id);
+    unlock();
+    return on;
+}
+
+int fd_sync_pick_words(int *idx, int cap, unsigned flags)
+{
+    if (!idx || cap <= 0 || !s_mx) return 0;
+    lock();
+    int n = 0;
+    for (int i = 0; i < s_nw && n < cap; i++)
+        if (word_matches_pick_locked(&s_w[i], flags)) idx[n++] = i;
+    unlock();
+    return n;
+}
+
+int fd_sync_pick_count(unsigned flags)
+{
+    if (!s_mx) return 0;
+    lock();
+    int n = 0;
+    for (int i = 0; i < s_nw; i++)
+        if (word_matches_pick_locked(&s_w[i], flags)) n++;
+    unlock();
+    return n;
+}
+
 static void nvs_save_settings(bool pn, bool pu, const char *topics)
 {
     nvs_handle_t h;
@@ -144,6 +321,7 @@ static void nvs_load(void)
     if (nvs_get_u8(h, "p_unl", &v) == ESP_OK) s_st.prio_unl = v;
     int64_t t = 0;
     if (nvs_get_i64(h, "last", &t) == ESP_OK) s_st.last_sync = (time_t)t;
+    nvs_load_pick(h);
     nvs_close(h);
 }
 
@@ -197,6 +375,7 @@ static void views_replay_locked(void);
 static bool load_store_locked(void)
 {
     s_nw = 0;
+    s_nc = 0;
     s_rev[0] = 0;
     s_st.have = false;
     s_st.words = s_st.sentences = s_st.collections = 0;
@@ -226,6 +405,12 @@ static bool load_store_locked(void)
             strlcpy(topics, fl[3], sizeof(topics));
         } else if (!strcmp(fl[0], "C")) {
             nc++;
+            if (n >= 4 && s_c && s_nc < FD_SYNC_MAX_COLS) {
+                ucpy(s_c[s_nc].id, sizeof(s_c[s_nc].id), fl[1]);
+                s_c[s_nc].def = fl[2][0] == '1';
+                ucpy(s_c[s_nc].name, sizeof(s_c[s_nc].name), fl[3]);
+                if (s_c[s_nc].id[0]) s_nc++;
+            }
         } else if (!strcmp(fl[0], "W") && n >= 11) {
             if (s_nw >= FD_SYNC_MAX_WORDS) continue;
             word_t *w = &s_w[s_nw];
@@ -258,6 +443,7 @@ static bool load_store_locked(void)
     if (bad || !end) {
         ESP_LOGW(TAG, "store.tsv hong/thieu -> bo, se tai lai toan bo");
         s_nw = 0;
+        s_nc = 0;
         s_rev[0] = 0;
         unlink(STORE);
         return false;
@@ -797,13 +983,15 @@ void fd_sync_init(void)
     s_mx = xSemaphoreCreateMutex();
     s_evmx = xSemaphoreCreateMutex();
     s_w = heap_caps_calloc(FD_SYNC_MAX_WORDS, sizeof(word_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    s_c = heap_caps_calloc(FD_SYNC_MAX_COLS, sizeof(col_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     s_q = xQueueCreate(4, sizeof(int));
     if (!s_mx || !s_evmx || !s_w || !s_q) {
         if (s_q) vQueueDelete(s_q);
         if (s_mx) vSemaphoreDelete(s_mx);
         if (s_evmx) vSemaphoreDelete(s_evmx);
         heap_caps_free(s_w);
-        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL;
+        heap_caps_free(s_c);
+        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL; s_c = NULL;
         ESP_LOGE(TAG, "init: het bo nho"); return;
     }
     mkdir(SDIR, 0775);
@@ -816,8 +1004,8 @@ void fd_sync_init(void)
     int p = count_events();
     lock(); s_st.pending = p; unlock();
     if (xTaskCreate(task, "fd_sync", 8192, NULL, 2, NULL) != pdPASS) {
-        vQueueDelete(s_q); vSemaphoreDelete(s_mx); vSemaphoreDelete(s_evmx); heap_caps_free(s_w);
-        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL;
+        vQueueDelete(s_q); vSemaphoreDelete(s_mx); vSemaphoreDelete(s_evmx); heap_caps_free(s_w); heap_caps_free(s_c);
+        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL; s_c = NULL;
         ESP_LOGE(TAG, "init: khong tao duoc task");
     }
 }
@@ -874,6 +1062,7 @@ static int order_words(ord_t *o, int cap, bool filt)
     int n = 0;
     for (int i = 0; i < s_nw; i++) {
         if (filt && s_w[i].nsen == 0) continue;
+        if (!word_matches_pick_locked(&s_w[i], 0)) continue;
         uint64_t unl = (s_st.prio_unl && s_w[i].st == 2) ? 1 : 0;
         uint64_t seen = s_w[i].seen > 255 ? 255 : s_w[i].seen;
         uint64_t sub = s_st.prio_new ? (uint64_t)(0xFFFFFFFFu - s_w[i].ca) : (uint64_t)esp_random();
@@ -1000,6 +1189,7 @@ static int order_cards(ord_t *o, int cap)
     int n = 0;
     for (int i = 0; i < s_nw; i++) {
         if (!s_w[i].en[0] || !s_w[i].vi[0]) continue;
+        if (!word_matches_pick_locked(&s_w[i], 0)) continue;
         uint64_t views = s_w[i].views > 255 ? 255 : s_w[i].views;
         uint64_t unl = (s_st.prio_unl && s_w[i].st == 2) ? 1 : 0;
         uint64_t sub = s_st.prio_new ? (uint64_t)(0xFFFFFFFFu - s_w[i].ca) : (uint64_t)esp_random();

@@ -312,6 +312,10 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"STATS_SCAN_USES", "AI scan uses"},
     {"STATS_SCAN_WORDS", "Words saved from scan"},
     {"PHONE_QR_HINT", "Scan with your phone to study vocabulary"},
+    {"DECK", "Deck"},
+    {"NEW_ADDED", "Newly added"},
+    {"COMBINED", "Combined"},
+    {"NO_DECK_WORDS", "No words match this selection"},
     {NULL, NULL} // End mark
 };
 
@@ -629,6 +633,10 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"STATS_SCAN_USES", "Lượt scan AI"},
     {"STATS_SCAN_WORDS", "Từ scan thành công"},
     {"PHONE_QR_HINT", "Quét mã bằng điện thoại để scan từ vựng"},
+    {"DECK", "Bộ từ"},
+    {"NEW_ADDED", "Từ mới thêm"},
+    {"COMBINED", "Kết hợp"},
+    {"NO_DECK_WORDS", "Không có từ phù hợp với lựa chọn này"},
     {NULL, NULL} // End mark
 };
 
