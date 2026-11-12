@@ -20,6 +20,7 @@ static uint8_t s_load_dots;
 static bool s_load_adding;
 static bool s_gate;
 static char s_word[FD_DICTNET_WORD_LEN];
+static char s_say[FD_DICTNET_WORD_LEN];  /* 4.3.2: tu tieng Anh de nut loa phat am */
 static uint8_t s_dir = FD_DICTNET_DIR_EN_VI;   /* 4.1.8: Anh-Viet / Viet-Anh */
 static bool s_telex_busy;
 
@@ -252,12 +253,56 @@ static void show_error(const fd_dictnet_status_t *st)
     lv_obj_add_event_cb(b, back_home_cb, LV_EVENT_CLICKED, NULL);
 }
 
+/* Phat am tu tieng Anh, giong Lat tu: Pico (va cache neu co), nut loa doc 1 lan. */
+static void speak_cb(lv_event_t *e)
+{
+    (void)e;
+    if (!s_say[0]) return;
+    const fd_pron_cfg_t cfg = {FD_PRON_PICO_ONLY, 1, false};
+    ui_pron_say_cfg(s_say, &cfg);
+}
+
 static void show_result_ok(const fd_dictnet_status_t *st)
 {
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 6, 0);
-    label(s_body, st->result.en, &fd_font_mont_32, FD_COLOR_TEXT);
+    strlcpy(s_say, st->result.en, sizeof(s_say));
+
+    /* Hang tieu de: tu trai, nut loa goc phai (kieu Lat tu: tron amber 48 px). */
+    lv_obj_t *head = lv_obj_create(s_body);
+    lv_obj_remove_style_all(head);
+    lv_obj_set_width(head, lv_pct(100));
+    lv_obj_set_height(head, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(head, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(head, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(head, 8, 0);
+    lv_obj_set_scrollable(head, false);
+
+    lv_obj_t *w = lv_label_create(head);
+    lv_obj_set_style_text_font(w, &fd_font_mont_32, 0);
+    lv_obj_set_style_text_color(w, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_flex_grow(w, 1);
+    lv_obj_set_width(w, 1);   /* flex gian phan con lai, khong day nut loa ra ngoai */
+    lv_label_set_long_mode(w, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(w, st->result.en);
+
+    if (s_say[0]) {
+        lv_obj_t *spk = lv_button_create(head);
+        lv_obj_set_size(spk, 48, 48);
+        lv_obj_set_style_radius(spk, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_pad_all(spk, 0, 0);
+        lv_obj_set_style_bg_opa(spk, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(spk, lv_color_hex(FD_COLOR_PRIMARY), 0);
+        lv_obj_set_style_bg_color(spk, lv_color_hex(FD_COLOR_PRIMARY_DARK), LV_STATE_PRESSED);
+        lv_obj_set_style_shadow_width(spk, 0, 0);
+        lv_obj_add_event_cb(spk, speak_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_t *si = lv_label_create(spk);
+        lv_obj_set_style_text_font(si, &fd_font_mont_24, 0);
+        lv_obj_set_style_text_color(si, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
+        lv_label_set_text(si, LV_SYMBOL_VOLUME_MAX);
+        lv_obj_center(si);
+    }
     if (st->result.ipa[0]) label(s_body, st->result.ipa, NULL, FD_COLOR_PRIMARY_TEXT);
     if (st->result.pos[0]) label(s_body, st->result.pos, NULL, FD_COLOR_TEXT_MUTED);
     label(s_body, st->result.vi, &fd_font_noto_18, FD_COLOR_TEXT);
@@ -382,7 +427,7 @@ static void show_home(void)
     lv_textarea_set_placeholder_text(s_ta, _("LOOKUP_HINT"));   /* 4.1.7: goi y nam trong o nhap (bo nhan phia tren) */
     lv_obj_set_style_pad_all(s_ta, 8, 0);
 
-    /* 4.1.5: mac dinh ban phim QWERTY luon mo; nut thu gon de hien lich su tra, cham o nhap -> mo lai */
+    /* 4.3.2: mac dinh an ban phim; nut / cham o nhap -> mo lai */
     lv_obj_t *tg = lv_button_create(row);
     lv_obj_set_size(tg, 40, 40);
     lv_obj_set_style_shadow_width(tg, 0, 0);
@@ -396,7 +441,7 @@ static void show_home(void)
     dir_apply(dl);
     lv_obj_add_event_cb(tg, kb_toggle_cb, LV_EVENT_CLICKED, tgl);
     lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, tgl);
-    kb_set_open(tgl, true);
+    kb_set_open(tgl, false);
 
     /* 2.3.6 FIX reboot: truoc day hist[30] (30 x 280 B = 8.4 KB) nam tren stack task LVGL (8 KB) -> tran stack -> reset.
      * Bo dem tinh trong PSRAM: khong ton stack hoac RAM noi. */

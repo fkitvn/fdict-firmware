@@ -15,6 +15,7 @@
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "fd_sentence.h"
+#include "fd_sync.h"
 #include "fd_voice.h"
 #include "nvs.h"
 #include "ui_priv.h"
@@ -180,6 +181,7 @@ static void show_setup(void)
     s_view = V_SETUP;
     body_reset();
     lv_obj_t *sc = ui_setup_begin(s_body, _("SENTENCE"));   /* 2.3.6: mau cai dat chung */
+    ui_setup_deck(sc, setup_async);
     static const char *const CNT[] = {"5", "10"};
     static const char *const DIR[] = {"SEN_DIR_VI_EN", "SEN_DIR_EN_VI"};
     static const char *const RP[] = {"OFF", "ON"};
@@ -231,6 +233,7 @@ static void show_msg(const fd_sen_status_t *st)
 
 static void start(void)
 {
+    if (fd_sync_pick_count(FD_SYNC_PICK_F_SEN) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
     s_view = V_LOAD;
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

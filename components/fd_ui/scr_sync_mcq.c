@@ -141,6 +141,7 @@ static void show_msg_no_data(void)
 static void start_cb(lv_event_t *e)
 {
     (void)e;
+    if (fd_sync_pick_count(0) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
     if (!fd_sync_ready() || !build_session()) { show_msg_no_data(); return; }
     s_pos = s_score = s_done = 0;
     s_said_pos = -1;
@@ -157,6 +158,7 @@ static void show_setup(void)
     s_view = V_SETUP;
     body_reset();
     lv_obj_t *sc = ui_setup_begin(s_body, _(title_key()));   /* 2.3.6: mau cai dat chung (nhu Quiz) */
+    ui_setup_deck(sc, setup_async);
     static const char *const NS[] = {"10", "20", "ENDLESS"};
     static const char *const RP[] = {"OFF", "ON"};
     ui_setup_opt_row(sc, _("QUESTIONS"), NS, 3, s_ncfg, opt_cb, OPT_N, 0);

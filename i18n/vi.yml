@@ -294,3 +294,7 @@ vi:
   STATS_SCAN_USES: 'Lượt scan AI'
   STATS_SCAN_WORDS: 'Từ scan thành công'
   PHONE_QR_HINT: Quét mã bằng điện thoại để scan từ vựng
+  DECK: 'Bộ từ'
+  NEW_ADDED: 'Từ mới thêm'
+  COMBINED: 'Kết hợp'
+  NO_DECK_WORDS: 'Không có từ phù hợp với lựa chọn này'
