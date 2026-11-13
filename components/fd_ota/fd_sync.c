@@ -260,6 +260,26 @@ void fd_sync_pick_toggle_col(int col_idx)
     nvs_save_pick();
 }
 
+void fd_sync_pick_set(fd_sync_pick_mode_t mode, const char ids[][FD_SYNC_WID_LEN], int n)
+{
+    if (mode > FD_SYNC_PICK_COMBINED) mode = FD_SYNC_PICK_ALL;
+    lock();
+    s_pk_mode = mode;
+    s_pk_nsel = 0;
+    memset(s_pk_sel, 0, sizeof(s_pk_sel));
+    if (ids && n > 0) {
+        for (int i = 0; i < n && s_pk_nsel < FD_SYNC_MAX_COLS; i++) {
+            if (!ids[i][0]) continue;
+            ucpy(s_pk_sel[s_pk_nsel], sizeof(s_pk_sel[0]), ids[i]);
+            s_pk_nsel++;
+        }
+    }
+    unlock();
+    nvs_save_pick();
+}
+
+
+
 bool fd_sync_pick_col_on(int col_idx)
 {
     bool on = false;
