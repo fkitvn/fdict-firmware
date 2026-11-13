@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.7] - 2026-11-13
+Màn cấu hình bộ từ có nhãn nhỏ căn trái, danh sách bộ từ chỉ hiện khi chọn Kết hợp. Sắp xếp câu đổi nhãn thành Chiều với Anh Việt và Việt Anh. Thống kê đổi giao diện giống Đồng bộ.
+
 ## [4.3.6] - 2026-11-13
 Sửa màn cấu hình Bộ từ không chọn được nút chọn một và danh sách bộ từ. Lựa chọn được giữ đến khi bấm Lưu lại hoặc nút cứng quay lại.
 

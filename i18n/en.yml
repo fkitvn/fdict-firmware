@@ -251,8 +251,8 @@ en:
   SEN_PLAY_AUDIO: 'Play audio after each sentence'
   SEN_COUNT: 'Sentences per session'
   SEN_DIR: 'Direction'
-  SEN_DIR_EN_VI: 'English > Vietnamese'
-  SEN_DIR_VI_EN: 'Vietnamese > English'
+  SEN_DIR_EN_VI: 'English - Vietnamese'
+  SEN_DIR_VI_EN: 'Vietnamese - English'
   DEV_TOOLS: 'Test tools'
   BTN_TEST: 'Button test'
   BTN_TEST_HINT: 'Press each button below the screen in turn'
@@ -295,6 +295,7 @@ en:
   STATS_SCAN_WORDS: 'Words saved from scan'
   PHONE_QR_HINT: Scan with your phone to study vocabulary
   DECK: Deck
+  DECK_CONFIG: Deck settings
   NEW_ADDED: Newly added
   COMBINED: Combined
   NO_DECK_WORDS: 'No words match this selection'

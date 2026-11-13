@@ -1,6 +1,6 @@
-/* 4.3.6: man cau hinh bo tu dung chung 5 module hoc.
+/* 4.3.7: man cau hinh bo tu dung chung 5 module hoc.
  * Hang 1: ba nut chon mot (radio) Tat ca, Tu moi them, Ket hop.
- * Hang 2: danh sach bo tu xep ngang, xuong dong khi het cho.
+ * Hang 2: danh sach bo tu xep ngang, chi hien khi chon Ket hop.
  * Nut Luu lai o cuoi: chi ghi NVS khi bam Luu; quay lai khong luu. */
 #include <string.h>
 #include "fd_fonts.h"
@@ -187,7 +187,12 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_pad_hor(body, 10, 0);
     lv_obj_set_style_pad_row(body, 8, 0);
 
-    ui_screen_title(body, _("DECK"));
+    /* Nhan nho, can trai, cung kieu nhan cac hang cai dat khac. */
+    lv_obj_t *ttl = lv_label_create(body);
+    lv_obj_set_width(ttl, lv_pct(100));
+    lv_obj_set_style_text_color(ttl, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
+    lv_obj_set_style_text_align(ttl, LV_TEXT_ALIGN_LEFT, 0);
+    lv_label_set_text(ttl, _("DECK_CONFIG"));
 
     bool por = portrait();
     int32_t bh = por ? 36 : 34;
@@ -241,7 +246,8 @@ static void build(lv_obj_t *scr)
     lv_obj_set_scroll_dir(chips, LV_DIR_VER);
     lv_obj_set_clickable(chips, false);
 
-    int nc = fd_sync_col_count();
+    /* Danh sach bo tu chi hien khi chon Ket hop; khung van giu cho de nut Luu lai nam cuoi. */
+    int nc = (s_mode == FD_SYNC_PICK_COMBINED) ? fd_sync_col_count() : 0;
     for (int i = 0; i < nc; i++) {
         fd_sync_col_t c;
         if (!fd_sync_col_get(i, &c)) continue;
