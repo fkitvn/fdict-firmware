@@ -21,6 +21,9 @@ static bool s_load_adding;
 static bool s_gate;
 static char s_word[FD_DICTNET_WORD_LEN];
 static char s_say[FD_DICTNET_WORD_LEN];  /* 4.3.2: tu tieng Anh de nut loa phat am */
+/* 4.3.5: cau vi du + nghia ca cau do server lam day (PSRAM; label LVGL tu copy chuoi) */
+static EXT_RAM_BSS_ATTR char s_ex[FD_DICTNET_EX_LEN];
+static EXT_RAM_BSS_ATTR char s_exvi[FD_DICTNET_EXVI_LEN];
 static uint8_t s_dir = FD_DICTNET_DIR_EN_VI;   /* 4.1.8: Anh-Viet / Viet-Anh */
 static bool s_telex_busy;
 
@@ -306,6 +309,23 @@ static void show_result_ok(const fd_dictnet_status_t *st)
     if (st->result.ipa[0]) label(s_body, st->result.ipa, NULL, FD_COLOR_PRIMARY_TEXT);
     if (st->result.pos[0]) label(s_body, st->result.pos, NULL, FD_COLOR_TEXT_MUTED);
     label(s_body, st->result.vi, &fd_font_noto_18, FD_COLOR_TEXT);
+    fd_dictnet_get_example(s_ex, sizeof(s_ex), s_exvi, sizeof(s_exvi));
+    if (s_ex[0]) {
+        /* Khoi vi du: vien trai mau chinh, cau tieng Anh tren, nghia ca cau ben duoi. */
+        lv_obj_t *box = lv_obj_create(s_body);
+        lv_obj_remove_style_all(box);
+        lv_obj_set_width(box, lv_pct(100));
+        lv_obj_set_height(box, LV_SIZE_CONTENT);
+        lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_style_pad_left(box, 8, 0);
+        lv_obj_set_style_pad_row(box, 2, 0);
+        lv_obj_set_style_border_side(box, LV_BORDER_SIDE_LEFT, 0);
+        lv_obj_set_style_border_width(box, 3, 0);
+        lv_obj_set_style_border_color(box, lv_color_hex(FD_COLOR_PRIMARY), 0);
+        lv_obj_set_scrollable(box, false);
+        label(box, s_ex, &fd_font_noto_14, FD_COLOR_TEXT);
+        if (s_exvi[0]) label(box, s_exvi, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    }
     if (st->added) label(s_body, _("LOOKUP_ADDED"), NULL, FD_COLOR_PRIMARY_TEXT);
     else if (st->queued) label(s_body, _("LOOKUP_QUEUED"), NULL, FD_COLOR_TEXT_MUTED);
     lv_obj_t *b = lv_button_create(s_body);

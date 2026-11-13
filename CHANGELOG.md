@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.5] - 2026-11-13
+Năm màn chờ học mở màn cấu hình Bộ từ. Màn cấu hình có ba nút chọn một ở hàng đầu, danh sách bộ từ xếp ngang ở hàng hai, nút Lưu lại ở cuối, chỉ ghi khi bấm Lưu, nút cứng quay lại thì hủy. Từ điển hiện câu ví dụ và nghĩa tiếng Việt cả câu do máy chủ bổ sung.
+
 ## [4.3.4] - 2026-11-13
 Sửa chữ Bộ từ bị ô vuông ở tiêu đề. Năm màn chờ học chọn bộ từ bằng ba nút một hàng, hiện ô đánh dấu các bộ sưu tập khi chọn Kết hợp và áp dụng ngay. Màn Bộ từ xếp nút và ô đánh dấu theo hàng, thêm nút Lưu lại, chỉ ghi khi bấm Lưu, nút cứng quay lại thì hủy. Vào Đồng bộ thì tự đồng bộ khi đã có wifi. Thống kê bỏ nút Trở lại, ra bằng nút cứng.
 
