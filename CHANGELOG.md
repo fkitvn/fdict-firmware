@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.6] - 2026-11-13
+Sửa màn cấu hình Bộ từ không chọn được nút chọn một và danh sách bộ từ. Lựa chọn được giữ đến khi bấm Lưu lại hoặc nút cứng quay lại.
+
 ## [4.3.5] - 2026-11-13
 Năm màn chờ học mở màn cấu hình Bộ từ. Màn cấu hình có ba nút chọn một ở hàng đầu, danh sách bộ từ xếp ngang ở hàng hai, nút Lưu lại ở cuối, chỉ ghi khi bấm Lưu, nút cứng quay lại thì hủy. Từ điển hiện câu ví dụ và nghĩa tiếng Việt cả câu do máy chủ bổ sung.
 
