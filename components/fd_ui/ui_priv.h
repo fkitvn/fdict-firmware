@@ -113,6 +113,6 @@ lv_obj_t *ui_setup_begin(lv_obj_t *body, const char *title);
 void ui_setup_opt_row(lv_obj_t *sc, const char *name, const char *const *opts, int n, int sel,
                       lv_event_cb_t cb, int grp, unsigned flags);
 lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb);
-/* 4.3.3: hang Bo tu tren man cai dat, cham de mo man chon bo tu (FD_SCR_DECK). refresh khong dung (man dung lai khi quay lai). */
+/* hang Bo tu tren man cho: ba nut giong hang lua chon, o danh dau khi Ket hop. */
 void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *));
 lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb);

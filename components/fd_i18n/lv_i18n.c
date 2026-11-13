@@ -316,6 +316,7 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"NEW_ADDED", "Newly added"},
     {"COMBINED", "Combined"},
     {"NO_DECK_WORDS", "No words match this selection"},
+    {"SAVE", "Save"},
     {NULL, NULL} // End mark
 };
 
@@ -637,6 +638,7 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"NEW_ADDED", "Từ mới thêm"},
     {"COMBINED", "Kết hợp"},
     {"NO_DECK_WORDS", "Không có từ phù hợp với lựa chọn này"},
+    {"SAVE", "Lưu lại"},
     {NULL, NULL} // End mark
 };
 

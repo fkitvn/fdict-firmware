@@ -21,6 +21,6 @@ for SZ in 14 18; do
     -o components/fd_fonts/fd_font_noto_${SZ}.c
 done
 # Tieu de 32 px (ui_screen_title): ASCII day du (tieu de tieng Anh, 1.3.0) + ky tu co dau cua tieu de tieng Viet.
-npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Regular.ttf -r 0x20-0x7E --symbols "àđặãĐáìĐềữáâạừ" \
+npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Regular.ttf -r 0x20-0x7E --symbols "àđặãĐáìĐềữáâạừậắếộ" \
   --size 32 --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_32_title --no-compress \
   -o components/fd_fonts/fd_font_noto_32_title.c

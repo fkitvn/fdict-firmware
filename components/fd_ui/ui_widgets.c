@@ -456,46 +456,111 @@ lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb)
     if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
     return b;
 }
-/* 4.3.3: hang Bo tu mo man chon bo tu dung chung. */
-static void deck_open_cb(lv_event_t *e)
+/* 4.3.3: hang Bo tu tren man cho 5 module, cung kieu cac hang lua chon ben duoi.
+ * Ba nut (Tat ca / Tu moi them / Ket hop) mot hang; khi Ket hop, cac bo tu hien o hang sau, xep ngang. */
+static void (*s_deck_refresh)(void *);
+
+static void deck_kick_refresh(void)
 {
-    (void)e;
-    fd_ui_show(FD_SCR_DECK);
+    if (s_deck_refresh) lv_async_call(s_deck_refresh, NULL);
+}
+
+static void deck_mode_cb(lv_event_t *e)
+{
+    int i = (int)(intptr_t)lv_event_get_user_data(e) & 0xF;
+    fd_sync_pick_set_mode((fd_sync_pick_mode_t)i);
+    deck_kick_refresh();
+}
+
+static void deck_col_cb(lv_event_t *e)
+{
+    fd_sync_pick_toggle_col((int)(intptr_t)lv_event_get_user_data(e));
+    deck_kick_refresh();
+}
+
+static void deck_check_mark(lv_obj_t *b, bool on)
+{
+    lv_obj_t *o = lv_obj_create(b);
+    lv_obj_remove_style_all(o);
+    lv_obj_set_size(o, 18, 18);
+    lv_obj_set_clickable(o, false);
+    lv_obj_set_scrollable(o, false);
+    lv_obj_set_style_radius(o, 4, 0);
+    lv_obj_set_style_border_width(o, on ? 0 : 2, 0);
+    lv_obj_set_style_border_color(o, lv_color_hex(FD_COLOR_BORDER), 0);
+    lv_obj_set_style_bg_opa(o, on ? LV_OPA_30 : LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(o, lv_color_white(), 0);
+    if (on) {
+        lv_obj_t *l = lv_label_create(o);
+        lv_obj_set_style_text_font(l, &fd_font_mont_24, 0);
+        lv_obj_set_style_text_color(l, lv_color_white(), 0);
+        lv_label_set_text(l, LV_SYMBOL_OK);
+        lv_obj_center(l);
+    }
 }
 
 void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *))
 {
-    (void)refresh;
+    s_deck_refresh = refresh;
+    static const char *const MD[] = {"ALL", "NEW_ADDED", "COMBINED"};
     fd_sync_pick_t p;
     fd_sync_pick_get(&p);
-    static const char *const MD[] = {"ALL", "NEW_ADDED", "COMBINED"};
-    bool por = setup_portrait();
-    int32_t bh = por ? 36 : 34;
-    lv_obj_t *b = lv_button_create(sc);
-    lv_obj_set_height(b, bh);
-    lv_obj_set_width(b, lv_pct(100));
-    lv_obj_set_style_radius(b, 10, 0);
-    lv_obj_set_style_shadow_width(b, 0, 0);
-    lv_obj_set_style_bg_color(b, lv_color_white(), 0);
-    lv_obj_set_style_border_width(b, 1, 0);
-    lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
-    lv_obj_set_style_pad_hor(b, 8, 0);
-    lv_obj_set_flex_flow(b, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(b, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(b, 6, 0);
-    lv_obj_t *l = lv_label_create(b);
-    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
-    lv_label_set_text(l, _("DECK"));
-    lv_obj_set_width(l, por ? 56 : 92);
-    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
-    lv_obj_t *v = lv_label_create(b);
-    lv_obj_set_style_text_color(v, lv_color_hex(FD_COLOR_TEXT), 0);
-    lv_obj_set_flex_grow(v, 1);
-    lv_obj_set_width(v, 1);
-    lv_label_set_long_mode(v, LV_LABEL_LONG_DOT);
-    lv_obj_set_style_text_align(v, LV_TEXT_ALIGN_RIGHT, 0);
     int md = (int)p.mode;
     if (md < 0 || md > 2) md = 0;
-    lv_label_set_text(v, _(MD[md]));
-    lv_obj_add_event_cb(b, deck_open_cb, LV_EVENT_CLICKED, NULL);
+    ui_setup_opt_row(sc, _("DECK"), MD, 3, md, deck_mode_cb, 0, UI_OPT_WRAP);
+
+    if (md != (int)FD_SYNC_PICK_COMBINED) return;
+
+    bool por = setup_portrait();
+    lv_obj_t *row = lv_obj_create(sc);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_width(row, lv_pct(100));
+    lv_obj_set_height(row, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_column(row, 6, 0);
+    lv_obj_set_scrollable(row, false);
+
+    lv_obj_t *sp = lv_obj_create(row);
+    lv_obj_remove_style_all(sp);
+    lv_obj_set_size(sp, por ? 48 : 62, 1);
+    lv_obj_set_clickable(sp, false);
+    lv_obj_set_scrollable(sp, false);
+
+    lv_obj_t *chips = lv_obj_create(row);
+    lv_obj_remove_style_all(chips);
+    lv_obj_set_flex_grow(chips, 1);
+    lv_obj_set_width(chips, 1);
+    lv_obj_set_height(chips, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(chips, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_style_pad_column(chips, 6, 0);
+    lv_obj_set_style_pad_row(chips, 6, 0);
+    lv_obj_set_scrollable(chips, false);
+
+    int nc = fd_sync_col_count();
+    int32_t bh = por ? 36 : 34;
+    for (int i = 0; i < nc; i++) {
+        fd_sync_col_t c;
+        if (!fd_sync_col_get(i, &c)) continue;
+        bool on = fd_sync_pick_col_on(i);
+        lv_obj_t *b = lv_button_create(chips);
+        lv_obj_set_height(b, bh);
+        lv_obj_set_style_radius(b, 10, 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
+        lv_obj_set_style_border_width(b, on ? 0 : 1, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
+        lv_obj_set_style_pad_hor(b, 8, 0);
+        lv_obj_set_flex_flow(b, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(b, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_column(b, 6, 0);
+        deck_check_mark(b, on);
+        lv_obj_t *l = lv_label_create(b);
+        lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
+        lv_obj_set_style_text_color(l, on ? lv_color_white() : lv_color_hex(FD_COLOR_TEXT), 0);
+        lv_label_set_text(l, c.name[0] ? c.name : c.id);
+        lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+        lv_obj_set_width(l, 88);
+        lv_obj_add_event_cb(b, deck_col_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+    }
 }

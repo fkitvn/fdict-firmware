@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.4] - 2026-11-13
+Sửa chữ Bộ từ bị ô vuông ở tiêu đề. Năm màn chờ học chọn bộ từ bằng ba nút một hàng, hiện ô đánh dấu các bộ sưu tập khi chọn Kết hợp và áp dụng ngay. Màn Bộ từ xếp nút và ô đánh dấu theo hàng, thêm nút Lưu lại, chỉ ghi khi bấm Lưu, nút cứng quay lại thì hủy. Vào Đồng bộ thì tự đồng bộ khi đã có wifi. Thống kê bỏ nút Trở lại, ra bằng nút cứng.
+
 ## [4.3.3] - 2026-11-13
 Năm module học mở màn hình riêng để chọn bộ từ bằng nút chọn một và ô đánh dấu. Lật từ bỏ cài đặt Thứ tự. Sắp xếp câu dùng Số câu với 10, 20 hoặc Vô tận giống các module khác, hỏi xác nhận khi thoát giữa bài làm, và bỏ bốn nhãn Trước, Sau, Xóa, Chọn vì đã chạm thẻ và vùng câu.
 

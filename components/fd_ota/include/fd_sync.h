@@ -103,6 +103,8 @@ bool fd_sync_col_get(int i, fd_sync_col_t *out);
 void fd_sync_pick_get(fd_sync_pick_t *out);
 void fd_sync_pick_set_mode(fd_sync_pick_mode_t mode);
 void fd_sync_pick_toggle_col(int col_idx);
+void fd_sync_pick_set(fd_sync_pick_mode_t mode, const char ids[][FD_SYNC_WID_LEN], int n);
+
 bool fd_sync_pick_col_on(int col_idx);
 /* Nhat tu theo cai dat bo tu chung. flags: FD_SYNC_PICK_F_SEN / F_TEXT. */
 int  fd_sync_pick_words(int *idx, int cap, unsigned flags);
