@@ -98,6 +98,13 @@ static void build(lv_obj_t *scr)
     if (!fd_net_is_connected()) ui_gate_btn(r, _("OPEN_WIFI"), false, wifi_cb);
     s_btn = ui_gate_btn(r, _("SYNC_NOW"), true, now_cb);
     refresh();
+    /* Vao man la dong bo ngay (giong nut Dong bo ngay), neu da co Wi-Fi va chua dang chay. */
+    if (fd_net_is_connected()) {
+        fd_sync_status_t st;
+        fd_sync_get(&st);
+        bool run = st.state == FD_SYNC_CHECKING || st.state == FD_SYNC_PULLING || st.state == FD_SYNC_PUSHING || st.manual;
+        if (!run) fd_sync_force();
+    }
 }
 
 static void destroy(void) { s_body = s_state = s_btn = NULL; memset(s_v, 0, sizeof(s_v)); }
