@@ -9,6 +9,9 @@
 #define FD_DICTNET_IPA_LEN  64
 #define FD_DICTNET_MEAN_LEN 128
 #define FD_DICTNET_POS_LEN  40
+/* 4.3.5: cau vi du + nghia ca cau (server lam day, khong luu lich su) */
+#define FD_DICTNET_EX_LEN   320
+#define FD_DICTNET_EXVI_LEN 512
 
 typedef struct {
     char en[FD_DICTNET_WORD_LEN];
@@ -56,6 +59,8 @@ bool fd_dictnet_lookup(const char *word);
 /* dir = FD_DICTNET_DIR_*; VI_EN: word la tieng Viet, ket qua en = tu tieng Anh. */
 bool fd_dictnet_lookup_dir(const char *word, uint8_t dir);
 void fd_dictnet_get(fd_dictnet_status_t *out);
+/* Cau vi du (tieng Anh) + nghia tieng Viet ca cau cua lan tra gan nhat (rong neu server khong co). */
+void fd_dictnet_get_example(char *ex, size_t ex_cap, char *ex_vi, size_t vi_cap);
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap);
 /* Xoa lich su tra (RAM + /data/dict_hist.json/.tmp). Goi khi dang xuat / khoi phuc cai dat goc. */
 void fd_dictnet_clear_history(void);

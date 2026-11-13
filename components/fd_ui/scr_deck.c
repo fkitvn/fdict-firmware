@@ -1,6 +1,6 @@
-/* 4.3.3: man chon bo tu dung chung 5 module hoc.
- * Hang 1: ba nut chon mot (Tat ca, Tu moi them, Ket hop), cung kieu hang lua chon man cho.
- * Hang 2: o danh dau cac bo tu, xep ngang roi xuong dong.
+/* 4.3.4: man cau hinh bo tu dung chung 5 module hoc.
+ * Hang 1: ba nut chon mot (radio) Tat ca, Tu moi them, Ket hop.
+ * Hang 2: danh sach bo tu xep ngang, xuong dong khi het cho.
  * Nut Luu lai o cuoi: chi ghi NVS khi bam Luu; quay lai khong luu. */
 #include <string.h>
 #include "fd_fonts.h"
@@ -124,6 +124,32 @@ static void save_cb(lv_event_t *e)
     ui_nav_back();
 }
 
+
+/* Nut chon mot: vong tron, cham giua khi dang chon. */
+static void radio_dot(lv_obj_t *b, bool on)
+{
+    lv_obj_t *o = lv_obj_create(b);
+    lv_obj_remove_style_all(o);
+    lv_obj_set_size(o, 16, 16);
+    lv_obj_set_clickable(o, false);
+    lv_obj_set_scrollable(o, false);
+    lv_obj_set_style_radius(o, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(o, 2, 0);
+    lv_obj_set_style_border_color(o, lv_color_hex(on ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
+    lv_obj_set_style_bg_opa(o, LV_OPA_TRANSP, 0);
+    if (on) {
+        lv_obj_t *dot = lv_obj_create(o);
+        lv_obj_remove_style_all(dot);
+        lv_obj_set_size(dot, 8, 8);
+        lv_obj_set_clickable(dot, false);
+        lv_obj_set_scrollable(dot, false);
+        lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(dot, lv_color_hex(FD_COLOR_PRIMARY), 0);
+        lv_obj_center(dot);
+    }
+}
+
 /* O danh dau: o vuong, nen amber khi da chon, dau tick bang Montserrat (Noto khong co glyph). */
 static void check_mark(lv_obj_t *b, bool on)
 {
@@ -177,27 +203,26 @@ static void build(lv_obj_t *scr)
     for (int i = 0; i < 3; i++) {
         bool on = (int)s_mode == i;
         lv_obj_t *b = lv_button_create(modes);
-        lv_obj_set_height(b, por ? 48 : bh);
+        lv_obj_set_height(b, LV_SIZE_CONTENT);
         lv_obj_set_flex_grow(b, 1);
         lv_obj_set_style_radius(b, 10, 0);
         lv_obj_set_style_shadow_width(b, 0, 0);
-        lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
-        lv_obj_set_style_border_width(b, on ? 0 : 1, 0);
-        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
-        lv_obj_set_style_pad_hor(b, 4, 0);
+        lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(b, 0, 0);
+        lv_obj_set_style_pad_hor(b, 2, 0);
+        lv_obj_set_style_pad_ver(b, 4, 0);
+        lv_obj_set_flex_flow(b, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_flex_align(b, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_row(b, 4, 0);
+        radio_dot(b, on);
         lv_obj_t *l = lv_label_create(b);
         lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
-        lv_obj_set_style_text_color(l, on ? lv_color_white() : lv_color_hex(FD_COLOR_TEXT), 0);
+        lv_obj_set_style_text_color(l, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_hex(FD_COLOR_TEXT), 0);
         lv_label_set_text(l, _(MD_KEYS[i]));
         lv_obj_set_width(l, lv_pct(100));
         lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-        if (por) {
-            lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-            lv_obj_set_style_text_line_space(l, -3, 0);
-        } else {
-            lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
-        }
-        lv_obj_center(l);
+        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_line_space(l, -3, 0);
         lv_obj_add_event_cb(b, mode_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
     }
 

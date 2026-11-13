@@ -113,6 +113,6 @@ lv_obj_t *ui_setup_begin(lv_obj_t *body, const char *title);
 void ui_setup_opt_row(lv_obj_t *sc, const char *name, const char *const *opts, int n, int sel,
                       lv_event_cb_t cb, int grp, unsigned flags);
 lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb);
-/* hang Bo tu tren man cho: ba nut giong hang lua chon, o danh dau khi Ket hop. */
+/* hang Bo tu tren man cho: nhan + gia tri hien tai, cham de mo man cau hinh Bo tu. */
 void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *));
 lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb);

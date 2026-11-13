@@ -35,6 +35,9 @@ static fd_dictnet_status_t s_st;
 static EXT_RAM_BSS_ATTR fd_dictnet_entry_t s_hist[FD_DICTNET_HIST_MAX];
 static int s_nh;
 static char s_last_cid[25];
+/* Vi du cua lan tra gan nhat (PSRAM, guarded by lock). Tach khoi fd_dictnet_entry_t de khong phinh lich su / stack. */
+static EXT_RAM_BSS_ATTR char s_ex[FD_DICTNET_EX_LEN];
+static EXT_RAM_BSS_ATTR char s_exvi[FD_DICTNET_EXVI_LEN];
 
 enum { CMD_LOOKUP = 1, CMD_FLUSH };
 
@@ -267,7 +270,8 @@ static int post_device(const char *path, cJSON *body, char *resp, int cap)
     return code;
 }
 
-static bool do_add(const fd_dictnet_entry_t *e)
+/* ex / ex_vi: vi du tu lan tra (NULL khi day hang cho; server tu lam day). */
+static bool do_add(const fd_dictnet_entry_t *e, const char *ex, const char *ex_vi)
 {
     if (!e->vi[0]) return false;
     char *rx = ps_alloc(2048);
@@ -280,6 +284,8 @@ static bool do_add(const fd_dictnet_entry_t *e)
                       cJSON_AddStringToObject(b, "word", e->en) &&
                       (!e->ipa[0] || cJSON_AddStringToObject(b, "ipa", e->ipa)) &&
                       (!e->pos[0] || cJSON_AddStringToObject(b, "pos", e->pos)) &&
+                      (!ex || !ex[0] || cJSON_AddStringToObject(b, "example", ex)) &&
+                      (!ex || !ex[0] || !ex_vi || !ex_vi[0] || cJSON_AddStringToObject(b, "example_vi", ex_vi)) &&
                       (!s_last_cid[0] || cJSON_AddStringToObject(b, "collection_id", s_last_cid));
         int code = fields ? post_device("/api/study/dict/words/add", b, rx, 2048) : -3;
         cJSON_Delete(b);
@@ -318,7 +324,7 @@ static void flush_queue(void)
         cJSON *o = cJSON_Parse(line);
         if (!o) { complete = false; break; }
         fd_dictnet_entry_t e;
-        bool ok = parse_entry(o, &e) && do_add(&e);
+        bool ok = parse_entry(o, &e) && do_add(&e, NULL, NULL);
         cJSON_Delete(o);
         if (!ok) {
             if (kn + len >= KEEP_CAP) { complete = false; break; }
@@ -340,6 +346,8 @@ static void do_lookup(const char *word, uint8_t dir)
     lock();
     memset(&s_st, 0, sizeof(s_st));
     s_st.state = FD_DICTNET_LOOKUP;
+    s_ex[0] = 0;
+    s_exvi[0] = 0;
     unlock();
 
     if (!fd_ota_is_paired()) {
@@ -369,6 +377,13 @@ static void do_lookup(const char *word, uint8_t dir)
             err = errno == ENOMEM ? FD_DICTNET_ERR_NOMEM : FD_DICTNET_ERR_FORMAT;
         else if (!parse_entry(r, &e) || !e.vi[0])
             err = FD_DICTNET_ERR_NOT_FOUND;
+        else {
+            /* Server (ham chung completeWordInfo) da lam day; thiet bi chi hien. */
+            lock();
+            ucpy(s_ex, sizeof(s_ex), jstr(r, "example"));
+            ucpy(s_exvi, sizeof(s_exvi), s_ex[0] ? jstr(r, "example_vi") : "");
+            unlock();
+        }
         cJSON_Delete(r);
     } else if (code == 404) err = FD_DICTNET_ERR_NOT_FOUND;
     else if (code == 401) err = FD_DICTNET_ERR_UNPAIRED;
@@ -381,7 +396,7 @@ static void do_lookup(const char *word, uint8_t dir)
         e.dir = dir;
         fd_dictnet_err_t persist_err = hist_push(&e);
         lock(); s_st.state = FD_DICTNET_ADD; unlock();
-        added = do_add(&e);
+        added = do_add(&e, s_ex, s_exvi);   /* chi task nay ghi s_ex/s_exvi */
         if (!added) {
             fd_dictnet_err_t qe = queue_append(&e);
             queued = qe == FD_DICTNET_ERR_NONE;
@@ -494,6 +509,17 @@ void fd_dictnet_get(fd_dictnet_status_t *out)
         return;
     }
     lock(); *out = s_st; unlock();
+}
+
+void fd_dictnet_get_example(char *ex, size_t ex_cap, char *ex_vi, size_t vi_cap)
+{
+    if (ex && ex_cap) ex[0] = 0;
+    if (ex_vi && vi_cap) ex_vi[0] = 0;
+    if (!s_mx) return;
+    lock();
+    if (ex && ex_cap) ucpy(ex, ex_cap, s_ex);
+    if (ex_vi && vi_cap) ucpy(ex_vi, vi_cap, s_exvi);
+    unlock();
 }
 
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap)
