@@ -31,6 +31,7 @@ typedef enum {
     FD_SCR_BTNTEST,     /* 2.2.2 ... > Thu 4 nut bam */
     FD_SCR_WARRANTY,    /* Cai dat > Thong tin bao hanh */
     FD_SCR_PHONE_QR,    /* Bang nhanh > Dien thoai: QR mo trang web tren dien thoai */
+    FD_SCR_DECK,        /* 4.3.3 man chon bo tu dung chung 5 module hoc */
     FD_SCR_COUNT,
 } fd_scr_t;
 

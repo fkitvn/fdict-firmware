@@ -21,7 +21,7 @@
 
 static const char *TAG = "fd_sen";
 
-#define RESP_CAP (16 * 1024)   /* 10 cau x ~700 B + du phong */
+#define RESP_CAP (32 * 1024)   /* 40 cau x ~700 B + du phong */
 
 typedef struct {
     bool done;
@@ -324,7 +324,7 @@ bool fd_sen_start(int count)
     lock();
     bool busy = s_st.busy;
     if (!busy) {
-        s_count = count == 5 ? 5 : 10;
+        s_count = (count == 0) ? FD_SEN_MAX : (count == 20 ? 20 : 10);
         s_st.n = 0; s_st.submitted = false; s_sid[0] = 0; s_can_submit = false;
         s_st.busy = true; s_st.err = FD_STUDY_ERR_NONE; s_st.http = 0;
     }

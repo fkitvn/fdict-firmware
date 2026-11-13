@@ -1,15 +1,14 @@
 /* Flash card (synced deck, khong header, nen sang). 23/10: vao man -> CAI DAT truoc phien (cung kieu Luyen tap/scr_practice):
- *   SETUP: So the (10/20/Tat ca), Thu tu (Theo danh sach/Ngau nhien), Mat truoc (Tu/Nghia), Tu dong phat (Tat/1/2 lan);
+ *   SETUP: So the (10/20/Tat ca), Mat truoc (Tu/Nghia), Tu dong phat (Tat/1/2 lan);
  *          cac lua chon trong vung cuon, nut [Bat dau] 46 px ghim day man. Nho trong NVS fd/fc_cfg.
- *   CARD : the hai mat (cham de lat, < Truoc / Sau >, bo dem); thu tu ngau nhien them nut Tron.
- * Quay lai (vuot mep / giu B1): CARD -> SETUP -> Home (on_back). (Bo man danh sach: Ngau nhien da nam trong cai dat.)
+ *   CARD : the hai mat (cham de lat, < Truoc / Sau >, bo dem). Thu tu luon theo danh sach.
+ * Quay lai (vuot mep / giu B1): dang hoc -> hoi thoat -> SETUP -> Home (on_back).
  * Du lieu (25/10, FDict One - 1.1.6): the tu server (fd_flashcard: POST /api/study/cards, Bearer token, cache /data) - cung mau
  *   Hoc tap (fd_study). Vao man -> tai nen; bam Bat dau -> chup danh sach the hien co. Chua ghep/offline/chua co cache ->
  *   10 tu mau co dinh ben duoi (ITEMS). */
 #include <string.h>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
-#include "esp_random.h"
 #include "fd_fonts.h"
 #include "fd_audio.h"
 #include "fd_flashcard.h"
@@ -52,7 +51,7 @@ static int32_t s_pad_hor0;       /* pad ngang mac dinh cua trang (SETUP giong Ho
 
 /* ---------- cau hinh (NVS fd/fc_cfg: byte0 so the, byte1 thu tu, byte2 mat truoc, byte3 tu dong phat | ver bit 28..31) ---------- */
 #define FCFG_VER 1u
-static uint8_t s_ncfg, s_rnd, s_mfront, s_reps;   /* 0/1/2 = 10/20/Tat ca; 0 danh sach/1 ngau nhien; 0 Tu/1 Nghia; 0 Tat/1/2 lan */
+static uint8_t s_ncfg, s_mfront, s_reps;   /* 0/1/2 = 10/20/Tat ca; 0 Tu/1 Nghia; 0 Tat/1/2 lan */
 static const int NOPT[3] = {10, 20, 0};           /* 0 = Tat ca */
 
 static void cfg_load(void)
@@ -62,7 +61,6 @@ static void cfg_load(void)
     if (nvs_open("fd", NVS_READONLY, &h) != ESP_OK) return;
     if (nvs_get_u32(h, "fc_cfg", &v) == ESP_OK && (v >> 28) == FCFG_VER) {
         s_ncfg = (v & 0xFF) < 3 ? (uint8_t)(v & 0xFF) : 0;
-        s_rnd = ((v >> 8) & 0xFF) ? 1 : 0;
         s_mfront = ((v >> 16) & 0xFF) ? 1 : 0;
         uint32_t r = (v >> 24) & 0x0F;
         s_reps = (r == 1 || r == 2) ? 1 : 0;   /* Bat/Tat: 1 hoac 2 lan cu = Bat (phat 1 lan) */
@@ -74,7 +72,7 @@ static void cfg_save(void)
 {
     nvs_handle_t h;
     if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) return;
-    nvs_set_u32(h, "fc_cfg", (uint32_t)s_ncfg | ((uint32_t)s_rnd << 8) | ((uint32_t)s_mfront << 16) |
+    nvs_set_u32(h, "fc_cfg", (uint32_t)s_ncfg | ((uint32_t)s_mfront << 16) |
                 ((uint32_t)s_reps << 24) | (FCFG_VER << 28));
     nvs_commit(h);
     nvs_close(h);
@@ -148,16 +146,6 @@ static void card_refresh(void)
     lv_label_set_text_fmt(s_count, "%d/%d", s_pos + 1, s_n);
 }
 
-static void shuffle(void)
-{
-    for (int i = s_n - 1; i > 0; i--) {
-        int j = (int)(esp_random() % (uint32_t)(i + 1));
-        uint8_t t = s_order[i]; s_order[i] = s_order[j]; s_order[j] = t;
-    }
-    s_pos = 0;
-    s_flipped = false;
-}
-
 static uint8_t s_tap;   /* 1 lat, 2 up, 3 sang the */
 
 static void show_pos(bool say)
@@ -193,7 +181,6 @@ static void step_cb(lv_event_t *e)
     s_pos = (s_pos + d + s_n) % s_n;
     show_pos(true);
 }
-static void shuffle_cb(lv_event_t *e) { (void)e; shuffle(); show_pos(true); }
 /* Phat am tu hien tai (task fd_audio, khong chan LVGL): co cache /data/voice/<tu>.pcm -> giong tot; khong -> Pico ngay +
  * xep tai nen (fd_voice, neu WiFi + da ghep) cho lan sau. Loi xep hang -> bip; loi tong hop ->
  * task am thanh phat chuong. Am luong 0 = im. Nut loa luon doc 1 lan. */
@@ -254,7 +241,7 @@ static void nav_btn(lv_obj_t *row, const char *txt, lv_event_cb_t cb, intptr_t u
     lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, (void *)ud);
 }
 
-/* Bo the theo cai dat: so the (gioi han theo so tu co), thu tu, mat truoc */
+/* Bo the theo cai dat: so the (gioi han theo so tu co), mat truoc; thu tu danh sach */
 static void show_card(void)
 {
     s_view = V_CARD;
@@ -282,9 +269,6 @@ static void show_card(void)
     }
     s_n = NOPT[s_ncfg] && NOPT[s_ncfg] < s_nitems ? NOPT[s_ncfg] : s_nitems;
     for (int i = 0; i < s_nitems; i++) s_order[i] = (uint8_t)i;
-    if (s_rnd) {   /* ngau nhien: tron toan bo roi lay s_n the dau */
-        int n = s_n; s_n = s_nitems; shuffle(); s_n = n;
-    }
     s_pos = 0;
     s_flipped = false;
     lv_obj_clean(s_body);
@@ -348,13 +332,12 @@ static void show_card(void)
     nav_btn(row, _("PREV"), step_cb, -1);
     s_count = lv_label_create(row);
     lv_obj_set_style_text_color(s_count, lv_color_hex(0x6B7280), 0);
-    if (s_rnd) nav_btn(row, _("SHUFFLE"), shuffle_cb, 0);
     nav_btn(row, _("NEXT"), step_cb, 1);
     show_pos(true);
 }
 
 /* ---------- SETUP (cung kieu man cai dat Luyen tap, scr_practice.c) ---------- */
-enum { OPT_N, OPT_ORD, OPT_FRONT, OPT_REP };
+enum { OPT_N, OPT_FRONT, OPT_REP };
 static void show_setup(void);
 
 /* Su kien nut -> lv_async_call: dung lai man (xoa nut dang xu ly) ngoai callback, khong chay sau trong ngan xep su kien */
@@ -366,7 +349,6 @@ static void opt_cb(lv_event_t *e)
     intptr_t ud = (intptr_t)lv_event_get_user_data(e);
     int grp = (int)(ud >> 4), v = (int)(ud & 0xF);
     if (grp == OPT_N) s_ncfg = (uint8_t)v;
-    else if (grp == OPT_ORD) s_rnd = (uint8_t)v;
     else if (grp == OPT_FRONT) s_mfront = (uint8_t)v;
     else if (grp == OPT_REP) s_reps = (uint8_t)v;
     cfg_save();
@@ -384,7 +366,6 @@ static void start_cb(lv_event_t *e)
 static void opt_row(lv_obj_t *p, const char *name, int grp, const char *const *opts, int n, int sel)
 {
     unsigned fl = (grp == OPT_REP || grp == OPT_FRONT) ? UI_OPT_WIDE : 0;   /* 2.3.6: mau chung */
-    if (grp == OPT_ORD) fl |= UI_OPT_WRAP;
     ui_setup_opt_row(p, name, opts, n, sel, opt_cb, grp, fl);
 }
 
@@ -403,11 +384,9 @@ static void show_setup(void)
     ui_setup_deck(sc, setup_async);
 
     static const char *const NS[] = {"10", "20", "ALL"};
-    static const char *const ORD[] = {"IN_ORDER", "RANDOM"};
     static const char *const FR[] = {"WORD", "MEANING"};
     static const char *const RP[] = {"OFF", "ON"};
     opt_row(sc, _("CARDS"), OPT_N, NS, 3, s_ncfg);
-    opt_row(sc, _("ORDER"), OPT_ORD, ORD, 2, s_rnd);
     opt_row(sc, _("FRONT_SIDE"), OPT_FRONT, FR, 2, s_mfront);
     opt_row(sc, _("AUTO_PLAY"), OPT_REP, RP, 2, s_reps);
 
@@ -427,13 +406,91 @@ static void build(lv_obj_t *scr)
     show_setup();
 }
 
-static void destroy(void) { s_body = s_front = s_back = s_count = NULL; }
+static lv_obj_t *s_dlg;
+
+static void dlg_close(void)
+{
+    if (s_dlg) {
+        lv_obj_delete(s_dlg);
+        s_dlg = NULL;
+    }
+}
+
+static void dlg_cb(lv_event_t *e)
+{
+    bool ok = (bool)(intptr_t)lv_event_get_user_data(e);
+    dlg_close();
+    if (ok) lv_async_call(back_setup_async, NULL);
+}
+
+static void dlg_btn(lv_obj_t *row, const char *t, bool primary)
+{
+    lv_obj_t *b = lv_button_create(row);
+    lv_obj_set_height(b, 40);
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_radius(b, 10, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(primary ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
+    lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(l, t);
+    lv_obj_center(l);
+    lv_obj_add_event_cb(b, dlg_cb, LV_EVENT_CLICKED, (void *)(intptr_t)primary);
+}
+
+static void dlg_open(void)
+{
+    s_dlg = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(s_dlg);
+    lv_obj_set_size(s_dlg, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_color(s_dlg, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_dlg, LV_OPA_40, 0);
+    lv_obj_set_clickable(s_dlg, true);
+    lv_obj_t *box = lv_obj_create(s_dlg);
+    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
+    lv_obj_center(box);
+    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
+    lv_obj_set_style_border_width(box, 0, 0);
+    lv_obj_set_style_radius(box, 14, 0);
+    lv_obj_set_style_pad_all(box, 12, 0);
+    lv_obj_set_style_pad_row(box, 6, 0);
+    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(box, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_scrollable(box, false);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    lv_obj_t *msg = lv_label_create(box);
+    lv_obj_set_style_text_font(msg, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_color(msg, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_width(msg, lv_pct(100));
+    lv_label_set_long_mode(msg, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(msg, _("QUIT_THIS_QUIZ"));
+    lv_obj_t *r = lv_obj_create(box);
+    lv_obj_remove_style_all(r);
+    lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(r, 10, 0);
+    lv_obj_set_style_pad_top(r, 4, 0);
+    dlg_btn(r, _("CANCEL"), false);
+    dlg_btn(r, _("QUIT"), true);
+}
+
+static void destroy(void)
+{
+    dlg_close();
+    s_body = s_front = s_back = s_count = NULL;
+}
 
 /* Quay lai: tu the ve cai dat truoc (async: khong xoa obj dang xu ly su kien) */
 static void back_setup_async(void *arg) { (void)arg; if (s_body) show_setup(); }
 static bool on_back(void)
 {
     if (s_gate || s_view == V_SETUP) return false;
+    if (s_dlg) { dlg_close(); return true; }
+    if (s_view == V_CARD && s_n > 0) {
+        dlg_open();
+        return true;
+    }
     lv_async_call(back_setup_async, NULL);
     return true;
 }
