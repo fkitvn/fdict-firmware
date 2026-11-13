@@ -45,11 +45,7 @@ static void kv(const char *k, const char *v)
     lv_obj_t *r = lv_obj_create(s_list ? s_list : s_body);
     lv_obj_remove_style_all(r);
     lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_opa(r, LV_OPA_COVER, 0);   /* 2.3.4: the trang bo goc */
-    lv_obj_set_style_bg_color(r, lv_color_white(), 0);
-    lv_obj_set_style_radius(r, 8, 0);
-    lv_obj_set_style_pad_hor(r, 10, 0);
-    lv_obj_set_style_pad_ver(r, 6, 0);
+    /* 4.3.7: hang phang giong man Dong bo, khong the trang. */
     lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *a = lv_label_create(r);
@@ -57,7 +53,6 @@ static void kv(const char *k, const char *v)
     lv_label_set_text(a, k);
     lv_obj_t *b = lv_label_create(r);
     lv_obj_set_style_text_color(b, lv_color_hex(FD_COLOR_TEXT), 0);
-    lv_obj_set_style_text_font(b, &fd_font_noto_18, 0);
     lv_label_set_text(b, v);
 }
 
