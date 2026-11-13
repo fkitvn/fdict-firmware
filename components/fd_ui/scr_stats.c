@@ -12,7 +12,6 @@ static lv_obj_t *s_body;
 static lv_obj_t *s_list;   /* vung noi dung cuon (tren thanh nut) */
 static bool s_gate, s_shown, s_left;
 
-static void home_cb(lv_event_t *e) { (void)e; ui_nav_home(); }
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
 static void load(void);
 static void retry_async(void *a) { (void)a; if (s_body) load(); }
@@ -86,7 +85,6 @@ static void show_no_wifi(void)
     text(_("WIFI_NOT_CONNECTED"), &fd_font_noto_18, FD_COLOR_TEXT);
     text(_("STATS_NEED_WIFI"), NULL, FD_COLOR_TEXT_MUTED);
     lv_obj_t *r = btn_row();
-    ui_gate_btn(r, _("BACK"), false, home_cb);
     ui_gate_btn(r, _("OPEN_WIFI"), true, wifi_cb);
 }
 
@@ -110,7 +108,6 @@ static void show(const fd_sync_stats_t *st)
         snprintf(m, sizeof(m), _("ERROR_FMT"), st->err);
         text(m, &fd_font_noto_18, 0xDC2626);
         lv_obj_t *r = btn_row();
-        ui_gate_btn(r, _("BACK"), false, home_cb);
         ui_gate_btn(r, _("RETRY"), true, retry_cb);
         return;
     }
@@ -130,7 +127,6 @@ static void show(const fd_sync_stats_t *st)
     snprintf(v, sizeof(v), "%d", st->scan_uses); kv(_("STATS_SCAN_USES"), v);
     snprintf(v, sizeof(v), "%d", st->scan_words); kv(_("STATS_SCAN_WORDS"), v);
     lv_obj_t *r = btn_row();
-    ui_gate_btn(r, _("BACK"), false, home_cb);
     ui_gate_btn(r, _("RETRY"), true, retry_cb);
 }
 

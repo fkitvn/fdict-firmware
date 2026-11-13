@@ -50,7 +50,7 @@ static void radio_mark(lv_obj_t *b, bool on)
     lv_obj_t *o = lv_obj_create(b);
     lv_obj_remove_style_all(o);
     lv_obj_set_size(o, 22, 22);
-    lv_obj_clear_flag(o, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(o, false);
     lv_obj_set_scrollable(o, false);
     lv_obj_set_style_radius(o, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(o, on ? 0 : 2, 0);
@@ -61,7 +61,7 @@ static void radio_mark(lv_obj_t *b, bool on)
         lv_obj_t *dot = lv_obj_create(o);
         lv_obj_remove_style_all(dot);
         lv_obj_set_size(dot, 8, 8);
-        lv_obj_clear_flag(dot, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_clickable(dot, false);
         lv_obj_set_scrollable(dot, false);
         lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
@@ -76,7 +76,7 @@ static void check_mark(lv_obj_t *b, bool on)
     lv_obj_t *o = lv_obj_create(b);
     lv_obj_remove_style_all(o);
     lv_obj_set_size(o, 22, 22);
-    lv_obj_clear_flag(o, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(o, false);
     lv_obj_set_scrollable(o, false);
     lv_obj_set_style_radius(o, 4, 0);
     lv_obj_set_style_border_width(o, on ? 0 : 2, 0);
