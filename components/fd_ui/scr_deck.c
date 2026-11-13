@@ -1,4 +1,4 @@
-/* 4.3.4: man cau hinh bo tu dung chung 5 module hoc.
+/* 4.3.6: man cau hinh bo tu dung chung 5 module hoc.
  * Hang 1: ba nut chon mot (radio) Tat ca, Tu moi them, Ket hop.
  * Hang 2: danh sach bo tu xep ngang, xuong dong khi het cho.
  * Nut Luu lai o cuoi: chi ghi NVS khi bam Luu; quay lai khong luu. */
@@ -91,12 +91,12 @@ static void draft_toggle(int col_idx)
     s_mode = FD_SYNC_PICK_COMBINED;
 }
 
-static void refresh_async(void *arg)
+/* ui_nav_refresh chi dat lich ve lai; giu s_refreshing=true den khi build chay xong
+ * de destroy khong xoa ban nhap (neu xoa, man ve lai tu NVS va lua chon vua bam bien mat). */
+static void kick_refresh(void)
 {
-    (void)arg;
     s_refreshing = true;
     ui_nav_refresh();
-    s_refreshing = false;
 }
 
 static void mode_cb(lv_event_t *e)
@@ -107,13 +107,13 @@ static void mode_cb(lv_event_t *e)
     s_mode = (fd_sync_pick_mode_t)v;
     if (s_mode == FD_SYNC_PICK_COMBINED && prev != FD_SYNC_PICK_COMBINED && s_nsel == 0)
         draft_select_all();
-    lv_async_call(refresh_async, NULL);
+    kick_refresh();
 }
 
 static void col_cb(lv_event_t *e)
 {
     draft_toggle((int)(intptr_t)lv_event_get_user_data(e));
-    lv_async_call(refresh_async, NULL);
+    kick_refresh();
 }
 
 static void save_cb(lv_event_t *e)
@@ -178,6 +178,7 @@ static void check_mark(lv_obj_t *b, bool on)
 static void build(lv_obj_t *scr)
 {
     draft_load();
+    s_refreshing = false;
 
     lv_obj_t *body = ui_page_create(scr);
     lv_obj_set_scrollable(body, false);
@@ -199,6 +200,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_flex_align(modes, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(modes, 6, 0);
     lv_obj_set_scrollable(modes, false);
+    lv_obj_set_clickable(modes, false);
 
     for (int i = 0; i < 3; i++) {
         bool on = (int)s_mode == i;
@@ -207,8 +209,10 @@ static void build(lv_obj_t *scr)
         lv_obj_set_flex_grow(b, 1);
         lv_obj_set_style_radius(b, 10, 0);
         lv_obj_set_style_shadow_width(b, 0, 0);
-        lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_border_width(b, 0, 0);
+        lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(b, lv_color_white(), 0);
+        lv_obj_set_style_border_width(b, on ? 2 : 1, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex(on ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
         lv_obj_set_style_pad_hor(b, 2, 0);
         lv_obj_set_style_pad_ver(b, 4, 0);
         lv_obj_set_flex_flow(b, LV_FLEX_FLOW_COLUMN);
@@ -235,6 +239,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_pad_row(chips, 6, 0);
     lv_obj_set_style_pad_top(chips, 2, 0);
     lv_obj_set_scroll_dir(chips, LV_DIR_VER);
+    lv_obj_set_clickable(chips, false);
 
     int nc = fd_sync_col_count();
     for (int i = 0; i < nc; i++) {
