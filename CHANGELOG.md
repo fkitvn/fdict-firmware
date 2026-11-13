@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.3] - 2026-11-13
+Năm module học mở màn hình riêng để chọn bộ từ bằng nút chọn một và ô đánh dấu. Lật từ bỏ cài đặt Thứ tự. Sắp xếp câu dùng Số câu với 10, 20 hoặc Vô tận giống các module khác, hỏi xác nhận khi thoát giữa bài làm, và bỏ bốn nhãn Trước, Sau, Xóa, Chọn vì đã chạm thẻ và vùng câu.
+
 ## [4.3.2] - 2026-11-12
 Từ điển ẩn bàn phím khi vào. Năm module học dùng chung cài đặt chọn bộ từ Tất cả, Từ mới thêm hoặc kết hợp nhiều bộ và giữ nguyên khi chuyển module.
 

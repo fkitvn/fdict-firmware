@@ -23,7 +23,7 @@ typedef struct {
 
 extern const ui_screen_t g_scr_home, g_scr_settings, g_scr_wifi,
     g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_practice, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
-    g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty, g_scr_phone_qr;
+    g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty, g_scr_phone_qr, g_scr_deck;
 
 /* Ma thiet bi: MAC eFuse 12 hex (same stable ID used in pairing QR). */
 void ui_device_ident(char *out, size_t n);
@@ -113,6 +113,6 @@ lv_obj_t *ui_setup_begin(lv_obj_t *body, const char *title);
 void ui_setup_opt_row(lv_obj_t *sc, const char *name, const char *const *opts, int n, int sel,
                       lv_event_cb_t cb, int grp, unsigned flags);
 lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb);
-/* 4.3.2: hang chon bo tu dung chung 5 module hoc; refresh = setup_async cua module. */
+/* 4.3.3: hang Bo tu tren man cai dat, cham de mo man chon bo tu (FD_SCR_DECK). refresh khong dung (man dung lai khi quay lai). */
 void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *));
 lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb);

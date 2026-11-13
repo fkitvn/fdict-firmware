@@ -1,6 +1,6 @@
 #pragma once
 /* 2.1.6 Sap xep thanh cau tu API (cung mau fd_study / fd_flashcard):
- * POST {base}/api/study/sentence/start {device_id, count 5|10} -> {session_id, source, count,
+ * POST {base}/api/study/sentence/start {device_id, count} -> {session_id, source, count,
  *   exercises:[{id, tokens[] (da xao), answer[], end, sentence, hint, word}]}
  * POST {base}/api/study/sentence/result {device_id, session_id, results:[{id, tokens[], ms}], best_streak, duration_ms}
  * Header Authorization: Bearer <device_token> (khong log). 401/410/429/message: fd_ota + ui_nav xu ly chung.
@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include "fd_study.h"   /* fd_study_err_t */
 
-#define FD_SEN_MAX      10
+#define FD_SEN_MAX      40
 #define FD_SEN_TOK      9
 #define FD_SEN_TOK_LEN  16
 #define FD_SEN_ID_LEN   48
@@ -43,7 +43,7 @@ enum { FD_SEN_SRC_ONLINE = 0, FD_SEN_SRC_CACHE, FD_SEN_SRC_BUILTIN };
 
 /* Gui hang doi ket qua + nap san cache khi co mang (khong chan, tu gioi han tan suat). */
 void fd_sen_sync(void);
-/* Tai bo cau moi (count 5/10). false = dang ban. */
+/* Tai bo cau moi (count 10/20, 0 = toi da FD_SEN_MAX). false = dang ban. */
 bool fd_sen_start(int count);
 void fd_sen_get(fd_sen_status_t *out);
 /* Chep cau i vao out; false neu ngoai pham vi. */

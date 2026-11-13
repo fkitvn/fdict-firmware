@@ -1,12 +1,12 @@
 /* 2.1.6 Sap xep thanh cau (fd_sentence): the tu da xao, chon dung thu tu -> kiem tra -> phan hoi -> cau tiep.
- * Nut cung (theo o COLOUR_CELL cua xoay hien tai): TL = the truoc, TR = the sau, BL = xoa the vua chon, BR = chon.
  * Moi tu la 1 the chu nhat (vien). Cham the de chon lan luot -> the chuyen len vung cau; cham vung cau = xoa tu cuoi.
  * Chon du the -> tu kiem tra ngay (cham tai may). 2.1.7: hoc offline (cache / bo cau mau), ket qua dong bo sau.
  * 2.2.0: man cai dat (phat am sau moi cau, NVS fd/sen_snd) truoc khi Bat dau.
- * 2.3.4: them so cau/phien (5|10, NVS fd/sen_cnt, mac dinh 10 - server chi nhan 5|10) va huong dich
+ * 2.3.4: them so cau/phien (NVS fd/sen_cnt) va huong dich
  *   (NVS fd/sen_dir, mac dinh 0 = Viet>Anh: goi y tieng Viet, xep the tieng Anh nhu cu; 1 = Anh>Viet: hien
  *   cau tieng Anh, xep the tieng Viet tach tu nghia/hint tai may; hint khong tach duoc -> cau do xep tieng Anh).
- *   Phat am luon doc cau tieng Anh. Nut hanh dong ghim day man (noi dung cuon o tren); bo nhan SEN_TAP_HINT. */
+ *   Phat am luon doc cau tieng Anh. Bo nhan SEN_TAP_HINT.
+ * 4.3.3: so cau 10, 20 hoac Vo tan; hoi xac nhan khi thoat giua bai; bo chu giai Truoc, Sau, Xoa, Chon. */
 #include <stdio.h>
 #include <string.h>
 #include "esp_random.h"
@@ -23,7 +23,7 @@
 #define C_OK  0x16A34A
 #define C_BAD 0xDC2626
 #define SEN_REP_KEY "sen_rep"   /* 2.3.6 NVS fd: tu dong phat cau dung 0 Tat (mac dinh) / 1 / 2 lan (thay sen_snd) */
-#define SEN_CNT_KEY "sen_cnt"   /* NVS fd: so cau/phien 5|10 */
+#define SEN_CNT_KEY "sen_cnt"   /* NVS fd: so cau/phien 10|20|0=Vo tan */
 #define SEN_DIR_KEY "sen_dir"   /* NVS fd: 0 = Viet>Anh, 1 = Anh>Viet */
 
 typedef enum { V_SETUP, V_LOAD, V_MSG, V_PLAY, V_FEED, V_RESULT } view_t;
@@ -34,7 +34,7 @@ static lv_obj_t *s_ans;             /* vung cau dang ghep (hang the da chon) */
 static lv_obj_t *s_tile[FD_SEN_TOK];
 static fd_sen_ex_t s_ex;
 static int s_pos, s_total, s_correct, s_streak, s_best;
-static int s_pick[FD_SEN_TOK], s_npick, s_cur;
+static int s_pick[FD_SEN_TOK], s_npick;
 static bool s_used[FD_SEN_TOK];
 static int64_t s_t0, s_t_all;
 static bool s_waiting;              /* dang cho /start */
@@ -58,7 +58,7 @@ static void prefs_load(void)
         nvs_close(h);
     }
     s_reps = (v == 1 || v == 2) ? 1 : 0;   /* Bat/Tat: gia tri cu 1/2 = Bat */
-    s_cnt = c == 5 ? 5 : 10;
+    s_cnt = (c == 0 || c == 20) ? c : 10;  /* 4.3.3: 10, 20, 0=Vo tan; 5 cu -> 10 */
     s_vi = d == 1;
 }
 
@@ -169,7 +169,7 @@ static void opt_cb(lv_event_t *e)
 {
     intptr_t ud = (intptr_t)lv_event_get_user_data(e);
     int grp = (int)(ud >> 4), v = (int)(ud & 0xF);
-    if (grp == OPT_CNT) { s_cnt = v ? 10 : 5; pref_save(SEN_CNT_KEY, (uint8_t)s_cnt); }
+    if (grp == OPT_CNT) { static const int NOPT[3] = {10, 20, 0}; s_cnt = NOPT[v < 3 ? v : 0]; pref_save(SEN_CNT_KEY, (uint8_t)s_cnt); }
     else if (grp == OPT_DIR) { s_vi = v == 1; pref_save(SEN_DIR_KEY, s_vi ? 1 : 0); }
     else if (grp == OPT_REP) { s_reps = (uint8_t)v; pref_save(SEN_REP_KEY, s_reps); }
     lv_async_call(setup_async, NULL);   /* dung lai man ngoai callback nut */
@@ -182,10 +182,11 @@ static void show_setup(void)
     body_reset();
     lv_obj_t *sc = ui_setup_begin(s_body, _("SENTENCE"));   /* 2.3.6: mau cai dat chung */
     ui_setup_deck(sc, setup_async);
-    static const char *const CNT[] = {"5", "10"};
+    static const char *const CNT[] = {"10", "20", "ENDLESS"};
     static const char *const DIR[] = {"SEN_DIR_VI_EN", "SEN_DIR_EN_VI"};
     static const char *const RP[] = {"OFF", "ON"};
-    ui_setup_opt_row(sc, _("SEN_COUNT"), CNT, 2, s_cnt == 10 ? 1 : 0, opt_cb, OPT_CNT, UI_OPT_WIDE);
+    int nsel = s_cnt == 0 ? 2 : (s_cnt == 20 ? 1 : 0);
+    ui_setup_opt_row(sc, _("QUESTIONS"), CNT, 3, nsel, opt_cb, OPT_CNT, 0);
     ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 2, s_vi ? 1 : 0, opt_cb, OPT_DIR, UI_OPT_WIDE);
     ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
     ui_setup_start(s_body, begin_cb);
@@ -342,15 +343,7 @@ static void tile_style(int i)
     lv_obj_t *b = s_tile[i];
     if (!b) return;
     lv_obj_set_hidden(b, s_used[i]);   /* the da chon chuyen len vung cau */
-    tile_box(b, i == s_cur);
-}
-
-static void next_free(int dir)
-{
-    for (int k = 0; k < NT; k++) {
-        s_cur = (s_cur + dir + NT) % NT;
-        if (!s_used[s_cur]) return;
-    }
+    tile_box(b, false);
 }
 
 static void refresh_play(void)
@@ -386,50 +379,33 @@ static void pick(int i)
         lv_async_call(feed_async, (void *)(intptr_t)ok);   /* khong xoa the trong chinh callback cua no */
         return;
     }
-    if (s_used[s_cur]) next_free(1);
     refresh_play();
 }
 
 static void undo(void)
 {
     if (s_view != V_PLAY || s_npick == 0 || s_npick >= NT) return;   /* du the: dang cham */
-    s_cur = s_pick[--s_npick];
-    s_used[s_cur] = false;
+    int i = s_pick[--s_npick];
+    s_used[i] = false;
     refresh_play();
 }
 
 static void tile_cb(lv_event_t *e) { pick((int)(intptr_t)lv_event_get_user_data(e)); }
 static void undo_cb(lv_event_t *e) { (void)e; undo(); }
 
-/* chu giai phim: o (0 TL..3 BR) -> mau phim theo xoay */
-static void legend(lv_obj_t *p)
-{
-    static const char *const K[4] = {"SEN_PREV", "SEN_NEXT", "SEN_UNDO", "SEN_PICK"};
-    lv_obj_t *r = row(p, true);
-    for (int c = 0; c < 4; c++) {
-        lv_obj_t *l = lv_label_create(r);
-        lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
-        lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
-        lv_obj_set_style_border_width(l, 2, 0);
-        lv_obj_set_style_border_color(l, lv_color_hex(ui_key_rgb(ui_cell_colour(c))), 0);
-        lv_obj_set_style_radius(l, 6, 0);
-        lv_obj_set_style_pad_hor(l, 6, 0);
-        lv_label_set_text(l, _(K[c]));
-    }
-}
-
 static void show_play(void)
 {
     if (!fd_sen_ex(s_pos, &s_ex)) { fd_sen_status_t st; fd_sen_get(&st); st.err = FD_STUDY_ERR_FORMAT; show_msg(&st); return; }
     s_loc = s_vi && vi_build();
     s_view = V_PLAY;
-    s_npick = s_cur = 0;
+    s_npick = 0;
     memset(s_used, 0, sizeof(s_used));
     body_reset();
     lv_obj_set_scrollable(s_body, true);
     lv_obj_set_scroll_dir(s_body, LV_DIR_VER);
     char tmp[32];
-    snprintf(tmp, sizeof(tmp), _("SEN_PROGRESS"), s_pos + 1, s_total);
+    if (s_cnt == 0) snprintf(tmp, sizeof(tmp), _("QUIZ_QUESTION_N"), s_pos + 1);
+    else snprintf(tmp, sizeof(tmp), _("SEN_PROGRESS"), s_pos + 1, s_total);
     label(s_body, tmp, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     const char *pr = s_loc ? s_ex.sentence : s_ex.hint;   /* cau nguon theo huong */
     if (pr[0]) label(s_body, pr, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
@@ -449,7 +425,6 @@ static void show_play(void)
         lv_obj_add_event_cb(b, tile_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         s_tile[i] = b;
     }
-    legend(s_body);
     refresh_play();
     s_t0 = esp_timer_get_time();
 }
@@ -517,30 +492,113 @@ static void build(lv_obj_t *scr)
     show_setup();
 }
 
-static void destroy(void) { s_body = s_ans = s_cnt_lbl = s_dir_lbl = NULL; memset(s_tile, 0, sizeof(s_tile)); }
+static lv_obj_t *s_dlg;
+
+static void dlg_close(void)
+{
+    if (s_dlg) {
+        lv_obj_delete(s_dlg);
+        s_dlg = NULL;
+    }
+}
+
+static void quit_sentence(void)
+{
+    if (s_cnt == 0 && (s_pos > 0 || s_correct > 0 || s_view == V_FEED)) {
+        show_result();
+        return;
+    }
+    show_setup();
+}
+
+static void dlg_cb(lv_event_t *e)
+{
+    bool ok = (bool)(intptr_t)lv_event_get_user_data(e);
+    dlg_close();
+    if (ok) quit_sentence();
+}
+
+static void dlg_btn(lv_obj_t *row, const char *t, bool primary)
+{
+    lv_obj_t *b = lv_button_create(row);
+    lv_obj_set_height(b, 40);
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_radius(b, 10, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(primary ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
+    lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, LV_LABEL_LONG_DOT); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(l, t);
+    lv_obj_center(l);
+    lv_obj_add_event_cb(b, dlg_cb, LV_EVENT_CLICKED, (void *)(intptr_t)primary);
+}
+
+static void dlg_open(void)
+{
+    s_dlg = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(s_dlg);
+    lv_obj_set_size(s_dlg, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_color(s_dlg, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_dlg, LV_OPA_40, 0);
+    lv_obj_set_clickable(s_dlg, true);
+    lv_obj_t *box = lv_obj_create(s_dlg);
+    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
+    lv_obj_center(box);
+    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
+    lv_obj_set_style_border_width(box, 0, 0);
+    lv_obj_set_style_radius(box, 14, 0);
+    lv_obj_set_style_pad_all(box, 12, 0);
+    lv_obj_set_style_pad_row(box, 6, 0);
+    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(box, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_scrollable(box, false);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    label(box, _("QUIT_THIS_QUIZ"), &fd_font_noto_18, FD_COLOR_TEXT);
+    lv_obj_t *r = row(box, false);
+    lv_obj_set_style_pad_column(r, 10, 0);
+    lv_obj_set_style_pad_top(r, 4, 0);
+    dlg_btn(r, _("CANCEL"), false);
+    dlg_btn(r, _("QUIT"), true);
+}
+
+static void destroy(void)
+{
+    dlg_close();
+    s_body = s_ans = s_cnt_lbl = s_dir_lbl = NULL;
+    memset(s_tile, 0, sizeof(s_tile));
+}
 
 static void on_tick(void) { if (s_gate) return; poll_load(); fd_sen_sync(); }   /* co mang: gui ket qua dang cho */
 
 static bool on_button(const fd_evt_button_t *b)
 {
     if (b->action != FD_BTN_CLICK || s_gate) return false;
-    if (s_view == V_PLAY) {
-        switch (ui_key_cell(b->index)) {
-        case 0: next_free(-1); refresh_play(); break;
-        case 1: next_free(1); refresh_play(); break;
-        case 2: undo(); break;
-        case 3: pick(s_cur); break;
-        default: break;
-        }
-        return true;
-    }
+    if (s_dlg) return true;
     if (s_view == V_FEED) { next(); return true; }
     if (s_view == V_RESULT) { show_setup(); return true; }
     if (s_view == V_SETUP) { start(); return true; }
     return false;
 }
 
+static bool on_back(void)
+{
+    if (s_gate) return false;
+    if (s_dlg) { dlg_close(); return true; }
+    if (s_view == V_PLAY || s_view == V_FEED) {
+        dlg_open();
+        return true;
+    }
+    if (s_view == V_LOAD) {
+        s_waiting = false;
+        show_setup();
+        return true;
+    }
+    if (s_view != V_SETUP) { show_setup(); return true; }
+    return false;
+}
+
 const ui_screen_t g_scr_sentence = {
     .name = "sentence", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_tick = on_tick,
-    .on_button = on_button,
+    .on_button = on_button, .on_back = on_back,
 };
