@@ -34,12 +34,22 @@ static fd_dictnet_err_t s_init_error;
 static fd_dictnet_status_t s_st;
 static EXT_RAM_BSS_ATTR fd_dictnet_entry_t s_hist[FD_DICTNET_HIST_MAX];
 static int s_nh;
-static char s_last_cid[25];
+static char s_last_cid[FD_DICTNET_CID_LEN];
+static char s_last_name[FD_DICTNET_CNAME_LEN];
+static char s_add_cid[FD_DICTNET_CID_LEN];
+static char s_add_name[FD_DICTNET_CNAME_LEN];
+static char s_add_wid[FD_DICTNET_CID_LEN];
+static EXT_RAM_BSS_ATTR fd_dictnet_col_t s_cols[FD_DICTNET_COL_MAX];
+static int s_ncols;
+static char s_move_wid[FD_DICTNET_CID_LEN];
+static char s_move_cid[FD_DICTNET_CID_LEN];
+static char s_move_name[FD_DICTNET_CNAME_LEN];
+static fd_dictnet_move_state_t s_move_state;
 /* Vi du cua lan tra gan nhat (PSRAM, guarded by lock). Tach khoi fd_dictnet_entry_t de khong phinh lich su / stack. */
 static EXT_RAM_BSS_ATTR char s_ex[FD_DICTNET_EX_LEN];
 static EXT_RAM_BSS_ATTR char s_exvi[FD_DICTNET_EXVI_LEN];
 
-enum { CMD_LOOKUP = 1, CMD_FLUSH };
+enum { CMD_LOOKUP = 1, CMD_FLUSH, CMD_MOVE };
 
 static void lock(void) { xSemaphoreTake(s_mx, portMAX_DELAY); }
 static void unlock(void) { xSemaphoreGive(s_mx); }
@@ -72,19 +82,53 @@ static void load_nvs(void)
     if (nvs_open(NVS_NS, NVS_READONLY, &h) != ESP_OK) return;
     size_t n = sizeof(s_last_cid);
     nvs_get_str(h, "cid", s_last_cid, &n);
+    n = sizeof(s_last_name);
+    nvs_get_str(h, "cname", s_last_name, &n);
     nvs_close(h);
 }
 
-static void save_cid(const char *cid)
+/* Nho bo nguoi dung chon lan cuoi. Khong ghi de khi server tra bo cua tu da co san. */
+static void save_choice(const char *cid, const char *name)
 {
     if (!cid || !cid[0]) return;
-    if (!strcmp(s_last_cid, cid)) return;
+    const char *nm = name ? name : "";
+    if (!strcmp(s_last_cid, cid) && !strcmp(s_last_name, nm)) return;
     strlcpy(s_last_cid, cid, sizeof(s_last_cid));
+    strlcpy(s_last_name, nm, sizeof(s_last_name));
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
     nvs_set_str(h, "cid", s_last_cid);
+    nvs_set_str(h, "cname", s_last_name);
     nvs_commit(h);
     nvs_close(h);
+}
+
+static void take_cols(cJSON *arr)
+{
+    s_ncols = 0;
+    if (!cJSON_IsArray(arr)) return;
+    cJSON *it;
+    cJSON_ArrayForEach(it, arr) {
+        if (s_ncols >= FD_DICTNET_COL_MAX) break;
+        const char *id = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(it, "id"));
+        if (!id || !id[0]) continue;
+        const char *nm = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(it, "name"));
+        ucpy(s_cols[s_ncols].id, sizeof(s_cols[0].id), id);
+        ucpy(s_cols[s_ncols].name, sizeof(s_cols[0].name), nm ? nm : "");
+        s_ncols++;
+    }
+}
+
+static void take_add_body(cJSON *r)
+{
+    const char *cid = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(r, "collection_id"));
+    const char *name = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(r, "collection_name"));
+    const char *wid = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(r, "id"));
+    ucpy(s_add_cid, sizeof(s_add_cid), cid ? cid : "");
+    ucpy(s_add_name, sizeof(s_add_name), name ? name : "");
+    ucpy(s_add_wid, sizeof(s_add_wid), wid ? wid : "");
+    take_cols(cJSON_GetObjectItemCaseSensitive(r, "collections"));
+    if (!s_last_cid[0] && s_add_cid[0]) save_choice(s_add_cid, s_add_name);
 }
 
 static fd_dictnet_err_t hist_load(void)
@@ -274,7 +318,7 @@ static int post_device(const char *path, cJSON *body, char *resp, int cap)
 static bool do_add(const fd_dictnet_entry_t *e, const char *ex, const char *ex_vi)
 {
     if (!e->vi[0]) return false;
-    char *rx = ps_alloc(2048);
+    char *rx = ps_alloc(8192);
     if (!rx) return false;
     cJSON *b = cJSON_CreateObject();
     bool ok = false;
@@ -287,13 +331,12 @@ static bool do_add(const fd_dictnet_entry_t *e, const char *ex, const char *ex_v
                       (!ex || !ex[0] || cJSON_AddStringToObject(b, "example", ex)) &&
                       (!ex || !ex[0] || !ex_vi || !ex_vi[0] || cJSON_AddStringToObject(b, "example_vi", ex_vi)) &&
                       (!s_last_cid[0] || cJSON_AddStringToObject(b, "collection_id", s_last_cid));
-        int code = fields ? post_device("/api/study/dict/words/add", b, rx, 2048) : -3;
+        int code = fields ? post_device("/api/study/dict/words/add", b, rx, 8192) : -3;
         cJSON_Delete(b);
         if (code == 200) {
             cJSON *r = cJSON_Parse(rx);
             if (r) {
-                const char *cid = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(r, "collection_id"));
-                if (cid) save_cid(cid);
+                take_add_body(r);
                 ok = true;
                 cJSON_Delete(r);
             }
@@ -339,6 +382,51 @@ static void flush_queue(void)
     free(line);
     free(keep);
 }
+/* Khi add khong kem danh sach bo (hang cho / may chu cu): hoi them, van trong task nay. */
+static void fetch_cols(void)
+{
+    if (s_ncols > 0 || !fd_net_is_connected() || !fd_ota_is_paired()) return;
+    char *rx = ps_alloc(8192);
+    if (!rx) return;
+    cJSON *b = cJSON_CreateObject();
+    int code = b ? post_device("/api/study/dict/collections", b, rx, 8192) : -3;
+    cJSON_Delete(b);
+    if (code == 200) {
+        cJSON *r = cJSON_Parse(rx);
+        if (r) {
+            take_cols(cJSON_GetObjectItemCaseSensitive(r, "collections"));
+            cJSON_Delete(r);
+        }
+    }
+    free(rx);
+}
+
+/* cid/name co the duoc response ghi de (ten chuan tren may chu). */
+static bool http_move(const char *wid, char *cid, size_t cid_n, char *name, size_t name_n)
+{
+    char *rx = ps_alloc(2048);
+    if (!rx) return false;
+    cJSON *b = cJSON_CreateObject();
+    bool fields = b && cJSON_AddStringToObject(b, "id", wid) && cJSON_AddStringToObject(b, "collection_id", cid);
+    int code = fields ? post_device("/api/study/dict/words/move", b, rx, 2048) : -3;
+    cJSON_Delete(b);
+    bool ok = false;
+    if (code == 200) {
+        cJSON *r = cJSON_Parse(rx);
+        if (r) {
+            const char *got = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(r, "collection_id"));
+            const char *nm = cJSON_GetStringValue(cJSON_GetObjectItemCaseSensitive(r, "collection_name"));
+            if (got && got[0]) ucpy(cid, cid_n, got);
+            if (nm) ucpy(name, name_n, nm);
+            ok = true;
+            cJSON_Delete(r);
+        }
+    }
+    free(rx);
+    ESP_LOGI(TAG, "move %s -> %d", wid, code);
+    return ok;
+}
+
 static uint8_t s_dir; /* chieu cua lookup dang xep hang (guarded by lock) */
 
 static void do_lookup(const char *word, uint8_t dir)
@@ -348,6 +436,8 @@ static void do_lookup(const char *word, uint8_t dir)
     s_st.state = FD_DICTNET_LOOKUP;
     s_ex[0] = 0;
     s_exvi[0] = 0;
+    s_ncols = 0;
+    s_add_cid[0] = s_add_name[0] = s_add_wid[0] = 0;
     unlock();
 
     if (!fd_ota_is_paired()) {
@@ -405,12 +495,21 @@ static void do_lookup(const char *word, uint8_t dir)
         err = persist_err;
     }
 
+    if (!err && s_ncols == 0) fetch_cols();
     lock();
     s_st.http = code;
     s_st.err = err;
     s_st.result = e;
     s_st.added = added;
     s_st.queued = queued;
+    if (!err && added) {
+        ucpy(s_st.word_id, sizeof(s_st.word_id), s_add_wid);
+        ucpy(s_st.collection_id, sizeof(s_st.collection_id), s_add_cid);
+        ucpy(s_st.collection_name, sizeof(s_st.collection_name), s_add_name);
+    } else if (!err && queued) {
+        ucpy(s_st.collection_id, sizeof(s_st.collection_id), s_last_cid);
+        ucpy(s_st.collection_name, sizeof(s_st.collection_name), s_last_name);
+    }
     s_st.state = err ? FD_DICTNET_ERROR : FD_DICTNET_OK;
     unlock();
     free(rx);
@@ -428,7 +527,28 @@ static void task(void *arg)
             continue;
         }
         if (cmd == CMD_FLUSH) flush_queue();
-        else if (cmd == CMD_LOOKUP) {
+        else if (cmd == CMD_MOVE) {
+            char wid[FD_DICTNET_CID_LEN], cid[FD_DICTNET_CID_LEN], name[FD_DICTNET_CNAME_LEN];
+            lock();
+            ucpy(wid, sizeof(wid), s_move_wid);
+            ucpy(cid, sizeof(cid), s_move_cid);
+            ucpy(name, sizeof(name), s_move_name);
+            unlock();
+            bool ok = true;
+            if (wid[0]) ok = http_move(wid, cid, sizeof(cid), name, sizeof(name));
+            if (ok) save_choice(cid, name);
+            lock();
+            if (ok) {
+                ucpy(s_move_cid, sizeof(s_move_cid), cid);
+                ucpy(s_move_name, sizeof(s_move_name), name);
+                if (s_st.state == FD_DICTNET_OK) {
+                    ucpy(s_st.collection_id, sizeof(s_st.collection_id), cid);
+                    ucpy(s_st.collection_name, sizeof(s_st.collection_name), name);
+                }
+            }
+            s_move_state = ok ? FD_DICTNET_MOVE_OK : FD_DICTNET_MOVE_ERR;
+            unlock();
+        } else if (cmd == CMD_LOOKUP) {
             char word[FD_DICTNET_WORD_LEN];
             uint8_t dir;
             lock(); ucpy(word, sizeof(word), s_st.result.en); dir = s_dir; unlock();
@@ -538,4 +658,66 @@ void fd_dictnet_flush(void)
     if (!fd_dictnet_init()) return;
     int cmd = CMD_FLUSH;
     xQueueSend(s_q, &cmd, 0);
+}
+
+int fd_dictnet_cols(fd_dictnet_col_t *out, int cap)
+{
+    if (!out || cap <= 0 || !s_mx) return 0;
+    lock();
+    int n = s_ncols < cap ? s_ncols : cap;
+    for (int i = 0; i < n; i++) out[i] = s_cols[i];
+    unlock();
+    return n;
+}
+
+void fd_dictnet_saved_collection(char *id, size_t id_cap, char *name, size_t name_cap)
+{
+    if (id && id_cap) id[0] = 0;
+    if (name && name_cap) name[0] = 0;
+    if (!s_mx) return;
+    lock();
+    if (id && id_cap) ucpy(id, id_cap, s_last_cid);
+    if (name && name_cap) ucpy(name, name_cap, s_last_name);
+    unlock();
+}
+
+bool fd_dictnet_move(const char *wid, const char *cid, const char *name)
+{
+    if (!cid || !cid[0] || !fd_dictnet_init()) return false;
+    lock();
+    if (s_move_state == FD_DICTNET_MOVE_BUSY || s_st.state == FD_DICTNET_LOOKUP || s_st.state == FD_DICTNET_ADD) {
+        unlock();
+        return false;
+    }
+    ucpy(s_move_wid, sizeof(s_move_wid), wid ? wid : "");
+    ucpy(s_move_cid, sizeof(s_move_cid), cid);
+    ucpy(s_move_name, sizeof(s_move_name), name ? name : "");
+    s_move_state = FD_DICTNET_MOVE_BUSY;
+    unlock();
+    int cmd = CMD_MOVE;
+    if (xQueueSend(s_q, &cmd, 0) == pdTRUE) return true;
+    lock();
+    s_move_state = FD_DICTNET_MOVE_ERR;
+    unlock();
+    return false;
+}
+
+fd_dictnet_move_state_t fd_dictnet_move_state(char *id, size_t id_cap, char *name, size_t name_cap)
+{
+    if (!s_mx) return FD_DICTNET_MOVE_IDLE;
+    lock();
+    fd_dictnet_move_state_t st = s_move_state;
+    if (id && id_cap) ucpy(id, id_cap, s_move_cid);
+    if (name && name_cap) ucpy(name, name_cap, s_move_name);
+    unlock();
+    return st;
+}
+
+void fd_dictnet_move_ack(void)
+{
+    if (!s_mx) return;
+    lock();
+    if (s_move_state == FD_DICTNET_MOVE_OK || s_move_state == FD_DICTNET_MOVE_ERR)
+        s_move_state = FD_DICTNET_MOVE_IDLE;
+    unlock();
 }

@@ -6,6 +6,7 @@
 #include "fd_i18n.h"
 #include "fd_net.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
 #include "fd_t9kb.h"
 #include "fd_telex.h"
 #include <stdint.h>
@@ -24,6 +25,12 @@ static char s_say[FD_DICTNET_WORD_LEN];  /* 4.3.2: tu tieng Anh de nut loa phat 
 /* 4.3.5: cau vi du + nghia ca cau do server lam day (PSRAM; label LVGL tu copy chuoi) */
 static EXT_RAM_BSS_ATTR char s_ex[FD_DICTNET_EX_LEN];
 static EXT_RAM_BSS_ATTR char s_exvi[FD_DICTNET_EXVI_LEN];
+static EXT_RAM_BSS_ATTR fd_dictnet_col_t s_ui_cols[FD_DICTNET_COL_MAX];
+static int s_ui_nc;
+static fd_dictnet_status_t s_shown;
+static lv_obj_t *s_col_lbl;
+static lv_timer_t *s_move_timer;
+static char s_col_line[320];
 static uint8_t s_dir = FD_DICTNET_DIR_EN_VI;   /* 4.1.8: Anh-Viet / Viet-Anh */
 static bool s_telex_busy;
 
@@ -36,6 +43,7 @@ static void poll_cb(lv_timer_t *t);
 static void stop_poll(void)
 {
     if (s_poll) { lv_timer_delete(s_poll); s_poll = NULL; }
+    if (s_move_timer) { lv_timer_delete(s_move_timer); s_move_timer = NULL; }
 }
 
 static void body_reset(void)
@@ -44,6 +52,7 @@ static void body_reset(void)
     stop_poll();
     s_ta = NULL;
     s_load_lbl = NULL;
+    s_col_lbl = NULL;
     if (s_body) lv_obj_clean(s_body);
 }
 
@@ -265,9 +274,74 @@ static void speak_cb(lv_event_t *e)
     ui_pron_say_cfg(s_say, &cfg);
 }
 
+static void fill_ui_cols(void)
+{
+    s_ui_nc = fd_dictnet_cols(s_ui_cols, FD_DICTNET_COL_MAX);
+    if (s_ui_nc > 0) return;
+    int n = fd_sync_col_count();
+    for (int i = 0; i < n && s_ui_nc < FD_DICTNET_COL_MAX; i++) {
+        fd_sync_col_t c;
+        if (!fd_sync_col_get(i, &c) || !c.id[0]) continue;
+        strlcpy(s_ui_cols[s_ui_nc].id, c.id, sizeof(s_ui_cols[0].id));
+        strlcpy(s_ui_cols[s_ui_nc].name, c.name, sizeof(s_ui_cols[0].name));
+        s_ui_nc++;
+    }
+}
+
+static const char *shown_name(void)
+{
+    if (s_shown.collection_name[0]) return s_shown.collection_name;
+    for (int i = 0; i < s_ui_nc; i++) {
+        if (s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id) && s_ui_cols[i].name[0])
+            return s_ui_cols[i].name;
+    }
+    return "";
+}
+
+static void move_poll_cb(lv_timer_t *t)
+{
+    (void)t;
+    char id[FD_DICTNET_CID_LEN];
+    char name[FD_DICTNET_CNAME_LEN];
+    fd_dictnet_move_state_t st = fd_dictnet_move_state(id, sizeof(id), name, sizeof(name));
+    if (st == FD_DICTNET_MOVE_BUSY) return;
+    if (st == FD_DICTNET_MOVE_OK) {
+        fd_dictnet_move_ack();
+        if (id[0]) strlcpy(s_shown.collection_id, id, sizeof(s_shown.collection_id));
+        strlcpy(s_shown.collection_name, name, sizeof(s_shown.collection_name));
+        show_result_ok(&s_shown);
+        return;
+    }
+    if (st == FD_DICTNET_MOVE_ERR) {
+        fd_dictnet_move_ack();
+        if (s_col_lbl) lv_label_set_text(s_col_lbl, _("LOOKUP_MOVE_FAIL"));
+    }
+    stop_poll();
+}
+
+static void arm_move_timer(void)
+{
+    if (s_move_timer) return;
+    s_move_timer = lv_timer_create(move_poll_cb, 200, NULL);
+}
+
+static void col_pick_cb(lv_event_t *e)
+{
+    int i = (int)(intptr_t)lv_event_get_user_data(e);
+    if (i < 0 || i >= s_ui_nc) return;
+    if (s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id)) return;
+    if (fd_dictnet_move_state(NULL, 0, NULL, 0) == FD_DICTNET_MOVE_BUSY) return;
+    const char *nm = s_ui_cols[i].name[0] ? s_ui_cols[i].name : s_ui_cols[i].id;
+    if (!fd_dictnet_move(s_shown.word_id, s_ui_cols[i].id, nm)) return;
+    if (s_col_lbl) lv_label_set_text(s_col_lbl, _("LOOKUP_MOVE"));
+    arm_move_timer();
+}
+
 static void show_result_ok(const fd_dictnet_status_t *st)
 {
+    s_shown = *st;
     body_reset();
+    lv_obj_set_scroll_dir(s_body, LV_DIR_VER);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 6, 0);
     strlcpy(s_say, st->result.en, sizeof(s_say));
@@ -326,17 +400,49 @@ static void show_result_ok(const fd_dictnet_status_t *st)
         label(box, s_ex, &fd_font_noto_14, FD_COLOR_TEXT);
         if (s_exvi[0]) label(box, s_exvi, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     }
-    if (st->added) label(s_body, _("LOOKUP_ADDED"), NULL, FD_COLOR_PRIMARY_TEXT);
-    else if (st->queued) label(s_body, _("LOOKUP_QUEUED"), NULL, FD_COLOR_TEXT_MUTED);
-    lv_obj_t *b = lv_button_create(s_body);
-    lv_obj_set_size(b, lv_pct(100), 42);
-    lv_obj_set_style_radius(b, 10, 0);
-    lv_obj_set_style_bg_color(b, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    lv_obj_t *l = lv_label_create(b);
-    lv_label_set_text(l, _("BACK"));
-    lv_obj_set_style_text_color(l, lv_color_white(), 0);
-    lv_obj_center(l);
-    lv_obj_add_event_cb(b, back_home_cb, LV_EVENT_CLICKED, NULL);
+    /* 4.3.8: bo nut Tro lai. Ghi bo vua them va cho doi bo ngay tai day. */
+    fill_ui_cols();
+    const char *cname = shown_name();
+    if (!cname[0]) {
+        char saved_id[FD_DICTNET_CID_LEN];
+        char saved_name[FD_DICTNET_CNAME_LEN];
+        fd_dictnet_saved_collection(saved_id, sizeof(saved_id), saved_name, sizeof(saved_name));
+        if (saved_name[0] && (!s_shown.collection_id[0] || !strcmp(saved_id, s_shown.collection_id))) {
+            strlcpy(s_shown.collection_name, saved_name, sizeof(s_shown.collection_name));
+            if (!s_shown.collection_id[0] && saved_id[0])
+                strlcpy(s_shown.collection_id, saved_id, sizeof(s_shown.collection_id));
+            cname = s_shown.collection_name;
+        }
+    }
+    if (cname[0]) {
+        snprintf(s_col_line, sizeof(s_col_line), "%s\n%s",
+                 s_shown.queued ? _("LOOKUP_QUEUED_TO") : _("LOOKUP_ADDED_TO"), cname);
+        s_col_lbl = label(s_body, s_col_line, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
+    } else if (s_shown.queued) {
+        s_col_lbl = label(s_body, _("LOOKUP_QUEUED"), NULL, FD_COLOR_TEXT_MUTED);
+    } else if (s_shown.added) {
+        s_col_lbl = label(s_body, _("LOOKUP_ADDED"), NULL, FD_COLOR_PRIMARY_TEXT);
+    }
+    for (int i = 0; i < s_ui_nc; i++) {
+        bool on = s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id);
+        lv_obj_t *b = lv_button_create(s_body);
+        lv_obj_set_width(b, lv_pct(100));
+        lv_obj_set_height(b, 36);
+        lv_obj_set_style_radius(b, 10, 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
+        lv_obj_set_style_border_width(b, on ? 0 : 1, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
+        lv_obj_set_style_pad_hor(b, 10, 0);
+        lv_obj_add_event_cb(b, col_pick_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        lv_obj_t *cl = lv_label_create(b);
+        lv_obj_set_style_text_font(cl, &fd_font_noto_14, 0);
+        lv_obj_set_style_text_color(cl, on ? lv_color_hex(FD_COLOR_ON_PRIMARY) : lv_color_hex(FD_COLOR_TEXT), 0);
+        lv_label_set_long_mode(cl, LV_LABEL_LONG_DOT);
+        lv_obj_set_width(cl, lv_pct(100));
+        lv_label_set_text(cl, s_ui_cols[i].name[0] ? s_ui_cols[i].name : s_ui_cols[i].id);
+        lv_obj_center(cl);
+    }
 }
 
 static lv_obj_t *s_kb;

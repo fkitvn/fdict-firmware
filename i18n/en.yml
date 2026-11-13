@@ -131,6 +131,10 @@ en:
   LOOKUP_HISTORY: Recent lookups
   LOOKUP_ADDING: Adding to your study list…
   LOOKUP_ADDED: Added to your study list
+  LOOKUP_ADDED_TO: Added to
+  LOOKUP_QUEUED_TO: Will add to
+  LOOKUP_MOVE: Moving collection…
+  LOOKUP_MOVE_FAIL: Could not move collection
   LOOKUP_QUEUED: Queued — will add when online
   LOOKUP_NEED_WIFI: Wi-Fi needed to look up words
   LOOKUP_NOT_FOUND: Word not found
