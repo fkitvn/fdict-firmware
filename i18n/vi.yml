@@ -131,6 +131,10 @@ vi:
   LOOKUP_HISTORY: Đã tra gần đây
   LOOKUP_ADDING: Đang thêm vào từ cần học…
   LOOKUP_ADDED: Đã thêm vào từ cần học
+  LOOKUP_ADDED_TO: Đã thêm vào
+  LOOKUP_QUEUED_TO: Sẽ thêm vào
+  LOOKUP_MOVE: Đang chuyển bộ…
+  LOOKUP_MOVE_FAIL: Chưa chuyển được bộ
   LOOKUP_QUEUED: Đã xếp hàng, sẽ thêm khi có mạng
   LOOKUP_NEED_WIFI: Cần Wi-Fi để tra từ
   LOOKUP_NOT_FOUND: Không tìm thấy từ này

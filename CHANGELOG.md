@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.3.8] - 2026-11-13
+Từ điển bỏ nút Trở lại sau khi tra từ. Màn kết quả ghi bộ sưu tập vừa thêm và cho đổi bộ ngay tại màn đó. Lựa chọn được nhớ cho lần tra sau.
+
 ## [4.3.7] - 2026-11-13
 Màn cấu hình bộ từ có nhãn nhỏ căn trái, danh sách bộ từ chỉ hiện khi chọn Kết hợp. Sắp xếp câu đổi nhãn thành Chiều với Anh Việt và Việt Anh. Thống kê đổi giao diện giống Đồng bộ.
 

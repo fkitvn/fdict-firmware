@@ -12,6 +12,10 @@
 /* 4.3.5: cau vi du + nghia ca cau (server lam day, khong luu lich su) */
 #define FD_DICTNET_EX_LEN   320
 #define FD_DICTNET_EXVI_LEN 512
+/* 4.3.8: bo suu tap gan nhat (id Mongo 24 hex, ten UTF-8 toi da ~60 ky tu) */
+#define FD_DICTNET_CID_LEN   25
+#define FD_DICTNET_CNAME_LEN 192
+#define FD_DICTNET_COL_MAX   32
 
 typedef struct {
     char en[FD_DICTNET_WORD_LEN];
@@ -51,7 +55,22 @@ typedef struct {
     fd_dictnet_entry_t result;
     bool added;          /* auto-add thanh cong trong lan lookup nay */
     bool queued;         /* add that bai -> da xep hang */
+    char word_id[FD_DICTNET_CID_LEN];                 /* rong neu chua them duoc (hang cho) */
+    char collection_id[FD_DICTNET_CID_LEN];
+    char collection_name[FD_DICTNET_CNAME_LEN];
 } fd_dictnet_status_t;
+
+typedef struct {
+    char id[FD_DICTNET_CID_LEN];
+    char name[FD_DICTNET_CNAME_LEN];
+} fd_dictnet_col_t;
+
+typedef enum {
+    FD_DICTNET_MOVE_IDLE = 0,
+    FD_DICTNET_MOVE_BUSY,
+    FD_DICTNET_MOVE_OK,
+    FD_DICTNET_MOVE_ERR,
+} fd_dictnet_move_state_t;
 
 bool fd_dictnet_init(void);   /* false: clean failure, safe to retry */
 /* Tra cuu + (mac dinh) auto-add. false = dang ban. */
@@ -66,3 +85,11 @@ int fd_dictnet_history(fd_dictnet_entry_t *out, int cap);
 void fd_dictnet_clear_history(void);
 /* Day hang cho add khi co Wi-Fi (goi tu task fd_dict / kick). */
 void fd_dictnet_flush(void);
+/* Danh sach bo cua lan tra gan nhat (add response, hoac tai them khi hang cho). */
+int fd_dictnet_cols(fd_dictnet_col_t *out, int cap);
+/* Bo da chon lan cuoi (NVS). */
+void fd_dictnet_saved_collection(char *id, size_t id_cap, char *name, size_t name_cap);
+/* Doi bo cua tu vua them. wid rong: chi nho lua chon (tu dang xep hang). false = dang ban. */
+bool fd_dictnet_move(const char *wid, const char *cid, const char *name);
+fd_dictnet_move_state_t fd_dictnet_move_state(char *id, size_t id_cap, char *name, size_t name_cap);
+void fd_dictnet_move_ack(void);   /* OK/ERR -> IDLE sau khi UI da doc */
