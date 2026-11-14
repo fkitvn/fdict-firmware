@@ -300,6 +300,7 @@ static void start_cb(lv_event_t *e)
     /* 23/10: bai = chuoi phien (fd_study): cache chua dung -> study/start -> cache bat ky. Khong WiFi: chi cache. */
     bool nowifi = !fd_net_is_connected();
     if (!fd_study_start(dir_str(), NOPT[s_ncfg], SRC_API[nowifi ? 2 : 1])) return;
+    fd_sync_session_begin("quiz");
     if (nowifi && fd_deck_ready()) fd_ui_toast(OFFLINE_MSG);
     s_wait = false;
     show_load(_("LOADING_QUESTIONS"), V_LOAD);
@@ -316,6 +317,7 @@ static void practice_say(const char *t, bool manual)
 
 static void show_setup(void)
 {
+    fd_sync_session_end();
     s_view = V_SETUP;
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -390,6 +392,7 @@ static void again_cb(lv_event_t *e) { start_cb(e); }   /* Hoc tiep: bo moi, cung
 
 static void show_result(void)
 {
+    fd_sync_session_end();
     s_view = V_RESULT;
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -661,6 +664,7 @@ static void destroy(void)
     stop_poll();
     dlg_close();
     fd_study_finish(false);   /* roi man: phien do dang giu .part, phien chua lam tra lai cache */
+    fd_sync_session_end();
     s_body = s_ipa = NULL;
     for (int i = 0; i < 4; i++) s_ans[i] = s_lbl[i] = NULL;
 }

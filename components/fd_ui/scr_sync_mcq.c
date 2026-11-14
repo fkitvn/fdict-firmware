@@ -147,6 +147,7 @@ static void start_cb(lv_event_t *e)
     s_pos = s_score = s_done = 0;
     s_said_pos = -1;
     s_answered = false;
+    fd_sync_session_begin(ev_kind());
     show_quiz();
 }
 
@@ -156,6 +157,7 @@ static void again_cb(lv_event_t *e) { start_cb(e); }
 
 static void show_setup(void)
 {
+    fd_sync_session_end();
     s_view = V_SETUP;
     body_reset();
     lv_obj_t *sc = ui_setup_begin(s_body, _(title_key()));   /* 2.3.6: mau cai dat chung (nhu Quiz) */
@@ -169,6 +171,7 @@ static void show_setup(void)
 
 static void show_result(void)
 {
+    fd_sync_session_end();
     s_view = V_RESULT;
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -310,6 +313,7 @@ static void build_common(lv_obj_t *scr, mcq_kind_t kind)
 static void destroy_common(void)
 {
     stop_timer();
+    fd_sync_session_end();
     s_body = s_dlg = NULL;
     free(s_sess); s_sess = NULL;
 }

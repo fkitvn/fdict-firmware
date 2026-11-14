@@ -55,6 +55,7 @@ typedef struct {
     uint32_t ca, off;
     char en[FD_FC_WORD_LEN], ipa[FD_FC_IPA_LEN], vi[FD_FC_MEAN_LEN];
     char pos[24];   /* 2.3.5: loai tu (noun/verb/...) tu store.tsv */
+    uint8_t streak_spell;   /* 4.5.3 Chinh ta */
 } word_t;
 
 static SemaphoreHandle_t s_mx;    /* kho (s_w, file store.tsv) + s_st */
@@ -375,13 +376,14 @@ static void bump_streak(uint8_t *s, bool ok)
     else *s = 0;
 }
 
-/* Luyen tap va Phan loai tu tach chuoi. Da thuoc khi ca hai dung 3 lan lien tiep. */
+/* Luyen tap, Phan loai tu va Chinh ta (4.5.3) tach chuoi. Da thuoc khi ca ba dung 3 lan lien tiep. */
 static void apply_review(word_t *w, const char *kind, bool ok)
 {
     if (kind && !strcmp(kind, "pos")) bump_streak(&w->streak_pos, ok);
     else if (kind && !strcmp(kind, "quiz")) bump_streak(&w->streak, ok);
+    else if (kind && !strcmp(kind, "spell")) bump_streak(&w->streak_spell, ok);
     else return;
-    w->st = (w->streak >= MASTER_STREAK && w->streak_pos >= MASTER_STREAK) ? 2 : 1;
+    w->st = (w->streak >= MASTER_STREAK && w->streak_pos >= MASTER_STREAK && w->streak_spell >= MASTER_STREAK) ? 2 : 1;
 }
 
 static word_t *find_word(const char *id)
@@ -442,7 +444,7 @@ static bool load_store_locked(void)
             ucpy(w->cid, sizeof(w->cid), fl[2]);
             w->st = (uint8_t)atoi(fl[3]);
             if (w->st > 2) w->st = 0;
-            if (w->st == 2) { w->streak = MASTER_STREAK; w->streak_pos = MASTER_STREAK; }
+            if (w->st == 2) { w->streak = MASTER_STREAK; w->streak_pos = MASTER_STREAK; w->streak_spell = MASTER_STREAK; }
             w->ca = (uint32_t)strtoul(fl[4], NULL, 10);
             ucpy(w->en, sizeof(w->en), fl[5]);
             ucpy(w->ipa, sizeof(w->ipa), fl[6]);
@@ -621,6 +623,7 @@ static const char *event_kind(const char *line)
     if (!strncmp(p, "pos\"", 4)) return "pos";
     if (!strncmp(p, "quiz\"", 5)) return "quiz";
     if (!strncmp(p, "sen\"", 4)) return "sen";
+    if (!strncmp(p, "spell\"", 6)) return "spell";
     return "card";
 }
 
@@ -649,31 +652,90 @@ static void write_event(const char *line, const char *wid, const char *kind, boo
     if (!ok) ESP_LOGW(TAG, "khong ghi duoc ket qua vao outbox");
 }
 
+/* Phien hoc tren may (4.5.3): moi lan bat dau mot bai Luyen tap, Phan loai tu, Dien tu, Sap xep cau, Nghe la mot phien.
+ * Moi su kien trong phien gui kem "s" (ma phien) va "t" (ms tu su kien truoc hoac tu luc bat dau, toi da 300000).
+ * Chi goi tu luong giao dien. Ngoai phien thi khong gui s, t. */
+#define SESS_T_MAX 300000
+static char s_sid[20];
+static char s_smod[8];
+static int64_t s_sess_ms;
+
+void fd_sync_session_begin(const char *mod)
+{
+    snprintf(s_sid, sizeof(s_sid), "s%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
+    strlcpy(s_smod, mod ? mod : "", sizeof(s_smod));
+    s_sess_ms = esp_timer_get_time() / 1000;
+}
+
+void fd_sync_session_end(void)
+{
+    s_sid[0] = 0;
+    s_smod[0] = 0;
+}
+
+/* Truong them cho dong su kien: ,"m":..,"s":..,"t":..,"h":.. (bo truong rong). */
+static void ev_meta(char *dst, size_t cap, const char *m, int hints)
+{
+    size_t n = 0;
+    dst[0] = 0;
+    if ((!m || !*m) && s_sid[0] && s_smod[0]) m = s_smod;
+    if (m && *m) n += (size_t)snprintf(dst + n, cap - n, ",\"m\":\"%s\"", m);
+    if (s_sid[0] && n < cap) {
+        int64_t now = esp_timer_get_time() / 1000;
+        int64_t t = now - s_sess_ms;
+        if (t < 0) t = 0;
+        if (t > SESS_T_MAX) t = SESS_T_MAX;
+        s_sess_ms = now;
+        n += (size_t)snprintf(dst + n, cap - n, ",\"s\":\"%s\",\"t\":%ld", s_sid, (long)t);
+    }
+    if (hints > 0 && n < cap) snprintf(dst + n, cap - n, ",\"h\":%d", hints);
+}
+
+/* k giu nguyen nhu ban cu de may chu cu van hieu. Dien tu khong co cau gui k card, m cloze. */
 void fd_sync_event(const char *kind, const char *wid, bool correct)
 {
     if (!s_mx || !s_evmx || !is_wid(wid)) return;
-    const char *k = "card";
-    if (kind && !strcmp(kind, "quiz")) k = "quiz";
-    else if (kind && !strcmp(kind, "pos")) k = "pos";
+    const char *k = "card", *m = NULL;
+    if (kind && !strcmp(kind, "quiz")) k = m = "quiz";
+    else if (kind && !strcmp(kind, "pos")) k = m = "pos";
+    else if (kind && !strcmp(kind, "spell")) k = m = "spell";   /* 4.5.3: may chu cu coi la card, vo hai */
     else if (kind && !strcmp(kind, "sen")) k = "sen";
-    char line[192];
-    snprintf(line, sizeof(line), "{\"eid\":\"e%08lx%08lx\",\"k\":\"%s\",\"wid\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
-             (unsigned long)esp_random(), (unsigned long)esp_random(), k, wid, correct ? 1 : 0,
+    else if (kind && !strcmp(kind, "cloze")) m = "cloze";
+    char meta[96];
+    ev_meta(meta, sizeof(meta), m, 0);
+    char line[256];
+    snprintf(line, sizeof(line), "{\"eid\":\"e%08lx%08lx\",\"k\":\"%s\",\"wid\":\"%s\",\"ok\":%d%s,\"ts\":%lld}\n",
+             (unsigned long)esp_random(), (unsigned long)esp_random(), k, wid, correct ? 1 : 0, meta,
              (long long)now_epoch());
     write_event(line, wid, k, correct);
 }
 
-void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod)
+static void sen_event(const char *wid, const char *sentence, bool correct, const char *m, int hints)
 {
     if (!s_mx || !s_evmx || !is_wid(wid)) return;
-    const char *m = (mod && !strcmp(mod, "cloze")) ? "cloze" : (mod && !strcmp(mod, "hear")) ? "hear" : "order";
     char esc[FD_SEN_TXT_LEN * 2];
     json_escape(esc, sizeof(esc), sentence ? sentence : "");
-    char line[512];
+    char meta[96];
+    ev_meta(meta, sizeof(meta), m, hints);
+    char line[640];
     snprintf(line, sizeof(line),
-             "{\"eid\":\"e%08lx%08lx\",\"k\":\"sen\",\"m\":\"%s\",\"wid\":\"%s\",\"sen\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
-             (unsigned long)esp_random(), (unsigned long)esp_random(), m, wid, esc, correct ? 1 : 0, (long long)now_epoch());
+             "{\"eid\":\"e%08lx%08lx\",\"k\":\"sen\",\"wid\":\"%s\",\"sen\":\"%s\",\"ok\":%d%s,\"ts\":%lld}\n",
+             (unsigned long)esp_random(), (unsigned long)esp_random(), wid, esc, correct ? 1 : 0, meta, (long long)now_epoch());
     write_event(line, wid, "sen", correct);
+}
+
+/* hints > 0: cau co dung Gợi ý, gui kem "h" (toi da 255) va luon ok 0. May chu ghi nhan hoat dong, khong cham diem. */
+void fd_sync_event_hear(const char *wid, const char *sentence, bool correct, int hints)
+{
+    if (hints < 0) hints = 0;
+    if (hints > 255) hints = 255;
+    sen_event(wid, sentence, hints ? false : correct, "hear", hints);
+}
+
+void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod)
+{
+    const char *m = (mod && !strcmp(mod, "cloze")) ? "cloze" : (mod && !strcmp(mod, "hear")) ? "hear" : "order";
+    sen_event(wid, sentence, correct, m, 0);
 }
 
 /* Telemetry nhe, cung nguon voi GET /api/ota/check: pin, rssi, fw_version, build_id.
@@ -719,7 +781,7 @@ static int push_all(char *rx)
         char *b = read_all(EVLOG, EV_MAX_BYTES * 2, &len);
         xSemaphoreGive(s_evmx);
         if (!b) break;
-        size_t cap = 64 + TEL_MAX + (len < PUSH_BATCH * 200 ? len : PUSH_BATCH * 200);
+        size_t cap = 64 + TEL_MAX + (len < PUSH_BATCH * 512 ? len : PUSH_BATCH * 512);
         char *body = ps_alloc(cap + 64);
         int n = 0;
         size_t bn = 0;
@@ -990,14 +1052,26 @@ static void do_stats(char *rx)
             const cJSON *wp = cJSON_GetObjectItemCaseSensitive(r, "word_progress");
             s_stats.word_quiz = jint(wp, "quiz");
             s_stats.word_pos = jint(wp, "pos");
+            s_stats.word_spell = jint(wp, "spell");
             s_stats.today_answers = jint(td, "answers");
             s_stats.today_correct = jint(td, "correct");
             s_stats.week_answers = jint(wk, "answers");
             s_stats.week_correct = jint(wk, "correct");
             s_stats.week_sessions = jint(wk, "sessions");
+            s_stats.today_hinted = jint(td, "hinted");
+            s_stats.week_hinted = jint(wk, "hinted");
             s_stats.streak_days = jint(r, "streak_days");
             s_stats.scan_uses = jint(r, "scan_uses");
             s_stats.scan_words = jint(r, "scan_words");
+            static const char *const MODS[FD_MOD_N] = {"quiz", "pos", "spell", "cloze", "order", "hear"};
+            const cJSON *wm = cJSON_GetObjectItemCaseSensitive(wk, "modules");
+            for (int i = 0; i < FD_MOD_N; i++) {
+                const cJSON *mo = cJSON_GetObjectItemCaseSensitive(wm, MODS[i]);
+                s_stats.mod[i].answers = jint(mo, "answers");
+                s_stats.mod[i].correct = jint(mo, "correct");
+                s_stats.mod[i].hinted = jint(mo, "hinted");
+                s_stats.mod[i].sessions = jint(mo, "sessions");
+            }
             unlock();
         }
         cJSON_Delete(r);
@@ -1489,6 +1563,45 @@ fd_study_err_t fd_sync_build_pos_quiz(fd_study_session_t *s, int n)
     snprintf(s->session_id, sizeof(s->session_id), "lp-%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
     s->offline = true;
     return FD_STUDY_ERR_NONE;
+}
+
+/* 4.5.3 Chinh ta: nghia dau tien, bo khoang trang dau cuoi. */
+static void first_meaning(char *dst, size_t cap, const char *src)
+{
+    const char *p = src ? src : "";
+    while (*p == ' ') p++;
+    size_t n = strcspn(p, ",;/(");
+    while (n > 0 && p[n - 1] == ' ') n--;
+    if (n >= cap) n = 0;   /* qua dai: bo, man Chinh ta se ghep tieng Anh */
+    memcpy(dst, p, n);
+    dst[n] = 0;
+}
+
+int fd_sync_build_spell(fd_spell_word_t *out, int cap)
+{
+    if (!out || cap <= 0 || !fd_sync_ready()) return 0;
+    ord_t *o = ps_alloc(sizeof(ord_t) * FD_SYNC_MAX_WORDS);
+    if (!o) return 0;
+    lock();
+    int m = order_words(o, cap, false), n = 0;
+    for (int q = 0; q < m && n < cap; q++) {
+        word_t *w = &s_w[o[q].idx];
+        if (!w->en[0]) continue;
+        fd_spell_word_t *d = &out[n++];
+        memset(d, 0, sizeof(*d));
+        ucpy(d->wid, sizeof(d->wid), w->id);
+        ucpy(d->en, sizeof(d->en), w->en);
+        ucpy(d->ipa, sizeof(d->ipa), w->ipa);
+        first_meaning(d->vi, sizeof(d->vi), w->vi);
+        if (w->seen < 0xFFFF) w->seen++;
+    }
+    unlock();
+    free(o);
+    for (int i = n - 1; i > 0; i--) {
+        int j = rnd(i + 1);
+        fd_spell_word_t t = out[i]; out[i] = out[j]; out[j] = t;
+    }
+    return n;
 }
 
 static bool cloze_blank(const char *sentence, const char *word, char *out, size_t cap)

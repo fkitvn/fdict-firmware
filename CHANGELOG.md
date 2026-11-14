@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.5.3] - 2026-11-15
+Màn Nghe gửi kết quả cho mọi câu. Câu dùng gợi ý được ghi là đã học nhưng không chấm điểm. Câu nhập sai rồi mới đúng tính là sai, giống màn Sắp xếp và Điền từ. Mỗi bài học gửi kèm mã phiên và thời gian làm để thống kê theo từng module. Màn Thống kê thêm hoạt động 7 ngày theo module. Thêm module Chính tả ghép từ từ các chữ cái đã xáo theo cả hai chiều Anh và Việt. Từ chỉ được tính là đã thuộc khi Luyện tập, Phân loại từ và Chính tả đều đúng 3 lần liên tiếp. Màn chính sắp lại thứ tự module với khối từ vựng lên đầu.
+
 ## [4.5.2] - 2026-11-15
 Không gửi pin và sóng Wi-Fi khi chưa đọc được. Bỏ trường ví dụ cũ khi đồng bộ và dọn các chuỗi giao diện không dùng. Màn Nghe gợi ý ô kế tiếp chưa nhập đúng thay vì luôn ô đầu tiên. Câu đã dùng gợi ý coi như chưa trả lời, không ghi nhận đúng sai và không tính vào tổng kết quả.
 

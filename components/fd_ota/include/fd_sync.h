@@ -51,10 +51,26 @@ typedef struct {
     char err[24];            /* no_wifi, unpaired, no_account, http_NNN, net, format */
     int words, n_new, learning, mastered, collections, sentences;
     int sen_mastered, sen_learning, sen_order, sen_cloze, sen_hear;
-    int word_quiz, word_pos;
+    int word_quiz, word_pos, word_spell;   /* 4.5.3: word_progress.spell (Chinh ta) */
     int today_answers, today_correct, week_answers, week_correct, week_sessions, streak_days;
+    int today_hinted, week_hinted;   /* 4.5.3: cau Nghe dung Gợi ý, la hoat dong nhung khong tinh ti le dung */
     int scan_uses, scan_words;   /* luot scan AI / tu luu tu scan (server) */
+    /* 4.5.3: 7 ngay theo module (server week.modules), thu tu FD_MOD_*. hinted chi co o Nghe. */
+    struct { int answers, correct, hinted, sessions; } mod[6];
 } fd_sync_stats_t;
+
+enum { FD_MOD_QUIZ = 0, FD_MOD_POS, FD_MOD_SPELL, FD_MOD_CLOZE, FD_MOD_ORDER, FD_MOD_HEAR, FD_MOD_N };
+
+/* 4.5.3 Chinh ta: 1 tu trong kho (nguoi goi tach ky tu, chon chieu ghep). vi = nghia dau tien (cat o , ; / ( ). */
+#define FD_SPELL_TOK 20   /* toi da so ky tu (khong tinh khoang trang) cua dap an */
+typedef struct {
+    char wid[FD_SYNC_WID_LEN];
+    char en[FD_FC_WORD_LEN];
+    char ipa[FD_FC_IPA_LEN];
+    char vi[FD_FC_MEAN_LEN];
+} fd_spell_word_t;
+/* Lay toi da cap tu theo uu tien hoc (nhu Luyen tap), da xao. Tra so tu (0 khi kho rong). */
+int fd_sync_build_spell(fd_spell_word_t *out, int cap);
 
 void fd_sync_init(void);                 /* goi 1 lan sau khi mount /data (nap kho + outbox, tao task) */
 void fd_sync_kick(void);                 /* co ket qua moi: gui outbox som */
@@ -76,6 +92,12 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
 void fd_sync_event(const char *kind, const char *wid, bool correct);
 /* Cau AI: mod "order" | "cloze" | "hear". Moi module can 3 dung lien tiep. */
 void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod);
+/* Ket qua mot cau Nghe. hints = so lan Gợi ý (0..255). hints > 0 thi gui kem "h" va ok 0. */
+void fd_sync_event_hear(const char *wid, const char *sentence, bool correct, int hints);
+/* Phien hoc (4.5.3): goi khi bat dau mot bai (mod quiz | pos | cloze | order | hear) va khi ket thuc hoac thoat.
+ * Su kien trong phien gui kem s (ma phien) va t (ms tu su kien truoc). Chi goi tu luong giao dien. */
+void fd_sync_session_begin(const char *mod);
+void fd_sync_session_end(void);
 /* Thong ke: LUON goi server (gui outbox truoc). Khong Wi-Fi -> ERROR "no_wifi". */
 void fd_sync_stats_fetch(void);
 void fd_sync_stats_get(fd_sync_stats_t *out);
