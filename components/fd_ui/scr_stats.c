@@ -117,6 +117,7 @@ static void show(const fd_sync_stats_t *st)
     snprintf(v, sizeof(v), "%d", st->n_new); kv(_("STATS_NEW"), v);
     snprintf(v, sizeof(v), "%d", st->word_quiz); kv(_("PRACTICE"), v);
     snprintf(v, sizeof(v), "%d", st->word_pos); kv(_("WORD_TYPE"), v);
+    snprintf(v, sizeof(v), "%d", st->word_spell); kv(_("SPELLING"), v);
     text(_("STATS_SEN_SECTION"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     snprintf(v, sizeof(v), "%d", st->sentences); kv(_("SYNC_SENTENCES"), v);
     snprintf(v, sizeof(v), "%d/%d", st->sen_mastered, st->sentences); kv(_("STATS_SEN_DONE"), v);
@@ -124,9 +125,20 @@ static void show(const fd_sync_stats_t *st)
     snprintf(v, sizeof(v), "%d", st->sen_cloze); kv(_("FILL_BLANK"), v);
     snprintf(v, sizeof(v), "%d", st->sen_hear); kv(_("LISTEN"), v);
     snprintf(v, sizeof(v), "%d", st->collections); kv(_("SYNC_COLLECTIONS"), v);
-    snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->today_correct, st->today_answers); kv(_("STATS_TODAY"), v);
-    snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->week_correct, st->week_answers); kv(_("STATS_WEEK"), v);
+    /* 4.5.3: ti le dung khong tinh cau da dung Gợi ý (may chu cu khong gui hinted thi bang 0). */
+    snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->today_correct, st->today_answers - st->today_hinted); kv(_("STATS_TODAY"), v);
+    snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->week_correct, st->week_answers - st->week_hinted); kv(_("STATS_WEEK"), v);
     snprintf(v, sizeof(v), _("STATS_DAYS_FMT"), st->streak_days); kv(_("STATS_STREAK"), v);
+    /* 4.5.3: hoat dong 7 ngay theo module. Dung = cau khong Gợi ý tra loi dung tren so cau khong Gợi ý. */
+    text(_("STATS_MOD_SECTION"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
+    static const char *const MOD_KEY[FD_MOD_N] = {"PRACTICE", "WORD_TYPE", "SPELLING", "FILL_BLANK", "SENTENCE", "LISTEN"};
+    for (int i = 0; i < FD_MOD_N; i++) {
+        int n = snprintf(v, sizeof(v), _("STATS_MOD_FMT"), st->mod[i].sessions, st->mod[i].correct,
+                         st->mod[i].answers - st->mod[i].hinted);
+        if (st->mod[i].hinted > 0 && n > 0 && n < (int)sizeof(v))
+            snprintf(v + n, sizeof(v) - (size_t)n, _("STATS_MOD_HINT_FMT"), st->mod[i].hinted);
+        kv(_(MOD_KEY[i]), v);
+    }
     snprintf(v, sizeof(v), "%d", st->scan_uses); kv(_("STATS_SCAN_USES"), v);
     snprintf(v, sizeof(v), "%d", st->scan_words); kv(_("STATS_SCAN_WORDS"), v);
     lv_obj_t *r = btn_row();

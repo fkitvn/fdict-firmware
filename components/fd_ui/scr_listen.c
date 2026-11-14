@@ -1,7 +1,9 @@
 /* Nghe: cau AI cua tu trong bo da chon. Phat ca cau, nhap chu cai dau moi tu (nhu ma PIN).
  * Bo ky tu dac biet, khong phan biet hoa thuong. Moi lan Gợi ý hien chu cai cua o dau tien chua nhap dung
  * (bo qua cac o nguoi dung da nhap dung). Dung thi hien ca cau. Bo qua chuyen cau tiep.
- * Ket qua gui kem loi cau (fd_sync_event_sen). Cau da dung Gợi ý coi nhu chua tra loi: khong gui ket qua. */
+ * Moi cau gui dung mot ket qua khi ket thuc (dung hoac bo qua) qua fd_sync_event_hear. Dung = khong Gợi ý va khong nhap sai.
+ * Cau da dung Gợi ý gui kem so lan Gợi ý (ok 0): may chu chi ghi nhan hoat dong, khong cham diem, khong tinh vao tong ket qua.
+ * Thoat giua cau: khong gui gi, tru khi cau do da Gợi ý hoac da nhap sai (gui ok 0). */
 #include <stdio.h>
 #include <string.h>
 #include "esp_heap_caps.h"
@@ -36,7 +38,9 @@ static lv_obj_t *s_box[FD_SEN_TOK], *s_ch[FD_SEN_TOK];
 static hear_t *s_items;
 static int s_n, s_pos, s_correct, s_cnt = 10;
 static int s_typed;
-static bool s_hinted;                 /* cau hien tai da dung Gợi ý: khong ghi nhan dung sai */
+static int s_hint_cnt;                /* so lan Gợi ý o cau hien tai */
+static bool s_wrong;                  /* cau hien tai da nhap sai it nhat mot lan */
+static bool s_reported;               /* cau hien tai da gui ket qua */
 static int s_hinted_n;                /* so cau da dung Gợi ý trong phien, khong tinh vao tong ket qua */
 static bool s_reveal[FD_SEN_TOK];     /* o da duoc Gợi ý hien chu cai */
 static char s_buf[FD_SEN_TOK + 1];
@@ -185,6 +189,7 @@ static void shake_cb(void *o, int32_t v)
 static void slots_error(void)
 {
     if (!s_slots) return;
+    s_wrong = true;
     s_shake = true;
     s_guard = true;
     if (s_ta) lv_textarea_set_text(s_ta, "");
@@ -202,14 +207,27 @@ static void slots_error(void)
     lv_anim_start(&a);
 }
 
+/* Gui ket qua cau hien tai dung mot lan. Chi cau giai dung, khong Gợi ý, khong nhap sai moi tinh la dung. */
+static void report_current(bool solved)
+{
+    if (s_reported || s_pos < 0 || s_pos >= s_n) return;
+    s_reported = true;
+    bool ok = solved && s_hint_cnt == 0 && !s_wrong;
+    if (ok) s_correct++;
+    fd_sync_event_hear(s_items[s_pos].wid, s_items[s_pos].sentence, ok, s_hint_cnt);
+}
+
+/* Thoat giua cau: chi gui khi da Gợi ý hoac da nhap sai. */
+static void report_on_exit(void)
+{
+    if (s_view == V_PLAY && !s_solved && (s_hint_cnt > 0 || s_wrong)) report_current(false);
+}
+
 static void finish_ok(void)
 {
     if (s_solved || s_pos < 0 || s_pos >= s_n) return;
     s_solved = true;
-    if (!s_hinted) {
-        s_correct++;
-        fd_sync_event_sen(s_items[s_pos].wid, s_items[s_pos].sentence, true, "hear");
-    }
+    report_current(true);
     paint_slots();
 }
 
@@ -269,8 +287,8 @@ static void hint_cb(lv_event_t *e)
     int i = 0;
     while (i < h->n && i < FD_SEN_TOK && ((i < s_typed && s_buf[i] == h->key[i]) || (i >= s_typed && s_reveal[i]))) i++;
     if (i >= h->n || i >= FD_SEN_TOK) return;
-    if (!s_hinted) s_hinted_n++;
-    s_hinted = true;
+    if (s_hint_cnt == 0) s_hinted_n++;
+    if (s_hint_cnt < 255) s_hint_cnt++;
     s_reveal[i] = true;
     if (i < s_typed) {
         s_typed = i;
@@ -284,8 +302,7 @@ static void hint_cb(lv_event_t *e)
 
 static void next_question(void)
 {
-    if (!s_solved && !s_hinted && s_pos >= 0 && s_pos < s_n)
-        fd_sync_event_sen(s_items[s_pos].wid, s_items[s_pos].sentence, false, "hear");
+    report_current(s_solved);
     if (++s_pos >= s_n) show_result();
     else show_question();
 }
@@ -322,7 +339,9 @@ static void show_question(void)
     s_shake = false;
     s_guard = false;
     s_typed = 0;
-    s_hinted = false;
+    s_hint_cnt = 0;
+    s_wrong = false;
+    s_reported = false;
     memset(s_reveal, 0, sizeof(s_reveal));
     memset(s_buf, 0, sizeof(s_buf));
     body_clear();
@@ -499,6 +518,7 @@ static void show_msg(void)
 
 static void show_result(void)
 {
+    fd_sync_session_end();
     s_view = V_RESULT;
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
@@ -527,6 +547,7 @@ static void start(void)
     if (xSemaphoreTake(s_mx, 0) != pdTRUE) return;
     if (s_loading) { xSemaphoreGive(s_mx); return; }
     s_pos = s_correct = s_hinted_n = 0;
+    fd_sync_session_begin("hear");
     s_gen++;
     int gen = s_gen;
     s_loading = true;
@@ -567,6 +588,7 @@ static void begin_cb(lv_event_t *e) { (void)e; start(); }
 
 static void show_setup(void)
 {
+    fd_sync_session_end();
     s_view = V_SETUP;
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
@@ -586,7 +608,7 @@ static void dlg_close(void)
     s_dlg = NULL;
 }
 
-static void dlg_yes(lv_event_t *e) { (void)e; dlg_close(); show_setup(); }
+static void dlg_yes(lv_event_t *e) { (void)e; dlg_close(); report_on_exit(); show_setup(); }
 static void dlg_no(lv_event_t *e) { (void)e; dlg_close(); }
 
 static void dlg_open(void)
@@ -642,6 +664,8 @@ static void destroy(void)
         s_loading = false;
         xSemaphoreGive(s_mx);
     } else s_gen++;
+    report_on_exit();
+    fd_sync_session_end();
     dlg_close();
     s_body = NULL;
 }

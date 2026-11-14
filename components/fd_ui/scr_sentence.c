@@ -178,6 +178,7 @@ static void begin_cb(lv_event_t *e) { (void)e; start(); }
 
 static void show_setup(void)
 {
+    fd_sync_session_end();
     s_view = V_SETUP;
     body_reset();
     lv_obj_t *sc = ui_setup_begin(s_body, _("SENTENCE"));   /* 2.3.6: mau cai dat chung */
@@ -242,6 +243,7 @@ static void start(void)
     lv_obj_set_size(sp, 40, 40);
     label(s_body, _("SEN_LOADING"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     s_pos = s_correct = s_streak = s_best = 0;
+    fd_sync_session_begin("order");
     fd_sen_start(s_cnt);   /* false = dang ban: van cho lan tai hien tai */
     s_waiting = true;
     fd_sen_sync();
@@ -464,6 +466,7 @@ static void show_feed(bool ok)
 
 static void show_result(void)
 {
+    fd_sync_session_end();
     s_view = V_RESULT;
     fd_sen_submit(s_best, (uint32_t)((esp_timer_get_time() - s_t_all) / 1000));
     body_reset();
@@ -565,6 +568,7 @@ static void dlg_open(void)
 static void destroy(void)
 {
     dlg_close();
+    fd_sync_session_end();
     s_body = s_ans = s_cnt_lbl = s_dir_lbl = NULL;
     memset(s_tile, 0, sizeof(s_tile));
 }

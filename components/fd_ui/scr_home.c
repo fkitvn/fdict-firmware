@@ -2,10 +2,10 @@
  *            [logo FD]  [wifi]  [pin %]          (hang tren can giua, theo luong trang, cao 28 px)
  *        (dong trang thai can giua: chu + 👌)    (Noto 14 = 20 px; cham -> man WiFi tru khi READY)
  *   luoi 3 cot (Fluent Emoji 3D 48px + nhan Noto 14):
- *     Lat tu     | Luyen tap | Phan loai tu
- *     Dien tu    | Sap xep   | Nghe
- *     Tu dien    | Dong bo   | Thong ke
- *     Cai dat
+ *     Chinh ta   | Phan loai tu | Luyen tap      (4.5.3: khoi tu vung len dau)
+ *     Dien tu    | Sap xep      | Nghe
+ *     Lat tu     | Tu dien      | Dong bo
+ *     Thong ke   | Cai dat
  * 20/10: trang Home CUON DOC (khong con vua khit 228 px).
  */
 #include <stdio.h>
@@ -40,18 +40,20 @@ LV_IMAGE_DECLARE(img_tile_wordtype);   /* 2.3.6 Fluent "Label" - Phan loai tu */
 LV_IMAGE_DECLARE(img_tile_cloze);      /* 2.3.6 Fluent "Pencil" - Dien tu */
 LV_IMAGE_DECLARE(img_tile_dict);       /* 2.3.6 Fluent "Open book" - Tu dien */
 LV_IMAGE_DECLARE(img_tile_listen);     /* Fluent "Speaker high volume" - Nghe */
+LV_IMAGE_DECLARE(img_tile_spell);      /* 4.5.3 Fluent "Input latin letters" - Chinh ta */
 
 static const struct {
     const lv_image_dsc_t *icon;
     const char *label;
     fd_scr_t target;
 } TILES[] = {
-    {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
-    {&img_tile_study, "PRACTICE", FD_SCR_PRACTICE},
+    {&img_tile_spell, "SPELLING", FD_SCR_SPELL},
     {&img_tile_wordtype, "WORD_TYPE", FD_SCR_POS},
+    {&img_tile_study, "PRACTICE", FD_SCR_PRACTICE},
     {&img_tile_cloze, "FILL_BLANK", FD_SCR_CLOZE},
     {&img_tile_sentence, "SENTENCE", FD_SCR_SENTENCE},
     {&img_tile_listen, "LISTEN", FD_SCR_LISTEN},
+    {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
     {&img_tile_dict, "DICTIONARY", FD_SCR_DICT},
     {&img_tile_sync, "SYNC", FD_SCR_SYNC},
     {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
