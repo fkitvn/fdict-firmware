@@ -71,6 +71,8 @@ void fd_sync_card_seen(const char *wid);
 int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int cap);
 /* Ghi 1 ket qua hoc (kind "quiz" | "card" | "sen") vao outbox ben vung. */
 void fd_sync_event(const char *kind, const char *wid, bool correct);
+/* Sap xep cau: kem loi cau de server cham dung ban ghi trong fdict-study-sentences. */
+void fd_sync_event_sen(const char *wid, const char *sentence, bool correct);
 /* Thong ke: LUON goi server (gui outbox truoc). Khong Wi-Fi -> ERROR "no_wifi". */
 void fd_sync_stats_fetch(void);
 void fd_sync_stats_get(fd_sync_stats_t *out);
