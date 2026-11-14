@@ -676,17 +676,16 @@ void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, cons
     write_event(line, wid, "sen", correct);
 }
 
-/* Telemetry nhe, cung nguon voi GET /api/ota/check: pin, rssi, fw_version, build_id. */
+/* Telemetry nhe, cung nguon voi GET /api/ota/check: pin, rssi, fw_version, build_id.
+ * Pin chua doc duoc (-1) hoac chua co Wi-Fi (rssi 0) thi bo truong, may chu giu gia tri cu. */
 #define TEL_MAX 128
 
 static int json_telemetry(char *dst, size_t cap)
 {
     int bat = fd_batt_get_pct();
-    if (bat < 0) bat = 0;
-    else if (bat > 100) bat = 100;
+    if (bat > 100) bat = 100;
     int rssi = fd_net_rssi();
-    if (rssi > 0) rssi = 0;
-    else if (rssi < -150) rssi = -150;
+    if (rssi < -150) rssi = -150;
     char build[11]; /* 10 ky tu hex, giong s_build trong fd_ota.c (BUILD_ID_RE) */
     build[0] = 0;
     esp_app_get_elf_sha256(build, sizeof(build));
@@ -701,8 +700,11 @@ static int json_telemetry(char *dst, size_t cap)
         }
     }
     ver_j[n] = 0;
-    return snprintf(dst, cap, ",\"fw_version\":\"%s\",\"build_id\":\"%s\",\"battery\":%d,\"rssi\":%d",
-                    ver_j, build, bat, rssi);
+    char bat_j[20] = "";
+    char rssi_j[20] = "";
+    if (bat >= 0) snprintf(bat_j, sizeof(bat_j), ",\"battery\":%d", bat);
+    if (rssi < 0) snprintf(rssi_j, sizeof(rssi_j), ",\"rssi\":%d", rssi);
+    return snprintf(dst, cap, ",\"fw_version\":\"%s\",\"build_id\":\"%s\"%s%s", ver_j, build, bat_j, rssi_j);
 }
 
 /* Gui outbox theo lo; chi xoa dong server da ack. Tra HTTP cuoi (200 = sach / khong con gi), <0 mang. */
@@ -857,7 +859,7 @@ static int pull_all(char *rx, char *err, size_t errn)
                 put_field(f, js(w, "ipa"), FD_FC_IPA_LEN, tmp);
                 put_field(f, js(w, "vi"), FD_FC_MEAN_LEN, tmp);
                 put_field(f, js(w, "pos"), 96, tmp);
-                put_field(f, js(w, "ex"), 480, tmp);
+                put_field(f, "", 480, tmp); /* cot ex cu: server da bo truong ex, giu cot trong cho dung dinh dang store.tsv */
                 const cJSON *sa = cJSON_GetObjectItemCaseSensitive(w, "s");
                 int k = 0;
                 const cJSON *p;

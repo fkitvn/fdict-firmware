@@ -1,6 +1,7 @@
 /* Nghe: cau AI cua tu trong bo da chon. Phat ca cau, nhap chu cai dau moi tu (nhu ma PIN).
- * Bo ky tu dac biet, khong phan biet hoa thuong. Moi lan Gợi ý hien them chu cai dau cua tu tiep theo.
- * Dung thi hien ca cau. Bo qua chuyen cau tiep. Ket qua gui kem loi cau (fd_sync_event_sen). */
+ * Bo ky tu dac biet, khong phan biet hoa thuong. Moi lan Gợi ý hien chu cai cua o dau tien chua nhap dung
+ * (bo qua cac o nguoi dung da nhap dung). Dung thi hien ca cau. Bo qua chuyen cau tiep.
+ * Ket qua gui kem loi cau (fd_sync_event_sen). Cau da dung Gợi ý coi nhu chua tra loi: khong gui ket qua. */
 #include <stdio.h>
 #include <string.h>
 #include "esp_heap_caps.h"
@@ -34,7 +35,10 @@ static lv_obj_t *s_body, *s_kb, *s_ta, *s_slots, *s_sent, *s_vi, *s_skip, *s_pro
 static lv_obj_t *s_box[FD_SEN_TOK], *s_ch[FD_SEN_TOK];
 static hear_t *s_items;
 static int s_n, s_pos, s_correct, s_cnt = 10;
-static int s_typed, s_hints;
+static int s_typed;
+static bool s_hinted;                 /* cau hien tai da dung Gợi ý: khong ghi nhan dung sai */
+static int s_hinted_n;                /* so cau da dung Gợi ý trong phien, khong tinh vao tong ket qua */
+static bool s_reveal[FD_SEN_TOK];     /* o da duoc Gợi ý hien chu cai */
 static char s_buf[FD_SEN_TOK + 1];
 static bool s_solved, s_shake, s_gate, s_guard;
 static SemaphoreHandle_t s_mx;
@@ -135,7 +139,7 @@ static void paint_slots(void)
             txt[0] = (char)(s_buf[i] - 'a' + 'A');
             border = FD_COLOR_PRIMARY;
             fill = true;
-        } else if (i < s_hints) {
+        } else if (s_reveal[i]) {
             txt[0] = (char)(h->key[i] - 'a' + 'A');
             col = FD_COLOR_TEXT_MUTED;
             border = FD_COLOR_TEXT_MUTED;
@@ -202,8 +206,10 @@ static void finish_ok(void)
 {
     if (s_solved || s_pos < 0 || s_pos >= s_n) return;
     s_solved = true;
-    s_correct++;
-    fd_sync_event_sen(s_items[s_pos].wid, s_items[s_pos].sentence, true, "hear");
+    if (!s_hinted) {
+        s_correct++;
+        fd_sync_event_sen(s_items[s_pos].wid, s_items[s_pos].sentence, true, "hear");
+    }
     paint_slots();
 }
 
@@ -254,17 +260,31 @@ static void ta_cb(lv_event_t *e)
     if (n == maxn) check_buf();
 }
 
+/* Gợi ý o dau tien chua nhap dung va chua hien. Nhap sai tu o do tro di thi xoa phan sai de hien chu goi y. */
 static void hint_cb(lv_event_t *e)
 {
     (void)e;
     if (s_solved || s_shake || s_view != V_PLAY || s_pos < 0 || s_pos >= s_n) return;
-    if (s_hints < s_items[s_pos].n) s_hints++;
+    const hear_t *h = &s_items[s_pos];
+    int i = 0;
+    while (i < h->n && i < FD_SEN_TOK && ((i < s_typed && s_buf[i] == h->key[i]) || (i >= s_typed && s_reveal[i]))) i++;
+    if (i >= h->n || i >= FD_SEN_TOK) return;
+    if (!s_hinted) s_hinted_n++;
+    s_hinted = true;
+    s_reveal[i] = true;
+    if (i < s_typed) {
+        s_typed = i;
+        s_buf[i] = 0;
+        s_guard = true;
+        if (s_ta) lv_textarea_set_text(s_ta, s_buf);
+        s_guard = false;
+    }
     paint_slots();
 }
 
 static void next_question(void)
 {
-    if (!s_solved && s_pos >= 0 && s_pos < s_n)
+    if (!s_solved && !s_hinted && s_pos >= 0 && s_pos < s_n)
         fd_sync_event_sen(s_items[s_pos].wid, s_items[s_pos].sentence, false, "hear");
     if (++s_pos >= s_n) show_result();
     else show_question();
@@ -301,7 +321,9 @@ static void show_question(void)
     s_solved = false;
     s_shake = false;
     s_guard = false;
-    s_typed = s_hints = 0;
+    s_typed = 0;
+    s_hinted = false;
+    memset(s_reveal, 0, sizeof(s_reveal));
     memset(s_buf, 0, sizeof(s_buf));
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
@@ -482,9 +504,12 @@ static void show_result(void)
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     char tmp[48];
-    snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, s_n);
+    /* Cau da dung Gợi ý khong tinh vao tong. Moi cau deu dung Gợi ý thi hien 0/0 mau trung tinh. */
+    int total = s_n - s_hinted_n;
+    if (total < 0) total = 0;
+    snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, total);
     label(s_body, _("LISTEN"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    label(s_body, tmp, &fd_font_mont_32, s_correct * 2 >= s_n ? C_OK : C_BAD);
+    label(s_body, tmp, &fd_font_mont_32, total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
     lv_obj_t *b = lv_button_create(s_body);
     lv_obj_t *l = lv_label_create(b);
     lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
@@ -501,7 +526,7 @@ static void start(void)
     if (!s_mx || !s_items) { show_msg(); return; }
     if (xSemaphoreTake(s_mx, 0) != pdTRUE) return;
     if (s_loading) { xSemaphoreGive(s_mx); return; }
-    s_pos = s_correct = 0;
+    s_pos = s_correct = s_hinted_n = 0;
     s_gen++;
     int gen = s_gen;
     s_loading = true;

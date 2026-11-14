@@ -18,7 +18,6 @@ vi:
   OTA_ERR_BUSY: Hệ thống đang bận. Vui lòng thử lại.
   CHECK_FOR_UPDATES: Kiểm tra cập nhật
   CHECK_WIFI_RETRY: Kiểm tra Wi-Fi rồi thử lại.
-  CHIP_INFO: '%s v%u.%u, %u nhân, N%uR%u'
   CLOSE: Đóng
   CONNECT: Kết nối
   CONNECTED: Đã kết nối
@@ -26,7 +25,6 @@ vi:
   CONNECTING_TO_WIFI: Đang kết nối WiFi
   CONNECTIVITY: Kết nối
   CONTINUE: Học tiếp
-  DATA: Dữ liệu
   DEVELOPER_MODE: Chế độ nhà phát triển
   DEVICE: Thiết bị
   DEVICE_ID: Mã thiết bị
@@ -58,7 +56,6 @@ vi:
   HOME: Về Home
   INTERNAL_RAM: RAM nội bộ
   INVALID_QUESTION_DATA: Dữ liệu câu hỏi không hợp lệ
-  IN_ORDER: Theo danh sách
   LANGUAGE: Ngôn ngữ
   LATER: Để sau
   LOADING: Đang tải...
@@ -97,7 +94,6 @@ vi:
   OFFLINE_NO_WIFI: 'Không có Wifi, học offline'
   OPEN: Mở
   OPEN_WIFI: Mở Wi-Fi
-  ORDER: Thứ tự
   OTA_CONNECTING: Đang kết nối...
   OTA_DOWNLOADING: Đang tải %d%%
   OTA_ERR_BAD_IMAGE: ảnh không hợp lệ
@@ -114,19 +110,16 @@ vi:
   OTA_UPDATE_ASK: Có phiên bản mới %s/%s (%u.%02u MB). Nâng cấp ngay?
   PAIRED_WITH_ACCOUNT: Đã đăng nhập tài khoản
   PAIR_CONNECT_WIFI: Kết nối Wi-Fi để đăng nhập
-  PAIR_DEVICE: Đăng nhập để tiếp tục
   PAIR_GETTING_CODE: Đang lấy mã đăng nhập…
   PAIR_GET_CODE: Lấy mã
   PAIR_GET_NEW_CODE: Lấy mã mới
   PAIR_HINT: Đăng nhập để tiếp tục sử dụng
   PAIR_SCAN_WITH_PHONE: 'Quét bằng điện thoại để đăng nhập'
   PAIR_STEP_ID: 'Đăng nhập'
-  POLICY_QR: Chính sách đổi trả
   PAIR_TO_STUDY: Bạn chưa đăng nhập
   WORD_TYPE: Phân loại từ
   FILL_BLANK: Điền từ
   DICTIONARY: Từ điển
-  POS_PROMPT: Từ này thuộc loại nào?
   LOOKUP_HINT: Nhập từ tiếng Anh để tra
   LOOKUP_HISTORY: Đã tra gần đây
   LOOKUP_ADDING: Đang thêm vào từ cần học…
@@ -163,10 +156,7 @@ vi:
   QUIZ_QUESTION_N: Câu %d
   QUIZ_QUESTION_N_OF: Câu %d/%d
   QUIZ_SCORE: Điểm %d
-  RANDOM: Ngẫu nhiên
   RECONNECT: Kết nối lại
-  REPEAT_1: 1 lần
-  REPEAT_2: 2 lần
   RESTART_NOW: Khởi động lại ngay
   RESULT: Kết quả
   RETRY: Thử lại
@@ -181,7 +171,6 @@ vi:
   SERVER_UNREACHABLE: Không kết nối được máy chủ
   SET: Đã đặt
   SETTINGS: Cài đặt
-  SHUFFLE: Trộn
   SIZE: Kích thước
   SLEEP: Ngủ
   SLEEP_CONFIRM: Ngủ?
@@ -189,9 +178,12 @@ vi:
   SPLASH_TAGLINE: FDict One - Máy học từ vựng
   START: Bắt đầu
   STATISTICS: Thống kê
-  STUDY: 'Quiz'
+  PRACTICE: 'Luyện tập'
+  LISTEN: 'Nghe'
+  HEAR_PROMPT: 'Nhập chữ cái đầu mỗi từ'
+  HEAR_HINT: 'Gợi ý'
+  HEAR_SKIP: 'Bỏ qua'
   STUDY_NEEDS_WIFI: 'Quiz cần Wi-Fi để tải câu hỏi.'
-  SWIPE_BACK_HINT: Vuốt từ mép trái/phải để quay lại
   SYNC: Đồng bộ
   SYNC_PENDING_N: Chờ đồng bộ %d
   TAP_TO_SETUP_WIFI: Chạm để cài Wi-Fi
@@ -202,9 +194,7 @@ vi:
   UNPAIRED_LAB: Server Lab · đã đăng xuất
   UNPAIRED_OFFICIAL: Server chính thức · đã đăng xuất
   UNPAIR_CONFIRM: Đăng xuất?
-  UNPAIR_DEVICE: Đăng xuất
   UNPAIR_MSG: Máy sẽ đăng xuất khỏi tài khoản này.
-  UNREADABLE: Không đọc được
   UPDATE: Cập nhật
   UPGRADE: Nâng cấp
   VI_EN: Việt-Anh
@@ -227,7 +217,6 @@ vi:
   WIFI_SAVED_NOT_CONNECTED: Đã lưu · Chưa kết nối
   WIFI_SECTION_AVAILABLE: MẠNG KHẢ DỤNG
   WIFI_SECTION_SAVED: ĐÃ LƯU
-  WARRANTY: Bảo hành
   WARRANTY_EXPIRED_ON: 'Đã hết hạn ngày %s'
   WARRANTY_INFO: 'Thông tin bảo hành'
   WARRANTY_NEEDED: Chưa kích hoạt
@@ -239,36 +228,25 @@ vi:
   SENTENCE: 'Sắp xếp câu'
   SEN_LOADING: 'Đang tải câu…'
   SEN_PROGRESS: 'Câu %d/%d'
-  SEN_PREV: 'Trước'
-  SEN_NEXT: 'Sau'
-  SEN_UNDO: 'Xóa'
-  SEN_PICK: 'Chọn'
   SEN_CORRECT: 'Chính xác!'
   SEN_WRONG: 'Chưa đúng'
   SEN_ANSWER_IS: 'Đáp án:'
   SEN_CONTINUE: 'Tiếp'
   SEN_RESULT: 'Đúng %d/%d câu'
   SEN_AGAIN: 'Học tiếp'
-  SEN_TAP_HINT: 'Chạm các từ theo đúng thứ tự'
-  SEN_OFFLINE: 'Đang học ngoại tuyến'
   SEN_SYNC_LATER: 'Kết quả sẽ đồng bộ khi có mạng'
-  SEN_PLAY_AUDIO: 'Phát âm thanh sau mỗi câu'
-  SEN_COUNT: 'Số câu mỗi lượt'
   SEN_DIR: 'Chiều'
   SEN_DIR_EN_VI: 'Anh - Việt'
   SEN_DIR_VI_EN: 'Việt - Anh'
   DEV_TOOLS: 'Công cụ kiểm tra'
   BTN_TEST: 'Thử nút bấm'
   BTN_TEST_HINT: 'Nhấn lần lượt từng nút bên dưới màn hình'
-  BTN_TEST_KEY: 'Nút %d'
   BTN_TEST_PROGRESS: 'Đã nhận %d/4 nút'
   BTN_TEST_PASS: 'Tất cả nút hoạt động tốt'
   BTN_TEST_EXIT_HINT: 'Giữ Nút 1 để thoát'
-  BTN_TEST_RESET: 'Làm lại'
   SPK_TEST: 'Loa'
   SPK_TONE: 'Âm 1 kHz'
   SPK_SWEEP: 'Quét tần số'
-  SPK_STOP: 'Dừng'
   SPK_PLAYING: 'Đang phát âm thử...'
   MIC_SECTION: 'Micro'
   DEV_SECTION: 'Dành cho nhà phát triển'
@@ -286,9 +264,12 @@ vi:
   SYNC_AUTO_HINT: 'Tự động đồng bộ khi có Wi-Fi'
   STATS_NEED_WIFI: 'Cần kết nối Wi-Fi để xem thống kê'
   STATS_LOADING: 'Đang tải thống kê…'
+  STATS_VOCAB: 'Từ vựng'
+  STATS_SEN_SECTION: 'Câu'
   STATS_WORDS: 'Tổng số từ'
   STATS_MASTERED: 'Đã thuộc'
   STATS_LEARNING: 'Đang học'
+  STATS_SEN_DONE: 'Câu đã thuộc'
   STATS_NEW: 'Từ mới'
   STATS_TODAY: 'Hôm nay'
   STATS_WEEK: '7 ngày qua'
