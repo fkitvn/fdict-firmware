@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Ten firmware = app version (esp_app_desc.version, char[32]): "FDict One - x.y.z" (dinh dang duy nhat).
 # Build ID = 10 ky tu hex dau (chu thuong) cua SHA256 file ELF (vd 3fa9c01b7e).
-set(PROJECT_VER "FDict One - 4.4.0")
+set(PROJECT_VER "FDict One - 4.5.0")
 # Hau to theo nhanh git (tu dong, KHONG sua tay): nhanh dung "dev" -> "FDict One - x.y.z-dev";
 # moi nhanh/trang thai khac (prod, detached HEAD, CI tren prod, khong co git) -> giu nguyen.
 # Nhanh: git rev-parse --abbrev-ref HEAD; neu detached ("HEAD") / loi -> env GITHUB_REF_NAME, roi CI_COMMIT_BRANCH.

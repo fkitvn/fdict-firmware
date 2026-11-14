@@ -109,11 +109,15 @@ static void show(const fd_sync_stats_t *st)
     reset(LV_FLEX_ALIGN_START);
     s_left = true;
     text(_("STATISTICS"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    char v[40];
+    char v[48];
+    text(_("STATS_VOCAB"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     snprintf(v, sizeof(v), "%d", st->words); kv(_("STATS_WORDS"), v);
     snprintf(v, sizeof(v), "%d", st->mastered); kv(_("STATS_MASTERED"), v);
     snprintf(v, sizeof(v), "%d", st->learning); kv(_("STATS_LEARNING"), v);
     snprintf(v, sizeof(v), "%d", st->n_new); kv(_("STATS_NEW"), v);
+    snprintf(v, sizeof(v), "%d", st->word_quiz); kv(_("PRACTICE"), v);
+    snprintf(v, sizeof(v), "%d", st->word_pos); kv(_("WORD_TYPE"), v);
+    text(_("STATS_SEN_SECTION"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     snprintf(v, sizeof(v), "%d", st->sentences); kv(_("SYNC_SENTENCES"), v);
     snprintf(v, sizeof(v), "%d/%d", st->sen_mastered, st->sentences); kv(_("STATS_SEN_DONE"), v);
     snprintf(v, sizeof(v), "%d", st->sen_order); kv(_("SENTENCE"), v);

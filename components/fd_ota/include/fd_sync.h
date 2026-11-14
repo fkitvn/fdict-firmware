@@ -51,6 +51,7 @@ typedef struct {
     char err[24];            /* no_wifi, unpaired, no_account, http_NNN, net, format */
     int words, n_new, learning, mastered, collections, sentences;
     int sen_mastered, sen_learning, sen_order, sen_cloze, sen_hear;
+    int word_quiz, word_pos;
     int today_answers, today_correct, week_answers, week_correct, week_sessions, streak_days;
     int scan_uses, scan_words;   /* luot scan AI / tu luu tu scan (server) */
 } fd_sync_stats_t;
@@ -71,9 +72,9 @@ int fd_sync_build_cards(fd_fc_card_t *out, int cap);
 void fd_sync_card_seen(const char *wid);
 /* Bai sap xep cau tu cau vi du trong kho: dien ans/n/end/sentence/hint (tok = ans, nguoi goi tu xao); wid = id tu. */
 int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int cap);
-/* Ghi 1 ket qua hoc (kind "quiz" | "card" | "sen") vao outbox ben vung. */
+/* Ghi 1 ket qua hoc (kind "quiz" | "pos" | "card" | "sen") vao outbox ben vung. */
 void fd_sync_event(const char *kind, const char *wid, bool correct);
-/* Cau AI: mod "order" | "cloze" | "hear". Server chi danh dau da thuoc khi du 3 module. */
+/* Cau AI: mod "order" | "cloze" | "hear". Moi module can 3 dung lien tiep. */
 void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod);
 /* Thong ke: LUON goi server (gui outbox truoc). Khong Wi-Fi -> ERROR "no_wifi". */
 void fd_sync_stats_fetch(void);
