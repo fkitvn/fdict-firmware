@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.5.2] - 2026-11-15
+Không gửi pin và sóng Wi-Fi khi chưa đọc được. Bỏ trường ví dụ cũ khi đồng bộ và dọn các chuỗi giao diện không dùng. Màn Nghe gợi ý ô kế tiếp chưa nhập đúng thay vì luôn ô đầu tiên. Câu đã dùng gợi ý coi như chưa trả lời, không ghi nhận đúng sai và không tính vào tổng kết quả.
+
 ## [4.5.1] - 2026-11-14
 Sửa cảnh báo biên dịch ở màn Nghe để bản phát hành qua được bước kiểm tra.
 

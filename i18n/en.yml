@@ -18,7 +18,6 @@ en:
   OTA_ERR_BUSY: System busy. Please try again.
   CHECK_FOR_UPDATES: Check for updates
   CHECK_WIFI_RETRY: Check Wi-Fi and try again.
-  CHIP_INFO: '%s v%u.%u, %u cores, N%uR%u'
   CLOSE: Close
   CONNECT: Connect
   CONNECTED: Connected
@@ -26,7 +25,6 @@ en:
   CONNECTING_TO_WIFI: Connecting to WiFi
   CONNECTIVITY: Connectivity
   CONTINUE: Continue
-  DATA: Data
   DEVELOPER_MODE: Developer mode
   DEVICE: Device
   DEVICE_ID: Device ID
@@ -58,7 +56,6 @@ en:
   HOME: Home
   INTERNAL_RAM: Internal RAM
   INVALID_QUESTION_DATA: Invalid question data
-  IN_ORDER: In order
   LANGUAGE: Language
   LATER: Later
   LOADING: Loading...
@@ -97,7 +94,6 @@ en:
   OFFLINE_NO_WIFI: 'No Wi-Fi, studying offline'
   OPEN: Open
   OPEN_WIFI: Open Wi-Fi
-  ORDER: Order
   OTA_CONNECTING: Connecting...
   OTA_DOWNLOADING: Downloading %d%%
   OTA_ERR_BAD_IMAGE: invalid image
@@ -114,19 +110,16 @@ en:
   OTA_UPDATE_ASK: New version %s/%s (%u.%02u MB). Update now?
   PAIRED_WITH_ACCOUNT: Signed in to account
   PAIR_CONNECT_WIFI: Connect to Wi-Fi to sign in
-  PAIR_DEVICE: Sign in to continue
   PAIR_GETTING_CODE: Getting login code…
   PAIR_GET_CODE: Get code
   PAIR_GET_NEW_CODE: Get new code
   PAIR_HINT: Sign in to continue
   PAIR_SCAN_WITH_PHONE: 'Scan with your phone to sign in'
   PAIR_STEP_ID: Sign in
-  POLICY_QR: Return policy
   PAIR_TO_STUDY: You are not signed in
   WORD_TYPE: Word type
   FILL_BLANK: Fill in the blank
   DICTIONARY: Dictionary
-  POS_PROMPT: What type of word is this?
   LOOKUP_HINT: Type an English word to look up
   LOOKUP_HISTORY: Recent lookups
   LOOKUP_ADDING: Adding to your study list…
@@ -163,10 +156,7 @@ en:
   QUIZ_QUESTION_N: Q %d
   QUIZ_QUESTION_N_OF: Q %d/%d
   QUIZ_SCORE: Score %d
-  RANDOM: Random
   RECONNECT: Reconnect
-  REPEAT_1: 1 time
-  REPEAT_2: 2 times
   RESTART_NOW: Restart now
   RESULT: Result
   RETRY: Retry
@@ -181,7 +171,6 @@ en:
   SERVER_UNREACHABLE: Cannot reach the server
   SET: Set
   SETTINGS: Settings
-  SHUFFLE: Shuffle
   SIZE: Size
   SLEEP: Sleep
   SLEEP_CONFIRM: Sleep?
@@ -189,9 +178,12 @@ en:
   SPLASH_TAGLINE: FDict One - Vocabulary learning device
   START: Start
   STATISTICS: Statistics
-  STUDY: 'Quiz'
+  PRACTICE: 'Practice'
+  LISTEN: 'Listen'
+  HEAR_PROMPT: 'Type the first letter of each word'
+  HEAR_HINT: 'Hint'
+  HEAR_SKIP: 'Skip'
   STUDY_NEEDS_WIFI: 'Quiz needs Wi-Fi to download questions.'
-  SWIPE_BACK_HINT: Swipe from the left/right edge to go back
   SYNC: Sync
   SYNC_PENDING_N: '%d waiting to sync'
   TAP_TO_SETUP_WIFI: Tap to set up Wi-Fi
@@ -202,9 +194,7 @@ en:
   UNPAIRED_LAB: Lab server · signed out
   UNPAIRED_OFFICIAL: Official server · signed out
   UNPAIR_CONFIRM: Sign out?
-  UNPAIR_DEVICE: Sign out
   UNPAIR_MSG: The device will sign out of this account.
-  UNREADABLE: Unreadable
   UPDATE: Update
   UPGRADE: Upgrade
   VI_EN: VI-EN
@@ -227,7 +217,6 @@ en:
   WIFI_SAVED_NOT_CONNECTED: Saved · Not connected
   WIFI_SECTION_AVAILABLE: AVAILABLE NETWORKS
   WIFI_SECTION_SAVED: SAVED
-  WARRANTY: Warranty
   WARRANTY_EXPIRED_ON: 'Expired on %s'
   WARRANTY_INFO: 'Warranty information'
   WARRANTY_NEEDED: Not activated
@@ -239,36 +228,25 @@ en:
   SENTENCE: 'Sentence order'
   SEN_LOADING: 'Loading sentences…'
   SEN_PROGRESS: 'Sentence %d/%d'
-  SEN_PREV: 'Prev'
-  SEN_NEXT: 'Next'
-  SEN_UNDO: 'Undo'
-  SEN_PICK: 'Pick'
   SEN_CORRECT: 'Correct!'
   SEN_WRONG: 'Not quite'
   SEN_ANSWER_IS: 'Answer:'
   SEN_CONTINUE: 'Next'
   SEN_RESULT: '%d/%d correct'
   SEN_AGAIN: 'Play again'
-  SEN_TAP_HINT: 'Tap the words in order'
-  SEN_OFFLINE: 'Offline mode'
   SEN_SYNC_LATER: 'Results will sync when online'
-  SEN_PLAY_AUDIO: 'Play audio after each sentence'
-  SEN_COUNT: 'Sentences per session'
   SEN_DIR: 'Direction'
   SEN_DIR_EN_VI: 'English - Vietnamese'
   SEN_DIR_VI_EN: 'Vietnamese - English'
   DEV_TOOLS: 'Test tools'
   BTN_TEST: 'Button test'
   BTN_TEST_HINT: 'Press each button below the screen in turn'
-  BTN_TEST_KEY: 'Button %d'
   BTN_TEST_PROGRESS: 'Received %d/4 buttons'
   BTN_TEST_PASS: 'All buttons work well'
   BTN_TEST_EXIT_HINT: 'Hold Button 1 to exit'
-  BTN_TEST_RESET: 'Reset'
   SPK_TEST: 'Speaker'
   SPK_TONE: '1 kHz tone'
   SPK_SWEEP: 'Sweep'
-  SPK_STOP: 'Stop'
   SPK_PLAYING: 'Playing test sound...'
   MIC_SECTION: 'Microphone'
   DEV_SECTION: 'For developers'
@@ -286,9 +264,12 @@ en:
   SYNC_AUTO_HINT: 'Syncs automatically when Wi-Fi is on'
   STATS_NEED_WIFI: 'Wi-Fi is needed to view statistics'
   STATS_LOADING: 'Loading statistics…'
+  STATS_VOCAB: 'Vocabulary'
+  STATS_SEN_SECTION: 'Sentences'
   STATS_WORDS: 'Total words'
   STATS_MASTERED: 'Mastered'
   STATS_LEARNING: 'Learning'
+  STATS_SEN_DONE: 'Sentences mastered'
   STATS_NEW: 'New'
   STATS_TODAY: 'Today'
   STATS_WEEK: 'Last 7 days'
