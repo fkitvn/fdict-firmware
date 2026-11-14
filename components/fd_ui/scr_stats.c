@@ -115,6 +115,10 @@ static void show(const fd_sync_stats_t *st)
     snprintf(v, sizeof(v), "%d", st->learning); kv(_("STATS_LEARNING"), v);
     snprintf(v, sizeof(v), "%d", st->n_new); kv(_("STATS_NEW"), v);
     snprintf(v, sizeof(v), "%d", st->sentences); kv(_("SYNC_SENTENCES"), v);
+    snprintf(v, sizeof(v), "%d/%d", st->sen_mastered, st->sentences); kv(_("STATS_SEN_DONE"), v);
+    snprintf(v, sizeof(v), "%d", st->sen_order); kv(_("SENTENCE"), v);
+    snprintf(v, sizeof(v), "%d", st->sen_cloze); kv(_("FILL_BLANK"), v);
+    snprintf(v, sizeof(v), "%d", st->sen_hear); kv(_("LISTEN"), v);
     snprintf(v, sizeof(v), "%d", st->collections); kv(_("SYNC_COLLECTIONS"), v);
     snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->today_correct, st->today_answers); kv(_("STATS_TODAY"), v);
     snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->week_correct, st->week_answers); kv(_("STATS_WEEK"), v);

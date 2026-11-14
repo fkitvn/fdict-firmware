@@ -1,10 +1,11 @@
 /* Home (khong header co dinh, 320x240 ngang; 14:36 19/10: dong trang thai luon hien):
  *            [logo FD]  [wifi]  [pin %]          (hang tren can giua, theo luong trang, cao 28 px)
  *        (dong trang thai can giua: chu + 👌)    (Noto 14 = 20 px; cham -> man WiFi tru khi READY)
- *   luoi 3 cot, 7 o (Fluent Emoji 3D 48px + nhan Noto 14), hang cuoi can giua:
- *     Flash card | Hoc tap   | Doan hinh
- *     Dien chu   | Phat am   | Nhai tu
- *     Dong bo    | Thong ke  | Cai dat        (9 o = luoi 3x3 day du)
+ *   luoi 3 cot (Fluent Emoji 3D 48px + nhan Noto 14):
+ *     Lat tu     | Luyen tap | Phan loai tu
+ *     Dien tu    | Sap xep   | Nghe
+ *     Tu dien    | Dong bo   | Thong ke
+ *     Cai dat
  * 20/10: trang Home CUON DOC (khong con vua khit 228 px).
  */
 #include <stdio.h>
@@ -38,6 +39,7 @@ LV_IMAGE_DECLARE(img_tile_sentence);   /* 2.1.7 Fluent "Puzzle piece" */
 LV_IMAGE_DECLARE(img_tile_wordtype);   /* 2.3.6 Fluent "Label" - Phan loai tu */
 LV_IMAGE_DECLARE(img_tile_cloze);      /* 2.3.6 Fluent "Pencil" - Dien tu */
 LV_IMAGE_DECLARE(img_tile_dict);       /* 2.3.6 Fluent "Open book" - Tu dien */
+LV_IMAGE_DECLARE(img_tile_listen);     /* Fluent "Speaker high volume" - Nghe */
 
 static const struct {
     const lv_image_dsc_t *icon;
@@ -45,11 +47,12 @@ static const struct {
     fd_scr_t target;
 } TILES[] = {
     {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
-    {&img_tile_study, "PRACTICE", FD_SCR_PRACTICE},    /* 4.1.6: "Luyen tap" (truoc la Quiz) */
+    {&img_tile_study, "PRACTICE", FD_SCR_PRACTICE},
+    {&img_tile_wordtype, "WORD_TYPE", FD_SCR_POS},
+    {&img_tile_cloze, "FILL_BLANK", FD_SCR_CLOZE},
     {&img_tile_sentence, "SENTENCE", FD_SCR_SENTENCE},
-    {&img_tile_wordtype, "WORD_TYPE", FD_SCR_POS},        /* 2.3.5: Phan loai tu */
-    {&img_tile_cloze, "FILL_BLANK", FD_SCR_CLOZE},  /* 2.3.5: Dien tu */
-    {&img_tile_dict, "DICTIONARY", FD_SCR_DICT},  /* 2.3.5: Tu dien */
+    {&img_tile_listen, "LISTEN", FD_SCR_LISTEN},
+    {&img_tile_dict, "DICTIONARY", FD_SCR_DICT},
     {&img_tile_sync, "SYNC", FD_SCR_SYNC},
     {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
     {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},

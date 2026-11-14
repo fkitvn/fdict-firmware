@@ -141,7 +141,8 @@ static void show_msg_no_data(void)
 static void start_cb(lv_event_t *e)
 {
     (void)e;
-    if (fd_sync_pick_count(0) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
+    unsigned need = s_kind == MCQ_CLOZE ? FD_SYNC_PICK_F_SEN : 0;
+    if (fd_sync_pick_count(need) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
     if (!fd_sync_ready() || !build_session()) { show_msg_no_data(); return; }
     s_pos = s_score = s_done = 0;
     s_said_pos = -1;
@@ -205,7 +206,8 @@ static void answer(int i)
     }
     fd_audio_feedback(i == c);
     if (s_kind == MCQ_CLOZE && c >= 0 && c < 4) mcq_say(q->choice[c]);   /* Dien tu: doc tu dung SAU khi tra loi */
-    fd_sync_event(ev_kind(), q->id, i == c);
+    if (s_kind == MCQ_CLOZE && q->sen[0]) fd_sync_event_sen(q->id, q->sen, i == c, "cloze");
+    else fd_sync_event(ev_kind(), q->id, i == c);
     s_next_t = lv_timer_create(next_cb, i == c ? 900 : 1500, NULL);
     lv_timer_set_repeat_count(s_next_t, 1);
 }

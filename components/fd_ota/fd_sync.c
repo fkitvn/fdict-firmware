@@ -447,8 +447,7 @@ static bool load_store_locked(void)
             int k = atoi(fl[10]);
             if (k < 0) k = 0;
             if (k > (n - 11) / 2) k = (n - 11) / 2;
-            if (fl[9][0]) k++;   /* 4.1.8: cau vi du goc (ex) cung la 1 cau dung duoc */
-            w->nsen = (uint8_t)k;
+            w->nsen = (uint8_t)k;   /* chi dem cau AI (cot ex giu cho dung vi tri, khong dung) */
             w->off = (uint32_t)off;
             if (!w->en[0] || !w->vi[0] || !is_wid(w->id)) continue;
             ns += k;
@@ -646,15 +645,16 @@ void fd_sync_event(const char *kind, const char *wid, bool correct)
     write_event(line, wid, correct);
 }
 
-void fd_sync_event_sen(const char *wid, const char *sentence, bool correct)
+void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod)
 {
     if (!s_mx || !s_evmx || !is_wid(wid)) return;
+    const char *m = (mod && !strcmp(mod, "cloze")) ? "cloze" : (mod && !strcmp(mod, "hear")) ? "hear" : "order";
     char esc[FD_SEN_TXT_LEN * 2];
     json_escape(esc, sizeof(esc), sentence ? sentence : "");
     char line[512];
     snprintf(line, sizeof(line),
-             "{\"eid\":\"e%08lx%08lx\",\"k\":\"sen\",\"wid\":\"%s\",\"sen\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
-             (unsigned long)esp_random(), (unsigned long)esp_random(), wid, esc, correct ? 1 : 0, (long long)now_epoch());
+             "{\"eid\":\"e%08lx%08lx\",\"k\":\"sen\",\"m\":\"%s\",\"wid\":\"%s\",\"sen\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
+             (unsigned long)esp_random(), (unsigned long)esp_random(), m, wid, esc, correct ? 1 : 0, (long long)now_epoch());
     write_event(line, wid, correct);
 }
 
@@ -855,7 +855,7 @@ static int pull_all(char *rx, char *err, size_t errn)
                 }
                 fputc('\n', f);
                 nw++;
-                ns += k + (js(w, "ex")[0] ? 1 : 0);
+                ns += k;
             }
             const cJSON *nx = cJSON_GetObjectItemCaseSensitive(r, "next_offset");
             int next = cJSON_IsNumber(nx) ? nx->valueint : -1;
@@ -961,6 +961,12 @@ static void do_stats(char *rx)
             s_stats.mastered = jint(r, "mastered");
             s_stats.collections = jint(r, "collections");
             s_stats.sentences = jint(r, "sentences");
+            const cJSON *sp = cJSON_GetObjectItemCaseSensitive(r, "sentence_progress");
+            s_stats.sen_mastered = jint(sp, "mastered");
+            s_stats.sen_learning = jint(sp, "learning");
+            s_stats.sen_order = jint(sp, "order");
+            s_stats.sen_cloze = jint(sp, "cloze");
+            s_stats.sen_hear = jint(sp, "hear");
             s_stats.today_answers = jint(td, "answers");
             s_stats.today_correct = jint(td, "correct");
             s_stats.week_answers = jint(wk, "answers");
@@ -1107,7 +1113,7 @@ static int ord_cmp(const void *a, const void *b)
 }
 
 /* Thu tu hoc (giu khoa): [chua thuoc truoc neu bat] > [it gap trong lan chay nay] > [moi them truoc neu bat | ngau nhien].
- * filt: chi lay tu co cau vi du. Tra so phan tu (cap). */
+ * Loc theo bo tu dang chon. filt: chi lay tu co cau AI. Tra so phan tu (cap). */
 static int order_words(ord_t *o, int cap, bool filt)
 {
     int n = 0;
@@ -1273,18 +1279,13 @@ int fd_sync_build_cards(fd_fc_card_t *out, int cap)
     return m;
 }
 
-/* 4.1.8: danh sach cau cua 1 dong W: s[] (en, vi) + ex (vi du goc, khong ban dich) neu khong trung. */
+/* Cau AI tren dong W: n cap (en, vi) sau cot ex. Cot ex khong con la cau luyen tap. */
 static int line_sents(char **fl, int nf, const char **en, const char **vi, int cap)
 {
     int k = nf >= 11 ? atoi(fl[10]) : 0;
     if (k < 0 || 11 + 2 * k > nf) k = 0;
     int n = 0;
     for (int j = 0; j < k && n < cap; j++) { en[n] = fl[11 + 2 * j]; vi[n] = fl[12 + 2 * j]; n++; }
-    if (nf >= 10 && fl[9][0] && n < cap) {
-        bool dup = false;
-        for (int j = 0; j < n; j++) if (!strcasecmp(en[j], fl[9])) dup = true;
-        if (!dup) { en[n] = fl[9]; vi[n] = ""; n++; }
-    }
     return n;
 }
 
@@ -1323,7 +1324,7 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
     int got = 0;
     if (!o || !line) { free(o); free(line); return 0; }
     lock();
-    int m = order_words(o, cap * 3, true);
+    int m = order_words(o, cap * 3, true);   /* bo tu da chon -> tu co cau AI */
     FILE *f = m ? fopen(STORE, "r") : NULL;
     for (int i = 0; f && i < m && got < cap; i++) {
         word_t *w = &s_w[o[i].idx];
@@ -1502,7 +1503,7 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
     char *line = ps_alloc(LINE_CAP);
     if (!o || !line) { free(o); free(line); return FD_STUDY_ERR_NOMEM; }
     lock();
-    int m = order_words(o, n * 3, true);
+    int m = order_words(o, n * 3, true);   /* bo tu da chon -> tu co cau AI */
     FILE *f = m ? fopen(STORE, "r") : NULL;
     for (int i = 0; f && i < m && s->n < n; i++) {
         word_t *w = &s_w[o[i].idx];
@@ -1521,7 +1522,11 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
         for (int t = 0; t < k; t++) {
             int j = (pick + t) % k;
             const char *sen = sens[j];
-            if (cloze_blank(sen, w->en, d->prompt, sizeof(d->prompt))) { ok = true; break; }
+            if (cloze_blank(sen, w->en, d->prompt, sizeof(d->prompt))) {
+                ucpy(d->sen, sizeof(d->sen), sen);
+                ok = true;
+                break;
+            }
         }
         if (!ok) continue;
         ucpy(d->id, sizeof(d->id), w->id);

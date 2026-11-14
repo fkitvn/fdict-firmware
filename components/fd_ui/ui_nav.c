@@ -43,6 +43,7 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_WARRANTY] = &g_scr_warranty,
     [FD_SCR_PHONE_QR] = &g_scr_phone_qr,
     [FD_SCR_DECK] = &g_scr_deck,
+    [FD_SCR_LISTEN] = &g_scr_listen,
 };
 
 static fd_scr_t s_cur = FD_SCR_COUNT;
