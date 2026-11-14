@@ -11,6 +11,7 @@
 #include "fd_ota.h"
 #include "fd_sentence.h"
 #include "fd_sync.h"
+#include "fd_t9kb.h"
 #include "nvs.h"
 #include "ui_priv.h"
 
@@ -29,28 +30,22 @@ typedef struct {
 } hear_t;
 
 static view_t s_view;
-static lv_obj_t *s_body, *s_kb, *s_slots, *s_sent, *s_vi, *s_skip, *s_dlg;
+static lv_obj_t *s_body, *s_kb, *s_ta, *s_slots, *s_sent, *s_vi, *s_skip, *s_prompt, *s_dlg;
 static lv_obj_t *s_box[FD_SEN_TOK], *s_ch[FD_SEN_TOK];
 static hear_t *s_items;
 static int s_n, s_pos, s_correct, s_cnt = 10;
 static int s_typed, s_hints;
 static char s_buf[FD_SEN_TOK + 1];
-static bool s_solved, s_shake, s_gate;
+static bool s_solved, s_shake, s_gate, s_guard;
 static SemaphoreHandle_t s_mx;
 static volatile int s_gen;
 static volatile bool s_loading;
 static int s_load_err;
 
-static const char *KMAP[] = {
-    "A", "B", "C", "D", "E", "F", "G", "\n",
-    "H", "I", "J", "K", "L", "M", "N", "\n",
-    "O", "P", "Q", "R", "S", "T", "U", "\n",
-    "V", "W", "X", "Y", "Z", LV_SYMBOL_BACKSPACE, ""
-};
-
 static void show_setup(void);
 static void show_question(void);
 static void show_result(void);
+static void kb_enable(bool on);
 
 static void *ps_alloc(size_t n)
 {
@@ -117,7 +112,7 @@ static void body_clear(void)
 {
     if (s_dlg) { lv_obj_delete(s_dlg); s_dlg = NULL; }
     lv_obj_clean(s_body);
-    s_kb = s_slots = s_sent = s_vi = s_skip = NULL;
+    s_kb = s_ta = s_slots = s_sent = s_vi = s_skip = s_prompt = NULL;
     memset(s_box, 0, sizeof(s_box));
     memset(s_ch, 0, sizeof(s_ch));
 }
@@ -159,10 +154,9 @@ static void paint_slots(void)
         if (show) lv_label_set_text(s_vi, h->hint);
         lv_obj_set_hidden(s_vi, !show);
     }
-    if (s_kb) {
-        if (s_solved) lv_obj_add_state(s_kb, LV_STATE_DISABLED);
-        else lv_obj_remove_state(s_kb, LV_STATE_DISABLED);
-    }
+    if (s_prompt) lv_obj_set_hidden(s_prompt, s_solved);
+    if (s_slots) lv_obj_set_hidden(s_slots, s_solved);
+    kb_enable(!s_solved);
     if (s_skip) lv_label_set_text(lv_obj_get_child(s_skip, 0), s_solved ? _("NEXT") : _("HEAR_SKIP"));
 }
 
@@ -172,6 +166,9 @@ static void shake_done(lv_anim_t *a)
     s_shake = false;
     s_typed = 0;
     memset(s_buf, 0, sizeof(s_buf));
+    s_guard = true;
+    if (s_ta) lv_textarea_set_text(s_ta, "");
+    s_guard = false;
     paint_slots();
 }
 
@@ -185,6 +182,10 @@ static void slots_error(void)
 {
     if (!s_slots) return;
     s_shake = true;
+    s_guard = true;
+    if (s_ta) lv_textarea_set_text(s_ta, "");
+    s_guard = false;
+    kb_enable(false);
     for (int i = 0; i < s_typed && i < FD_SEN_TOK; i++)
         if (s_box[i]) lv_obj_set_style_border_color(s_box[i], lv_color_hex(C_BAD), 0);
     lv_anim_t a;
@@ -215,24 +216,42 @@ static void check_buf(void)
     else slots_error();
 }
 
-static void kb_cb(lv_event_t *e)
+static void kb_enable(bool on)
 {
-    if (s_solved || s_shake || s_view != V_PLAY) return;
-    lv_obj_t *kb = lv_event_get_target(e);
-    uint32_t id = lv_buttonmatrix_get_selected_button(kb);
-    if (id == LV_BUTTONMATRIX_BUTTON_NONE) return;
-    const char *t = lv_buttonmatrix_get_button_text(kb, id);
-    if (!t || s_pos < 0 || s_pos >= s_n) return;
-    if (strcmp(t, LV_SYMBOL_BACKSPACE) == 0) {
-        if (s_typed > 0) s_buf[--s_typed] = 0;
-        paint_slots();
-        return;
+    if (!s_kb) return;
+    uint32_t n = lv_obj_get_child_count(s_kb);
+    for (uint32_t i = 0; i < n; i++) {
+        lv_obj_t *c = lv_obj_get_child(s_kb, i);
+        if (on) lv_obj_remove_state(c, LV_STATE_DISABLED);
+        else lv_obj_add_state(c, LV_STATE_DISABLED);
     }
-    if (t[0] < 'A' || t[0] > 'Z' || s_typed >= s_items[s_pos].n) return;
-    s_buf[s_typed++] = (char)(t[0] - 'A' + 'a');
-    s_buf[s_typed] = 0;
+}
+
+/* Ban phim Tu dien ghi vao textarea an. Chi giu chu a-z, du do thi tu doi chieu. */
+static void ta_cb(lv_event_t *e)
+{
+    (void)e;
+    if (s_guard || s_shake || s_solved || s_view != V_PLAY || !s_ta) return;
+    if (s_pos < 0 || s_pos >= s_n) return;
+    int maxn = s_items[s_pos].n;
+    const char *t = lv_textarea_get_text(s_ta);
+    char clean[FD_SEN_TOK + 1];
+    int n = 0;
+    for (const unsigned char *p = (const unsigned char *)t; *p && n < maxn && n < FD_SEN_TOK; p++) {
+        unsigned char ch = *p;
+        if (ch >= 'A' && ch <= 'Z') ch = (unsigned char)(ch - 'A' + 'a');
+        if (ch >= 'a' && ch <= 'z') clean[n++] = (char)ch;
+    }
+    clean[n] = 0;
+    if (strcmp(t, clean) != 0) {
+        s_guard = true;
+        lv_textarea_set_text(s_ta, clean);
+        s_guard = false;
+    }
+    memcpy(s_buf, clean, (size_t)n + 1);
+    s_typed = n;
     paint_slots();
-    if (s_typed == s_items[s_pos].n) check_buf();
+    if (n == maxn) check_buf();
 }
 
 static void hint_cb(lv_event_t *e)
@@ -254,49 +273,73 @@ static void next_question(void)
 static void skip_cb(lv_event_t *e) { (void)e; if (s_view == V_PLAY) next_question(); }
 static void speak_cb(lv_event_t *e) { (void)e; say_current(); }
 
+static lv_obj_t *text_act(lv_obj_t *row, const char *txt, lv_event_cb_t cb)
+{
+    lv_obj_t *b = lv_button_create(row);
+    lv_obj_set_height(b, 36);
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_radius(b, 10, 0);
+    lv_obj_set_style_pad_hor(b, 8, 0);
+    lv_obj_set_style_pad_ver(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_white(), 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(FD_COLOR_PRIMARY_TINT), LV_STATE_PRESSED);
+    lv_obj_set_style_border_width(b, 1, 0);
+    lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
+    lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_label_set_text(l, txt);
+    lv_obj_center(l);
+    lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, NULL);
+    return b;
+}
+
 static void show_question(void)
 {
     s_view = V_PLAY;
     s_solved = false;
     s_shake = false;
+    s_guard = false;
     s_typed = s_hints = 0;
     memset(s_buf, 0, sizeof(s_buf));
     body_clear();
-    bool por = lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL);
-    lv_obj_set_flex_flow(s_body, por ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 4, 0);
-    lv_obj_set_style_pad_column(s_body, 6, 0);
 
-    lv_obj_t *info = lv_obj_create(s_body);
-    lv_obj_remove_style_all(info);
-    lv_obj_set_size(info, por ? lv_pct(100) : 148, por ? LV_SIZE_CONTENT : lv_pct(100));
-    lv_obj_set_flex_flow(info, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(info, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(info, 4, 0);
-    lv_obj_set_scrollable(info, por);
+    lv_obj_t *stage = lv_obj_create(s_body);
+    lv_obj_remove_style_all(stage);
+    lv_obj_set_width(stage, lv_pct(100));
+    lv_obj_set_height(stage, LV_SIZE_CONTENT);
+    lv_obj_set_style_max_height(stage, 78, 0);
+    lv_obj_set_flex_flow(stage, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(stage, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(stage, 2, 0);
+
+    lv_obj_t *head = lv_obj_create(stage);
+    lv_obj_remove_style_all(head);
+    lv_obj_set_width(head, lv_pct(100));
+    lv_obj_set_height(head, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(head, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(head, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_column(head, 8, 0);
 
     char prog[16];
     snprintf(prog, sizeof(prog), "%d / %d", s_pos + 1, s_n);
-    label(info, prog, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *pl = lv_label_create(head);
+    lv_obj_set_style_text_font(pl, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(pl, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
+    lv_label_set_text(pl, prog);
 
-    lv_obj_t *spk = lv_button_create(info);
-    lv_obj_set_size(spk, 40, 40);
-    lv_obj_set_style_radius(spk, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_pad_all(spk, 0, 0);
-    lv_obj_set_style_shadow_width(spk, 0, 0);
-    lv_obj_set_style_bg_color(spk, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    lv_obj_set_style_bg_color(spk, lv_color_hex(FD_COLOR_PRIMARY_DARK), LV_STATE_PRESSED);
-    lv_obj_add_event_cb(spk, speak_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *si = lv_label_create(spk);
-    lv_obj_set_style_text_font(si, &fd_font_mont_24, 0);
-    lv_obj_set_style_text_color(si, lv_color_white(), 0);
-    lv_label_set_text(si, LV_SYMBOL_VOLUME_MAX);
-    lv_obj_center(si);
+    s_prompt = lv_label_create(head);
+    lv_obj_set_style_text_font(s_prompt, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(s_prompt, lv_color_hex(FD_COLOR_TEXT_MUTED), 0);
+    lv_obj_set_flex_grow(s_prompt, 1);
+    lv_label_set_long_mode(s_prompt, LV_LABEL_LONG_DOT);
+    lv_label_set_text(s_prompt, _("HEAR_PROMPT"));
 
-    label(info, _("HEAR_PROMPT"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
-
-    s_slots = lv_obj_create(info);
+    s_slots = lv_obj_create(stage);
     lv_obj_remove_style_all(s_slots);
     lv_obj_set_width(s_slots, lv_pct(100));
     lv_obj_set_height(s_slots, LV_SIZE_CONTENT);
@@ -319,59 +362,49 @@ static void show_question(void)
         s_ch[i] = l;
     }
 
-    s_sent = label(info, "", &fd_font_noto_14, FD_COLOR_TEXT);
-    s_vi = label(info, "", &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    s_sent = label(stage, "", &fd_font_noto_14, FD_COLOR_TEXT);
+    s_vi = label(stage, "", &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_set_hidden(s_sent, true);
     lv_obj_set_hidden(s_vi, true);
 
-    lv_obj_t *acts = lv_obj_create(info);
+    lv_obj_t *acts = lv_obj_create(s_body);
     lv_obj_remove_style_all(acts);
     lv_obj_set_width(acts, lv_pct(100));
     lv_obj_set_height(acts, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(acts, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(acts, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_column(acts, 6, 0);
-    lv_obj_t *hb = lv_button_create(acts);
-    lv_obj_set_height(hb, 32);
-    lv_obj_set_flex_grow(hb, 1);
-    lv_obj_set_style_shadow_width(hb, 0, 0);
-    lv_obj_t *hl = lv_label_create(hb);
-    lv_obj_set_style_text_font(hl, &fd_font_noto_14, 0);
-    lv_label_set_text(hl, _("HEAR_HINT"));
-    lv_obj_center(hl);
-    lv_obj_add_event_cb(hb, hint_cb, LV_EVENT_CLICKED, NULL);
-    s_skip = lv_button_create(acts);
-    lv_obj_set_height(s_skip, 32);
-    lv_obj_set_flex_grow(s_skip, 1);
-    lv_obj_set_style_shadow_width(s_skip, 0, 0);
-    lv_obj_t *sl = lv_label_create(s_skip);
-    lv_obj_set_style_text_font(sl, &fd_font_noto_14, 0);
-    lv_label_set_text(sl, _("HEAR_SKIP"));
-    lv_obj_center(sl);
-    lv_obj_add_event_cb(s_skip, skip_cb, LV_EVENT_CLICKED, NULL);
 
-    s_kb = lv_buttonmatrix_create(s_body);
-    lv_buttonmatrix_set_map(s_kb, KMAP);
-    if (por) {
-        lv_obj_set_width(s_kb, lv_pct(100));
-        lv_obj_set_flex_grow(s_kb, 1);
-    } else {
-        lv_obj_set_height(s_kb, lv_pct(100));
-        lv_obj_set_flex_grow(s_kb, 1);
-    }
-    lv_obj_set_style_bg_opa(s_kb, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(s_kb, 0, 0);
-    lv_obj_set_style_pad_all(s_kb, 0, 0);
-    lv_obj_set_style_pad_gap(s_kb, 3, 0);
-    lv_obj_set_style_text_font(s_kb, &lv_font_montserrat_14, LV_PART_ITEMS);
-    lv_obj_set_style_text_color(s_kb, lv_color_hex(FD_COLOR_TEXT), LV_PART_ITEMS);
-    lv_obj_set_style_bg_color(s_kb, lv_color_white(), LV_PART_ITEMS);
-    lv_obj_set_style_bg_opa(s_kb, LV_OPA_COVER, LV_PART_ITEMS);
-    lv_obj_set_style_radius(s_kb, 8, LV_PART_ITEMS);
-    lv_obj_set_style_border_width(s_kb, 1, LV_PART_ITEMS);
-    lv_obj_set_style_border_color(s_kb, lv_color_hex(FD_COLOR_BORDER), LV_PART_ITEMS);
-    lv_obj_set_style_shadow_width(s_kb, 0, LV_PART_ITEMS);
-    lv_obj_add_event_cb(s_kb, kb_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_t *spk = lv_button_create(acts);
+    lv_obj_set_size(spk, 36, 36);
+    lv_obj_set_style_radius(spk, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_pad_all(spk, 0, 0);
+    lv_obj_set_style_shadow_width(spk, 0, 0);
+    lv_obj_set_style_bg_color(spk, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_set_style_bg_color(spk, lv_color_hex(FD_COLOR_PRIMARY_DARK), LV_STATE_PRESSED);
+    lv_obj_add_event_cb(spk, speak_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *si = lv_label_create(spk);
+    lv_obj_set_style_text_font(si, &fd_font_mont_24, 0);
+    lv_obj_set_style_text_color(si, lv_color_white(), 0);
+    lv_label_set_text(si, LV_SYMBOL_VOLUME_MAX);
+    lv_obj_center(si);
+
+    text_act(acts, _("HEAR_HINT"), hint_cb);
+    s_skip = text_act(acts, _("HEAR_SKIP"), skip_cb);
+
+    s_ta = lv_textarea_create(s_body);
+    lv_textarea_set_one_line(s_ta, true);
+    lv_textarea_set_max_length(s_ta, 24);
+    lv_obj_add_flag(s_ta, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_ta, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_add_event_cb(s_ta, ta_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    s_kb = fd_t9kb_create(s_body, s_ta, NULL, NULL);
+    fd_t9kb_set_qwerty_plain(s_kb);
+    lv_obj_set_width(s_kb, lv_pct(100));
+    lv_obj_set_flex_grow(s_kb, 1);
+    lv_obj_set_style_min_height(s_kb, 112, 0);
+
     paint_slots();
     say_current();
 }

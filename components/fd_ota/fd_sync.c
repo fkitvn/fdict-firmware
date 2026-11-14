@@ -50,7 +50,7 @@ enum { CMD_PUSH = 1, CMD_FORCE, CMD_STATS };
 
 typedef struct {
     char id[FD_SYNC_WID_LEN], cid[FD_SYNC_WID_LEN];
-    uint8_t st, nsen, streak;
+    uint8_t st, nsen, streak, streak_pos;
     uint16_t seen, views;
     uint32_t ca, off;
     char en[FD_FC_WORD_LEN], ipa[FD_FC_IPA_LEN], vi[FD_FC_MEAN_LEN];
@@ -368,17 +368,20 @@ static int topics_count(const char *csv)
     return n;
 }
 
-/* Tien do cuc bo (chua gui) ap len trang thai tu: cung quy tac server (3 lan dung lien tiep = thuoc). */
-static void apply_review(word_t *w, bool ok)
+static const char *event_kind(const char *line);
+static void bump_streak(uint8_t *s, bool ok)
 {
-    if (ok) {
-        if (w->streak < 255) w->streak++;
-        if (w->streak >= MASTER_STREAK) w->st = 2;
-        else if (w->st == 0) w->st = 1;
-    } else {
-        w->streak = 0;
-        if (w->st != 1) w->st = 1;
-    }
+    if (ok) { if (*s < 255) (*s)++; }
+    else *s = 0;
+}
+
+/* Luyen tap va Phan loai tu tach chuoi. Da thuoc khi ca hai dung 3 lan lien tiep. */
+static void apply_review(word_t *w, const char *kind, bool ok)
+{
+    if (kind && !strcmp(kind, "pos")) bump_streak(&w->streak_pos, ok);
+    else if (kind && !strcmp(kind, "quiz")) bump_streak(&w->streak, ok);
+    else return;
+    w->st = (w->streak >= MASTER_STREAK && w->streak_pos >= MASTER_STREAK) ? 2 : 1;
 }
 
 static word_t *find_word(const char *id)
@@ -439,6 +442,7 @@ static bool load_store_locked(void)
             ucpy(w->cid, sizeof(w->cid), fl[2]);
             w->st = (uint8_t)atoi(fl[3]);
             if (w->st > 2) w->st = 0;
+            if (w->st == 2) { w->streak = MASTER_STREAK; w->streak_pos = MASTER_STREAK; }
             w->ca = (uint32_t)strtoul(fl[4], NULL, 10);
             ucpy(w->en, sizeof(w->en), fl[5]);
             ucpy(w->ipa, sizeof(w->ipa), fl[6]);
@@ -588,7 +592,7 @@ static void replay_events(void)   /* giu s_mx */
             ucpy(id, sizeof(id), p + 7);
             id[24] = 0;
             word_t *w = find_word(id);
-            if (w) apply_review(w, strstr(b + s, "\"ok\":1") != NULL);
+            if (w) apply_review(w, event_kind(b + s), strstr(b + s, "\"ok\":1") != NULL);
         }
         s = i + 1;
     }
@@ -609,7 +613,18 @@ static void json_escape(char *dst, size_t cap, const char *src)
     dst[n] = 0;
 }
 
-static void write_event(const char *line, const char *wid, bool correct)
+static const char *event_kind(const char *line)
+{
+    const char *p = strstr(line ? line : "", "\"k\":\"");
+    if (!p) return "quiz";
+    p += 5;
+    if (!strncmp(p, "pos\"", 4)) return "pos";
+    if (!strncmp(p, "quiz\"", 5)) return "quiz";
+    if (!strncmp(p, "sen\"", 4)) return "sen";
+    return "card";
+}
+
+static void write_event(const char *line, const char *wid, const char *kind, bool correct)
 {
     xSemaphoreTake(s_evmx, portMAX_DELAY);
     mkdir(SDIR, 0775);
@@ -629,7 +644,7 @@ static void write_event(const char *line, const char *wid, bool correct)
     lock();
     if (ok) s_st.pending++;
     word_t *w = find_word(wid);
-    if (w) apply_review(w, correct);
+    if (w) apply_review(w, kind, correct);
     unlock();
     if (!ok) ESP_LOGW(TAG, "khong ghi duoc ket qua vao outbox");
 }
@@ -637,12 +652,15 @@ static void write_event(const char *line, const char *wid, bool correct)
 void fd_sync_event(const char *kind, const char *wid, bool correct)
 {
     if (!s_mx || !s_evmx || !is_wid(wid)) return;
+    const char *k = "card";
+    if (kind && !strcmp(kind, "quiz")) k = "quiz";
+    else if (kind && !strcmp(kind, "pos")) k = "pos";
+    else if (kind && !strcmp(kind, "sen")) k = "sen";
     char line[192];
     snprintf(line, sizeof(line), "{\"eid\":\"e%08lx%08lx\",\"k\":\"%s\",\"wid\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
-             (unsigned long)esp_random(), (unsigned long)esp_random(),
-             (kind && (!strcmp(kind, "card") || !strcmp(kind, "sen"))) ? kind : "quiz", wid, correct ? 1 : 0,
+             (unsigned long)esp_random(), (unsigned long)esp_random(), k, wid, correct ? 1 : 0,
              (long long)now_epoch());
-    write_event(line, wid, correct);
+    write_event(line, wid, k, correct);
 }
 
 void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod)
@@ -655,7 +673,7 @@ void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, cons
     snprintf(line, sizeof(line),
              "{\"eid\":\"e%08lx%08lx\",\"k\":\"sen\",\"m\":\"%s\",\"wid\":\"%s\",\"sen\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
              (unsigned long)esp_random(), (unsigned long)esp_random(), m, wid, esc, correct ? 1 : 0, (long long)now_epoch());
-    write_event(line, wid, correct);
+    write_event(line, wid, "sen", correct);
 }
 
 /* Telemetry nhe, cung nguon voi GET /api/ota/check: pin, rssi, fw_version, build_id. */
@@ -967,6 +985,9 @@ static void do_stats(char *rx)
             s_stats.sen_order = jint(sp, "order");
             s_stats.sen_cloze = jint(sp, "cloze");
             s_stats.sen_hear = jint(sp, "hear");
+            const cJSON *wp = cJSON_GetObjectItemCaseSensitive(r, "word_progress");
+            s_stats.word_quiz = jint(wp, "quiz");
+            s_stats.word_pos = jint(wp, "pos");
             s_stats.today_answers = jint(td, "answers");
             s_stats.today_correct = jint(td, "correct");
             s_stats.week_answers = jint(wk, "answers");
@@ -1324,9 +1345,10 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
     int got = 0;
     if (!o || !line) { free(o); free(line); return 0; }
     lock();
-    int m = order_words(o, cap * 3, true);   /* bo tu da chon -> tu co cau AI */
+    int m = order_words(o, FD_SYNC_MAX_WORDS, true);   /* moi tu trong bo da chon, moi cau AI */
     FILE *f = m ? fopen(STORE, "r") : NULL;
-    for (int i = 0; f && i < m && got < cap; i++) {
+    int seen = 0;
+    for (int i = 0; f && i < m; i++) {
         word_t *w = &s_w[o[i].idx];
         if (fseek(f, (long)w->off, SEEK_SET) || !fgets(line, LINE_CAP, f)) continue;
         size_t L = strlen(line);
@@ -1335,19 +1357,25 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
         int n = split_tabs(line, fl, 32);
         const char *sen[9], *svi[9];
         int k = line_sents(fl, n, sen, svi, 9);
-        if (k <= 0) continue;
-        int pick = rnd(k);
-        for (int t = 0; t < k; t++) {
-            int j = (pick + t) % k;
-            if (make_ex(sen[j], svi[j], &out[got])) {
-                snprintf(out[got].id, sizeof(out[got].id), "l%s%d", w->id, j);
-                if (wid) strlcpy(wid[got], w->id, FD_SYNC_WID_LEN);
-                if (!out[got].hint[0]) ucpy(out[got].hint, sizeof(out[got].hint), w->vi);
-                if (w->seen < 0xFFFF) w->seen++;
-                got++;
-                break;
+        bool used = false;
+        for (int j = 0; j < k; j++) {
+            fd_sen_ex_t ex;
+            if (!make_ex(sen[j], svi[j], &ex)) continue;
+            snprintf(ex.id, sizeof(ex.id), "l%s%d", w->id, j);
+            if (!ex.hint[0]) ucpy(ex.hint, sizeof(ex.hint), w->vi);
+            seen++;
+            int slot;
+            if (got < cap) slot = got++;
+            else {
+                int r = rnd(seen);
+                if (r >= cap) continue;
+                slot = r;
             }
+            out[slot] = ex;
+            if (wid) strlcpy(wid[slot], w->id, FD_SYNC_WID_LEN);
+            used = true;
         }
+        if (used && w->seen < 0xFFFF) w->seen++;
     }
     if (f) fclose(f);
     unlock();
@@ -1503,9 +1531,10 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
     char *line = ps_alloc(LINE_CAP);
     if (!o || !line) { free(o); free(line); return FD_STUDY_ERR_NOMEM; }
     lock();
-    int m = order_words(o, n * 3, true);   /* bo tu da chon -> tu co cau AI */
+    int m = order_words(o, FD_SYNC_MAX_WORDS, true);   /* moi cau AI cua tu trong bo, khong chi 1 cau moi tu */
     FILE *f = m ? fopen(STORE, "r") : NULL;
-    for (int i = 0; f && i < m && s->n < n; i++) {
+    int seen = 0;
+    for (int i = 0; f && i < m; i++) {
         word_t *w = &s_w[o[i].idx];
         if (fseek(f, (long)w->off, SEEK_SET) || !fgets(line, LINE_CAP, f)) continue;
         size_t L = strlen(line);
@@ -1514,39 +1543,40 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
         int nf = split_tabs(line, fl, 32);
         const char *sens[9], *svi[9];
         int k = line_sents(fl, nf, sens, svi, 9);
-        if (k <= 0) continue;
-        int pick = rnd(k);
-        bool ok = false;
-        fd_study_q_t *d = &s->q[s->n];
-        memset(d, 0, sizeof(*d));
-        for (int t = 0; t < k; t++) {
-            int j = (pick + t) % k;
-            const char *sen = sens[j];
-            if (cloze_blank(sen, w->en, d->prompt, sizeof(d->prompt))) {
-                ucpy(d->sen, sizeof(d->sen), sen);
-                ok = true;
-                break;
+        bool used = false;
+        for (int j = 0; j < k; j++) {
+            fd_study_q_t built;
+            memset(&built, 0, sizeof(built));
+            if (!cloze_blank(sens[j], w->en, built.prompt, sizeof(built.prompt))) continue;
+            ucpy(built.sen, sizeof(built.sen), sens[j]);
+            ucpy(built.id, sizeof(built.id), w->id);
+            if (w->ipa[0]) ucpy(built.ipa, sizeof(built.ipa), w->ipa);
+            int ans = rnd(4), choices = 1;
+            built.answer = (int8_t)ans;
+            ucpy(built.choice[ans], sizeof(built.choice[ans]), w->en);
+            for (int tries = 0; tries < 60 && choices < 4; tries++) {
+                const word_t *x = &s_w[rnd(s_nw)];
+                if (!x->en[0] || !strcasecmp(x->en, w->en)) continue;
+                bool dup = false;
+                for (int cidx = 0; cidx < 4; cidx++) if (built.choice[cidx][0] && !strcasecmp(built.choice[cidx], x->en)) dup = true;
+                if (dup) continue;
+                int slot = 0; while (built.choice[slot][0]) slot++;
+                ucpy(built.choice[slot], sizeof(built.choice[slot]), x->en);
+                choices++;
             }
+            if (choices < 4) continue;
+            seen++;
+            int slot;
+            if (s->n < n) slot = s->n++;
+            else {
+                int r = rnd(seen);
+                if (r >= n) continue;
+                slot = r;
+            }
+            s->q[slot] = built;
+            used = true;
         }
-        if (!ok) continue;
-        ucpy(d->id, sizeof(d->id), w->id);
-        if (w->ipa[0]) ucpy(d->ipa, sizeof(d->ipa), w->ipa);
-        int ans = rnd(4), got = 1;
-        d->answer = (int8_t)ans;
-        ucpy(d->choice[ans], sizeof(d->choice[ans]), w->en);
-        for (int tries = 0; tries < 60 && got < 4; tries++) {
-            const word_t *x = &s_w[rnd(s_nw)];
-            if (!x->en[0] || !strcasecmp(x->en, w->en)) continue;
-            bool dup = false;
-            for (int cidx = 0; cidx < 4; cidx++) if (d->choice[cidx][0] && !strcasecmp(d->choice[cidx], x->en)) dup = true;
-            if (dup) continue;
-            int slot = 0; while (d->choice[slot][0]) slot++;
-            ucpy(d->choice[slot], sizeof(d->choice[slot]), x->en);
-            got++;
-        }
-        if (got < 4) continue;
-        if (w->seen < 0xFFFF) w->seen++;
-        s->n++;
+        if (used && w->seen < 0xFFFF) w->seen++;
     }
     if (f) fclose(f);
     unlock();
