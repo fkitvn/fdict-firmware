@@ -596,14 +596,22 @@ static void replay_events(void)   /* giu s_mx */
     free(b);
 }
 
-void fd_sync_event(const char *kind, const char *wid, bool correct)
+static void json_escape(char *dst, size_t cap, const char *src)
 {
-    if (!s_mx || !s_evmx || !is_wid(wid)) return;
-    char line[160];
-    snprintf(line, sizeof(line), "{\"eid\":\"e%08lx%08lx\",\"k\":\"%s\",\"wid\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
-             (unsigned long)esp_random(), (unsigned long)esp_random(),
-             (kind && (!strcmp(kind, "card") || !strcmp(kind, "sen"))) ? kind : "quiz", wid, correct ? 1 : 0,
-             (long long)now_epoch());
+    size_t n = 0;
+    if (!cap) return;
+    for (; src && *src && n + 2 < cap; src++) {
+        unsigned char c = (unsigned char)*src;
+        if (c < 32) continue;
+        if ((c == '"' || c == '\\') && n + 3 >= cap) break;
+        if (c == '"' || c == '\\') dst[n++] = '\\';
+        dst[n++] = (char)c;
+    }
+    dst[n] = 0;
+}
+
+static void write_event(const char *line, const char *wid, bool correct)
+{
     xSemaphoreTake(s_evmx, portMAX_DELAY);
     mkdir(SDIR, 0775);
     struct stat st;
@@ -625,6 +633,29 @@ void fd_sync_event(const char *kind, const char *wid, bool correct)
     if (w) apply_review(w, correct);
     unlock();
     if (!ok) ESP_LOGW(TAG, "khong ghi duoc ket qua vao outbox");
+}
+
+void fd_sync_event(const char *kind, const char *wid, bool correct)
+{
+    if (!s_mx || !s_evmx || !is_wid(wid)) return;
+    char line[192];
+    snprintf(line, sizeof(line), "{\"eid\":\"e%08lx%08lx\",\"k\":\"%s\",\"wid\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
+             (unsigned long)esp_random(), (unsigned long)esp_random(),
+             (kind && (!strcmp(kind, "card") || !strcmp(kind, "sen"))) ? kind : "quiz", wid, correct ? 1 : 0,
+             (long long)now_epoch());
+    write_event(line, wid, correct);
+}
+
+void fd_sync_event_sen(const char *wid, const char *sentence, bool correct)
+{
+    if (!s_mx || !s_evmx || !is_wid(wid)) return;
+    char esc[FD_SEN_TXT_LEN * 2];
+    json_escape(esc, sizeof(esc), sentence ? sentence : "");
+    char line[512];
+    snprintf(line, sizeof(line),
+             "{\"eid\":\"e%08lx%08lx\",\"k\":\"sen\",\"wid\":\"%s\",\"sen\":\"%s\",\"ok\":%d,\"ts\":%lld}\n",
+             (unsigned long)esp_random(), (unsigned long)esp_random(), wid, esc, correct ? 1 : 0, (long long)now_epoch());
+    write_event(line, wid, correct);
 }
 
 /* Telemetry nhe, cung nguon voi GET /api/ota/check: pin, rssi, fw_version, build_id. */

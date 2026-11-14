@@ -392,11 +392,15 @@ bool fd_sen_answer(int i, const int *order, int n, uint32_t ms)
     if (!init() || !order) return false;
     bool ok = false, first = false;
     char wid[FD_SYNC_WID_LEN] = "";
+    char sentence[FD_SEN_TXT_LEN] = "";
     lock();
     if (i >= 0 && i < s_st.n && n == s_ex[i].n) {
         res_t *r = &s_res[i];
         first = !r->done && s_local;
-        if (first) strlcpy(wid, s_wid[i], sizeof(wid));
+        if (first) {
+            strlcpy(wid, s_wid[i], sizeof(wid));
+            strlcpy(sentence, s_ex[i].sentence, sizeof(sentence));
+        }
         r->done = true;
         r->n = n;
         r->ms = ms;
@@ -409,6 +413,6 @@ bool fd_sen_answer(int i, const int *order, int n, uint32_t ms)
         }
     }
     unlock();
-    if (first) fd_sync_event("sen", wid, ok);   /* 2.3.0: ket qua offline vao outbox dong bo */
+    if (first) fd_sync_event_sen(wid, sentence, ok);   /* kem loi cau de cham dung cau tren server */
     return ok;
 }
