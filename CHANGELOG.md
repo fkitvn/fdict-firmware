@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.5.1] - 2026-11-14
+Sửa cảnh báo biên dịch ở màn Nghe để bản phát hành qua được bước kiểm tra.
+
 ## [4.5.0] - 2026-11-14
 Từ đã thuộc khi Luyện tập và Phân loại từ đều đúng 3 lần liên tiếp. Câu đã thuộc khi Sắp xếp câu, Điền từ và Nghe đều đúng 3 lần liên tiếp. Bài học câu lấy mọi câu AI của từ.
 

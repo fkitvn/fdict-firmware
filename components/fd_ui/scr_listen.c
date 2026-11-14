@@ -395,8 +395,8 @@ static void show_question(void)
     s_ta = lv_textarea_create(s_body);
     lv_textarea_set_one_line(s_ta, true);
     lv_textarea_set_max_length(s_ta, 24);
-    lv_obj_add_flag(s_ta, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(s_ta, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_set_hidden(s_ta, true);
+    lv_obj_set_ignore_layout(s_ta, true);
     lv_obj_add_event_cb(s_ta, ta_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     s_kb = fd_t9kb_create(s_body, s_ta, NULL, NULL);
