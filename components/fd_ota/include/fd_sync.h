@@ -7,6 +7,7 @@
  *    (sync, trang) {device_id, offset, limit} theo trang -> ghi /data/sync/store.tmp -> fsync -> rename
  *    /data/sync/store.tsv (nguyen tu; thay TOAN BO ban cu => tu/bo/cai dat bi xoa tren cloud cung bi xoa tren may).
  *  - Ket qua hoc offline: moi cau tra loi = 1 dong JSON {eid,k,wid,ok,ts} noi vao /data/sync/events.log (fsync);
+ *    cau AI them m (order|cloze|hear) va sen (loi cau). Diem cau nam tren server, khong ghi vao kho may.
  *    gui (sync, events) (lo <= 50, eid chong trung), chi xoa dong khi server ack.
  *  - 401: fd_ota xoa token (ve Chua ghep), GIU du lieu + outbox; 429: fd_ota cho Retry-After, sau do backoff.
  * Hoc offline 100%: Luyen tap / Flash card / Sap xep cau doc tu kho nay (khong mang).
@@ -14,7 +15,7 @@
  *   #FDS1<TAB>rev<TAB>epoch_tai
  *   S<TAB>uu_tien_tu_moi(0/1)<TAB>uu_tien_chua_thuoc(0/1)<TAB>chu_de,chu_de
  *   C<TAB>id<TAB>mac_dinh(0/1)<TAB>ten
- *   W<TAB>id<TAB>collection_id<TAB>status(0 new,1 learning,2 mastered)<TAB>created_epoch<TAB>en<TAB>ipa<TAB>vi<TAB>pos<TAB>example<TAB>n<TAB>(en<TAB>vi) x n
+ *   W<TAB>id<TAB>collection_id<TAB>status(0 new,1 learning,2 mastered)<TAB>created_epoch<TAB>en<TAB>ipa<TAB>vi<TAB>pos<TAB>(ex de trong)<TAB>n<TAB>(en<TAB>vi) x n
  *   #END<TAB>so_tu<TAB>so_bo<TAB>so_cau   (thieu/sai = file hong -> bo, tai lai toan bo) */
 #include <stdbool.h>
 #include <stdint.h>
@@ -49,6 +50,7 @@ typedef struct {
     fd_stats_state_t state;
     char err[24];            /* no_wifi, unpaired, no_account, http_NNN, net, format */
     int words, n_new, learning, mastered, collections, sentences;
+    int sen_mastered, sen_learning, sen_order, sen_cloze, sen_hear;
     int today_answers, today_correct, week_answers, week_correct, week_sessions, streak_days;
     int scan_uses, scan_words;   /* luot scan AI / tu luu tu scan (server) */
 } fd_sync_stats_t;
@@ -71,8 +73,8 @@ void fd_sync_card_seen(const char *wid);
 int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int cap);
 /* Ghi 1 ket qua hoc (kind "quiz" | "card" | "sen") vao outbox ben vung. */
 void fd_sync_event(const char *kind, const char *wid, bool correct);
-/* Sap xep cau: kem loi cau de server cham dung ban ghi trong fdict-study-sentences. */
-void fd_sync_event_sen(const char *wid, const char *sentence, bool correct);
+/* Cau AI: mod "order" | "cloze" | "hear". Server chi danh dau da thuoc khi du 3 module. */
+void fd_sync_event_sen(const char *wid, const char *sentence, bool correct, const char *mod);
 /* Thong ke: LUON goi server (gui outbox truoc). Khong Wi-Fi -> ERROR "no_wifi". */
 void fd_sync_stats_fetch(void);
 void fd_sync_stats_get(fd_sync_stats_t *out);
@@ -80,7 +82,7 @@ void fd_sync_stats_get(fd_sync_stats_t *out);
 /* 4.3.2: cai dat chon bo tu DUNG CHUNG 5 module hoc (Lat tu, Luyen tap, Sap xep cau, Phan loai tu, Dien tu). */
 #define FD_SYNC_MAX_COLS      32
 #define FD_SYNC_COL_NAME_LEN  48
-#define FD_SYNC_PICK_F_SEN    1u  /* can cau vi du (Sap xep cau) */
+#define FD_SYNC_PICK_F_SEN    1u  /* tu trong bo da chon, va tu do co cau AI (Sap xep cau, Dien tu) */
 #define FD_SYNC_PICK_F_TEXT   2u  /* can en+vi (Lat tu) */
 
 typedef enum {

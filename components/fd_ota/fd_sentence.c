@@ -413,6 +413,6 @@ bool fd_sen_answer(int i, const int *order, int n, uint32_t ms)
         }
     }
     unlock();
-    if (first) fd_sync_event_sen(wid, sentence, ok);   /* kem loi cau de cham dung cau tren server */
+    if (first) fd_sync_event_sen(wid, sentence, ok, "order");
     return ok;
 }

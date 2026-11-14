@@ -35,6 +35,7 @@ typedef struct {
     char prompt[FD_STUDY_TXT_LEN];
     char ipa[FD_STUDY_IPA_LEN];
     char choice[4][FD_STUDY_TXT_LEN];   /* theo key A, B, C, D */
+    char sen[160];                      /* cau AI goc cua bai dien tu; rong neu khong phai dien tu */
     int8_t answer;                      /* 0..3 (A..D) */
 } fd_study_q_t;
 

@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.4.0] - 2026-11-14
+Thêm module Nghe. Câu AI chỉ tính đã thuộc khi xong cả Sắp xếp câu, Điền từ và Nghe. Màn Thống kê tách số từ đã thuộc và số câu đã thuộc.
+
 ## [4.3.9] - 2026-11-14
 Bài sắp xếp câu gửi kèm lời câu lên máy chủ để cộng điểm riêng cho từng câu.
 
