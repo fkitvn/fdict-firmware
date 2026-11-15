@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.5.5] - 2026-11-15
+- Tăng độ ổn định khi tra từ.
+
 ## [4.5.4] - 2026-11-15
 - Sửa lỗi ô vuông khi hiện chữ có dấu và phiên âm.
 - Đổi nhãn chiều ôn Chính tả thành Việt Anh, Anh Việt và Trộn.

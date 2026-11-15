@@ -356,7 +356,12 @@ static void do_lookup(const char *word, uint8_t dir)
             lock();
             ucpy(s_ex, sizeof(s_ex), jstr(r, "example"));
             ucpy(s_exvi, sizeof(s_exvi), s_ex[0] ? jstr(r, "example_vi") : "");
-            if (added) { take_add_body(r); s_added_n++; }
+            if (added) {
+                take_add_body(r);
+                /* state=same: tu da co trong bo, khong can dong bo lai luc thoat Tu dien. Server cu khong gui state -> van dem. */
+                const char *st = jstr(r, "state");
+                if (!st[0] || strcmp(st, "same") != 0) s_added_n++;
+            }
             unlock();
         }
         cJSON_Delete(r);
