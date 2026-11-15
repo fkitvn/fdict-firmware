@@ -131,7 +131,13 @@ static void ota_show(void)
         else snprintf(b, sizeof(b), _("OTA_DOWNLOADING"), st.pct);
         break;
     case FD_OTA_ST_REBOOT_PENDING: col = 0xD97706; snprintf(b, sizeof(b), _("WILL_RESTART_WHEN_IDLE")); btn = _("RESTART_NOW"); break;
-    default: col = 0xDC2626; snprintf(b, sizeof(b), _("ERROR_FMT"), ota_err_vi(st.err, eb, sizeof(eb))); break;
+    default:
+        col = 0xDC2626;
+        if (!strcmp(st.err, "batt_low"))
+            snprintf(b, sizeof(b), _("OTA_ERR_BATT_LOW"), st.min_batt);
+        else
+            snprintf(b, sizeof(b), _("ERROR_FMT"), ota_err_vi(st.err, eb, sizeof(eb)));
+        break;
     }
     wifi_link(false);
     lv_obj_set_hidden(s_ota_msg, false);

@@ -758,6 +758,7 @@ static int do_check(bool manual)
     strlcpy(s_st.notes, m.notes, sizeof(s_st.notes));
     s_st.size = m.size;
     s_st.mandatory = m.mandatory;
+    s_st.min_batt = m.min_batt;
     xSemaphoreGive(s_mx);
     st_set(FD_OTA_ST_AVAILABLE, 0, NULL);
     ESP_LOGI(TAG, "check: co ban moi %s %s (%u B, rel %s, mandatory=%d, min_battery=%d)%s", m.ver, m.build,
@@ -1013,6 +1014,8 @@ void fd_ota_selftest_wait(uint32_t timeout_ms)
 {
     for (uint32_t t = 0; s_selftest_pending && t < timeout_ms; t += 100) vTaskDelay(pdMS_TO_TICKS(100));
 }
+
+bool fd_ota_selftest_pending(void) { return s_selftest_pending; }
 
 /* ---------- ghep doi (POST /api/devices/pair/start, /poll moi 5 s, 410 -> phien moi) ---------- */
 static fd_pair_status_t s_pair;      /* doc qua fd_ota_pair_get (s_mx) */
