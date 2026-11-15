@@ -122,6 +122,8 @@ lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb
 
 /* Nhan luon gan font Noto (font NULL = fd_font_noto_14). Dung khi tao chu tren overlay hoac sau remove_style_all. */
 lv_obj_t *ui_label_create(lv_obj_t *parent, const char *txt, const lv_font_t *font, uint32_t color);
+/* Man ket qua: so to mont_32 ("%d/%d") + chu SEN_RESULT bang Noto 18. */
+void ui_result_score(lv_obj_t *parent, int correct, int total, uint32_t color);
 /* Hop thoai xac nhan tren lv_layer_top: nen mo + hop trang, font Noto. Tra ve overlay; hop la con dau tien. */
 lv_obj_t *ui_dialog_open(void);
 lv_obj_t *ui_dialog_box(lv_obj_t *overlay);

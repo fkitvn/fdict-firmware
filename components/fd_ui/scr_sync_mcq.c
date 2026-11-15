@@ -177,9 +177,8 @@ static void show_result(void)
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 8, 0);
     label(s_body, _(title_key()), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    char buf[48];
-    snprintf(buf, sizeof(buf), "%d / %d", s_score, s_done);
-    label(s_body, buf, &fd_font_mont_32, FD_COLOR_TEXT);
+    ui_result_score(s_body, s_score, s_done,
+                    s_done == 0 ? FD_COLOR_TEXT : (s_score * 2 >= s_done ? 0x16A34A : 0xDC2626));
     lv_obj_t *r = hrow(s_body, 44);
     lv_obj_set_style_pad_column(r, 8, 0);
     btn(r, _("HOME"), false, home_cb, 0);

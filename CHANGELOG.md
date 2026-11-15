@@ -9,6 +9,7 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 - Báo rõ khi pin quá yếu để nâng cấp.
 - Tự ngủ sâu sau khi tắt màn hình, chỉnh được trong Cài đặt.
 - Tiết kiệm pin hơn khi tắt màn hình.
+- Sửa lỗi ô vuông ở màn kết quả.
 
 ## [4.5.5] - 2026-11-15
 - Tăng độ ổn định khi tra từ.

@@ -166,6 +166,78 @@ int main(int argc, char **argv)
         lv_label_set_text(lv_label_create(body), vi_line);
     }
     lv_refr_now(d);
+
+    /* Fallback: mont_24/32 + tieu de 32 phai tro toi Noto 18; noto_18 khong tro nguoc (tranh vong lap). */
+    CHECK(fd_font_mont_24.fallback == &fd_font_noto_18, "mont_24.fallback khong phai noto_18");
+    CHECK(fd_font_mont_32.fallback == &fd_font_noto_18, "mont_32.fallback khong phai noto_18");
+    CHECK(fd_font_noto_32_title.fallback == &fd_font_noto_18, "noto_32_title.fallback khong phai noto_18");
+    CHECK(fd_font_noto_18.fallback == NULL, "noto_18 khong duoc fallback ve mont (vong lap)");
+    {
+        const lv_font_t *seen[8];
+        int n = 0, cyc = 0;
+        for (const lv_font_t *x = &fd_font_mont_32; x; x = x->fallback) {
+            for (int i = 0; i < n; i++) if (seen[i] == x) cyc = 1;
+            if (n < 8) seen[n++] = x; else cyc = 1;
+            if (cyc) break;
+        }
+        CHECK(!cyc, "chuoi fallback mont_32 bi vong lap");
+    }
+    /* "Dung 3/5 cau" (UTF-8 Đúng 3/5 câu) tren mont_32 phai ra glyph that qua fallback, khong placeholder. */
+    {
+        const char *sen = "\xc4\x90\xc3\xbang 3/5 c\xc3\xa2u";
+        lv_obj_t *ls = lv_label_create(body);
+        lv_obj_set_style_text_font(ls, &fd_font_mont_32, 0);
+        lv_label_set_text(ls, sen);
+        for (uint32_t i = 0; sen[i]; ) {
+            uint32_t cp = utf8_next(sen, &i);
+            if (cp < 0x20) continue;
+            lv_font_glyph_dsc_t g;
+            bool ok = lv_font_get_glyph_dsc(&fd_font_mont_32, &g, cp, 0);
+            CHECK(ok && !g.is_placeholder, "mont_32 SEN_RESULT U+%04X o vuong (thieu fallback Noto)", (unsigned)cp);
+        }
+    }
+
+    /* Moi chuoi i18n (vi+en, da the %d) x moi font nhan: khong glyph thieu. */
+    if (argc >= 4) {
+        FILE *sf = fopen(argv[3], "rb");
+        CHECK(sf, "khong mo duoc tep i18n %s", argv[3]);
+        if (sf) {
+            static const struct { const char *n; const lv_font_t *f; } L[] = {
+                {"default", LV_FONT_DEFAULT}, {"noto_14", &fd_font_noto_14}, {"noto_18", &fd_font_noto_18},
+                {"mont_24", &fd_font_mont_24}, {"mont_32", &fd_font_mont_32},
+                {"noto_32_title", &fd_font_noto_32_title},
+            };
+            char line[2048];
+            int nstr = 0;
+            while (fgets(line, sizeof(line), sf)) {
+                line[strcspn(line, "\r\n")] = 0;
+                if (!line[0] || line[0] == '#') continue;
+                nstr++;
+                for (unsigned fi = 0; fi < sizeof(L) / sizeof(L[0]); fi++) {
+                    int bad = 0;
+                    uint32_t first = 0;
+                    for (uint32_t i = 0; line[i]; ) {
+                        uint32_t cp = utf8_next(line, &i);
+                        if (cp < 0x20) continue;
+                        lv_font_glyph_dsc_t g;
+                        bool ok = lv_font_get_glyph_dsc(L[fi].f, &g, cp, 0);
+                        if (!ok || g.is_placeholder) { if (!first) first = cp; bad++; }
+                    }
+                    if (bad) {
+                        printf("FAIL: i18n %s: %d glyph thieu, vi du U+%04X trong '%s'\n",
+                               L[fi].n, bad, (unsigned)first, line);
+                        fails++;
+                    }
+                }
+            }
+            fclose(sf);
+            CHECK(nstr > 100, "tep i18n qua it chuoi (%d)", nstr);
+            printf("I18N %d chuoi x %u font\n", nstr, (unsigned)(sizeof(L) / sizeof(L[0])));
+        }
+    } else {
+        CHECK(0, "thieu doi so tep i18n");
+    }
+    lv_refr_now(d);
     if (fails) return 1;
     printf("RENDER_OK\n");
     return 0;

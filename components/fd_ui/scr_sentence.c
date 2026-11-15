@@ -472,9 +472,7 @@ static void show_result(void)
     body_reset();
     lv_obj_t *c = content();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    char tmp[48];
-    snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, s_total);
-    label(c, tmp, &fd_font_noto_18, s_correct * 2 >= s_total ? C_OK : C_BAD);
+    ui_result_score(c, s_correct, s_total, s_correct * 2 >= s_total ? C_OK : C_BAD);
     fd_sen_status_t st;
     fd_sen_get(&st);
     if (st.outbox > 0 && !fd_net_is_connected()) label(c, _("SEN_SYNC_LATER"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);

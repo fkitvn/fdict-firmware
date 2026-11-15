@@ -554,13 +554,12 @@ static void show_result(void)
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    char tmp[48];
     /* Cau da dung Gợi ý khong tinh vao tong. Moi cau deu dung Gợi ý thi hien 0/0 mau trung tinh. */
     int total = s_n - s_hinted_n;
     if (total < 0) total = 0;
-    snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, total);
     label(s_body, _("LISTEN"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    label(s_body, tmp, &fd_font_mont_32, total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
+    ui_result_score(s_body, s_correct, total,
+                    total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
     lv_obj_t *b = lv_button_create(s_body);
     lv_obj_t *l = lv_label_create(b);
     lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
