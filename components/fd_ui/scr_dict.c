@@ -1,5 +1,5 @@
 #include "esp_attr.h"
-/* 2.3.5: Tu dien online qua dict.fkit.vn; lich su 30; auto-add + hang cho. */
+/* 2.3.5: Tu dien online qua dict.fkit.vn; lich su. 4.5.4: tra + luu vao bo 1 lan goi, thoat thi dong bo. */
 #include "ui_priv.h"
 #include "fd_dictnet.h"
 #include "fd_fonts.h"
@@ -18,7 +18,6 @@
 static lv_obj_t *s_body, *s_ta, *s_load_lbl;
 static lv_timer_t *s_poll;
 static uint8_t s_load_dots;
-static bool s_load_adding;
 static bool s_gate;
 static char s_word[FD_DICTNET_WORD_LEN];
 static char s_say[FD_DICTNET_WORD_LEN];  /* 4.3.2: tu tieng Anh de nut loa phat am */
@@ -89,10 +88,6 @@ static void back_home_cb(lv_event_t *e)
 static void load_status_apply(void)
 {
     if (!s_load_lbl) return;
-    if (s_load_adding) {
-        lv_label_set_text(s_load_lbl, _("LOOKUP_ADDING"));
-        return;
-    }
     char buf[96];
     snprintf(buf, sizeof(buf), "%s%.*s", _("LOOKUP_SEARCHING"), (int)(s_load_dots % 4), "...");
     lv_label_set_text(s_load_lbl, buf);
@@ -164,7 +159,6 @@ static void show_loading(void)
     lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
     lv_anim_start(&a);
 
-    s_load_adding = false;
     s_load_dots = 0;
     s_load_lbl = label(s_body, _("LOOKUP_SEARCHING"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
     lv_obj_set_style_text_align(s_load_lbl, LV_TEXT_ALIGN_CENTER, 0);
@@ -223,10 +217,8 @@ static void poll_cb(lv_timer_t *t)
     (void)t;
     fd_dictnet_status_t st;
     fd_dictnet_get(&st);
-    if (st.state == FD_DICTNET_LOOKUP || st.state == FD_DICTNET_ADD) {
-        bool adding = st.state == FD_DICTNET_ADD;
-        if (adding != s_load_adding) { s_load_adding = adding; s_load_dots = 0; }
-        else if (!adding) s_load_dots = (uint8_t)((s_load_dots + 1) % 4);
+    if (st.state == FD_DICTNET_LOOKUP) {
+        s_load_dots = (uint8_t)((s_load_dots + 1) % 4);
         load_status_apply();
         return;
     }
@@ -380,8 +372,8 @@ static void show_result_ok(const fd_dictnet_status_t *st)
         lv_label_set_text(si, LV_SYMBOL_VOLUME_MAX);
         lv_obj_center(si);
     }
-    if (st->result.ipa[0]) label(s_body, st->result.ipa, NULL, FD_COLOR_PRIMARY_TEXT);
-    if (st->result.pos[0]) label(s_body, st->result.pos, NULL, FD_COLOR_TEXT_MUTED);
+    if (st->result.ipa[0]) label(s_body, st->result.ipa, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
+    if (st->result.pos[0]) label(s_body, st->result.pos, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     label(s_body, st->result.vi, &fd_font_noto_18, FD_COLOR_TEXT);
     fd_dictnet_get_example(s_ex, sizeof(s_ex), s_exvi, sizeof(s_exvi));
     if (s_ex[0]) {
@@ -400,7 +392,12 @@ static void show_result_ok(const fd_dictnet_status_t *st)
         label(box, s_ex, &fd_font_noto_14, FD_COLOR_TEXT);
         if (s_exvi[0]) label(box, s_exvi, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     }
-    /* 4.3.8: bo nut Tro lai. Ghi bo vua them va cho doi bo ngay tai day. */
+    /* 4.3.8: bo nut Tro lai. Ghi bo vua them va cho doi bo ngay tai day.
+     * 4.5.4: server luu trong cung lan tra; chua luu duoc (loi / server cu) thi bao ngan, khong hien bo. */
+    if (!s_shown.added) {
+        label(s_body, _("LOOKUP_NOT_SAVED"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+        return;
+    }
     fill_ui_cols();
     const char *cname = shown_name();
     if (!cname[0]) {
@@ -415,13 +412,10 @@ static void show_result_ok(const fd_dictnet_status_t *st)
         }
     }
     if (cname[0]) {
-        snprintf(s_col_line, sizeof(s_col_line), "%s\n%s",
-                 s_shown.queued ? _("LOOKUP_QUEUED_TO") : _("LOOKUP_ADDED_TO"), cname);
+        snprintf(s_col_line, sizeof(s_col_line), "%s\n%s", _("LOOKUP_ADDED_TO"), cname);
         s_col_lbl = label(s_body, s_col_line, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
-    } else if (s_shown.queued) {
-        s_col_lbl = label(s_body, _("LOOKUP_QUEUED"), NULL, FD_COLOR_TEXT_MUTED);
-    } else if (s_shown.added) {
-        s_col_lbl = label(s_body, _("LOOKUP_ADDED"), NULL, FD_COLOR_PRIMARY_TEXT);
+    } else {
+        s_col_lbl = label(s_body, _("LOOKUP_ADDED"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     }
     for (int i = 0; i < s_ui_nc; i++) {
         bool on = s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id);
@@ -620,6 +614,8 @@ static void destroy(void)
 {
     stop_poll();
     s_body = s_ta = NULL;
+    /* 4.5.4: thoat Tu dien sau khi da luu tu -> nho fd_sync keo tu moi (gui lenh, khong chan UI). */
+    if (fd_dictnet_take_added() > 0) fd_sync_check();
 }
 
 static bool on_back(void)

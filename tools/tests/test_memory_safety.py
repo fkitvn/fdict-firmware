@@ -41,18 +41,29 @@ class MemorySafety(unittest.TestCase):
         self.assertLess(s.index("if (v != 1) return"), s.index("esp_littlefs_format("))
     def test_dictionary_preserves_files_on_failure(self):
         s = text("components/fd_ota/fd_dictnet.c")
-        self.assertNotIn("unlink(HIST_PATH);", s)
-        self.assertNotIn("unlink(Q_PATH);", s)
+        # Xoa lich su chi khi nguoi dung chu dong (fd_dictnet_clear_history), khong bao gio o duong loi.
+        clear = s.split("void fd_dictnet_clear_history(void)")[1].split("\n}", 1)[0]
+        self.assertIn("unlink(HIST_PATH);", clear)
+        self.assertNotIn("unlink(HIST_PATH);", s.replace(clear, ""))
         save = s.split("static fd_dictnet_err_t hist_save(void)")[1].split("static fd_dictnet_err_t hist_push", 1)[0]
         self.assertNotIn("continue;", save)
         self.assertIn("!cJSON_AddItemToArray(a, o)", save)
         atomic = s.split("static fd_dictnet_err_t write_atomic")[1].split("static cJSON *entry_json", 1)[0]
         for check in ["fwrite(", "fflush(f)", "fsync(fileno(f))", "fclose(f)", "rename(tmp, path)"]:
             self.assertIn(check, atomic)
-        flush = s.split("static void flush_queue(void)")[1].split("static void do_lookup", 1)[0]
-        self.assertIn("if (!o) { complete = false; break; }", flush)
-        self.assertIn("if (kn + len >= KEEP_CAP)", flush)
-        self.assertIn("if (complete && write_atomic", flush)
+    def test_dictionary_single_lookup_call(self):
+        # 4.5.4: tra + luu vao bo trong 1 request; bo hang cho offline, chi xoa file cu luc init.
+        s = text("components/fd_ota/fd_dictnet.c")
+        look = s.split("static void do_lookup(")[1].split("static void task(", 1)[0]
+        self.assertEqual(s.count("post_device(\"/api/study/dict/lookup\""), 1)
+        self.assertIn('cJSON_AddTrueToObject(b, "add")', look)
+        self.assertIn("take_add_body(r)", look)
+        for gone in ["/api/study/dict/words/add", "/api/study/dict/collections", "queue_append", "flush_queue", "CMD_FLUSH", "do_add("]:
+            self.assertNotIn(gone, s)
+        init = s.split("bool fd_dictnet_init(void)")[1].split("\nfailed:", 1)[0]
+        self.assertIn("unlink(LEGACY_Q_PATH);", init)
+        ui = text("components/fd_ui/scr_dict.c").split("static void destroy(void)")[1].split("\n}", 1)[0]
+        self.assertIn("if (fd_dictnet_take_added() > 0) fd_sync_check();", ui)
     def test_single_card_decks_and_oom_distinct(self):
         s = text("components/fd_ota/fd_sync.c").split("int fd_sync_build_cards(")[1].split("/* Tach cau", 1)[0]
         self.assertIn("!s_mx", s)

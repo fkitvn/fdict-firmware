@@ -1,5 +1,5 @@
 #include "esp_attr.h"
-/* Tra tu proxy + lich su LittleFS + hang cho words/add. KHONG log token. */
+/* Tra tu + luu vao bo trong 1 lan goi (lookup add:true) + lich su LittleFS. KHONG log token. */
 #include "fd_dictnet.h"
 #include <stdio.h>
 #include <errno.h>
@@ -23,7 +23,8 @@
 
 static const char *TAG = "fd_dict";
 #define HIST_PATH "/data/dict_hist.json"
-#define Q_PATH    "/data/dict_addq.jsonl"
+#define LEGACY_Q_PATH "/data/dict_addq.jsonl"   /* hang cho cu (truoc 4.5.4): chi xoa luc init */
+#define RX_CAP    12288   /* tu + vi du + toi da 32 bo */
 #define NVS_NS    "fddict"
 
 static SemaphoreHandle_t s_mx;
@@ -45,11 +46,12 @@ static char s_move_wid[FD_DICTNET_CID_LEN];
 static char s_move_cid[FD_DICTNET_CID_LEN];
 static char s_move_name[FD_DICTNET_CNAME_LEN];
 static fd_dictnet_move_state_t s_move_state;
+static int s_added_n;   /* so tu da luu tu lan fd_dictnet_take_added gan nhat (guarded by lock) */
 /* Vi du cua lan tra gan nhat (PSRAM, guarded by lock). Tach khoi fd_dictnet_entry_t de khong phinh lich su / stack. */
 static EXT_RAM_BSS_ATTR char s_ex[FD_DICTNET_EX_LEN];
 static EXT_RAM_BSS_ATTR char s_exvi[FD_DICTNET_EXVI_LEN];
 
-enum { CMD_LOOKUP = 1, CMD_FLUSH, CMD_MOVE };
+enum { CMD_LOOKUP = 1, CMD_MOVE };
 
 static void lock(void) { xSemaphoreTake(s_mx, portMAX_DELAY); }
 static void unlock(void) { xSemaphoreGive(s_mx); }
@@ -249,45 +251,6 @@ static fd_dictnet_err_t hist_push(const fd_dictnet_entry_t *e)
     return hist_save();
 }
 
-static fd_dictnet_err_t queue_append(const fd_dictnet_entry_t *e)
-{
-    if (!e || !e->en[0] || !e->vi[0]) return FD_DICTNET_ERR_FORMAT;
-    cJSON *o = entry_json(e);
-    if (!o) return FD_DICTNET_ERR_NOMEM;
-    if (s_last_cid[0] && !cJSON_AddStringToObject(o, "collection_id", s_last_cid)) {
-        cJSON_Delete(o);
-        return FD_DICTNET_ERR_NOMEM;
-    }
-    char *j = cJSON_PrintUnformatted(o);
-    cJSON_Delete(o);
-    if (!j) return FD_DICTNET_ERR_NOMEM;
-    /* Copy the old queue before appending: failed writes/OOM keep it intact. */
-    FILE *src = fopen(Q_PATH, "rb");
-    if (!src && errno != ENOENT) { cJSON_free(j); return FD_DICTNET_ERR_STORAGE; }
-    FILE *dst = fopen(Q_PATH ".tmp", "wb");
-    bool ok = dst != NULL;
-    char chunk[256];
-    if (src) {
-        size_t n;
-        while (ok && (n = fread(chunk, 1, sizeof(chunk), src)) > 0)
-            ok = fwrite(chunk, 1, n, dst) == n;
-        if (ferror(src)) ok = false;
-        fclose(src);
-    }
-    if (dst) {
-        size_t n = strlen(j);
-        if (ok) ok = fwrite(j, 1, n, dst) == n && fputc('\n', dst) != EOF;
-        if (fflush(dst) != 0) ok = false;
-        if (fsync(fileno(dst)) != 0) ok = false;
-        if (fclose(dst) != 0) ok = false;
-    }
-    cJSON_free(j);
-    if (!ok || rename(Q_PATH ".tmp", Q_PATH) != 0) {
-        unlink(Q_PATH ".tmp");
-        return FD_DICTNET_ERR_STORAGE;
-    }
-    return FD_DICTNET_ERR_NONE;
-}
 static bool parse_entry(cJSON *r, fd_dictnet_entry_t *e)
 {
     memset(e, 0, sizeof(*e));
@@ -312,93 +275,6 @@ static int post_device(const char *path, cJSON *body, char *resp, int cap)
     int code = fd_ota_api_post(path, j, resp, cap);
     free(j);
     return code;
-}
-
-/* ex / ex_vi: vi du tu lan tra (NULL khi day hang cho; server tu lam day). */
-static bool do_add(const fd_dictnet_entry_t *e, const char *ex, const char *ex_vi)
-{
-    if (!e->vi[0]) return false;
-    char *rx = ps_alloc(8192);
-    if (!rx) return false;
-    cJSON *b = cJSON_CreateObject();
-    bool ok = false;
-    if (b) {
-        bool fields = cJSON_AddStringToObject(b, "en", e->en) &&
-                      cJSON_AddStringToObject(b, "vi", e->vi) &&
-                      cJSON_AddStringToObject(b, "word", e->en) &&
-                      (!e->ipa[0] || cJSON_AddStringToObject(b, "ipa", e->ipa)) &&
-                      (!e->pos[0] || cJSON_AddStringToObject(b, "pos", e->pos)) &&
-                      (!ex || !ex[0] || cJSON_AddStringToObject(b, "example", ex)) &&
-                      (!ex || !ex[0] || !ex_vi || !ex_vi[0] || cJSON_AddStringToObject(b, "example_vi", ex_vi)) &&
-                      (!s_last_cid[0] || cJSON_AddStringToObject(b, "collection_id", s_last_cid));
-        int code = fields ? post_device("/api/study/dict/words/add", b, rx, 8192) : -3;
-        cJSON_Delete(b);
-        if (code == 200) {
-            cJSON *r = cJSON_Parse(rx);
-            if (r) {
-                take_add_body(r);
-                ok = true;
-                cJSON_Delete(r);
-            }
-        } else if (code == 401) {
-            /* token xoa boi fd_ota */
-        }
-        ESP_LOGI(TAG, "add %s -> %d", e->en, code);
-    }
-    free(rx);
-    return ok;
-}
-
-static void flush_queue(void)
-{
-    if (!fd_net_is_connected() || !fd_ota_is_paired()) return;
-    FILE *f = fopen(Q_PATH, "rb");
-    if (!f) return;
-    const size_t KEEP_CAP = 64 * 1024;
-    char *keep = ps_alloc(KEEP_CAP);
-    char *line = ps_alloc(4096);
-    if (!keep || !line) { free(keep); free(line); fclose(f); return; }
-    size_t kn = 0;
-    bool complete = true;
-    while (fgets(line, 4096, f)) {
-        size_t len = strlen(line);
-        /* A truncated/invalid line or OOM must never discard queued words. */
-        if (!len || line[len - 1] != '\n') { complete = false; break; }
-        cJSON *o = cJSON_Parse(line);
-        if (!o) { complete = false; break; }
-        fd_dictnet_entry_t e;
-        bool ok = parse_entry(o, &e) && do_add(&e, NULL, NULL);
-        cJSON_Delete(o);
-        if (!ok) {
-            if (kn + len >= KEEP_CAP) { complete = false; break; }
-            memcpy(keep + kn, line, len);
-            kn += len;
-        }
-    }
-    if (ferror(f)) complete = false;
-    fclose(f);
-    if (complete && write_atomic(Q_PATH, Q_PATH ".tmp", keep, kn) != FD_DICTNET_ERR_NONE)
-        ESP_LOGW(TAG, "queue write failed; original preserved");
-    free(line);
-    free(keep);
-}
-/* Khi add khong kem danh sach bo (hang cho / may chu cu): hoi them, van trong task nay. */
-static void fetch_cols(void)
-{
-    if (s_ncols > 0 || !fd_net_is_connected() || !fd_ota_is_paired()) return;
-    char *rx = ps_alloc(8192);
-    if (!rx) return;
-    cJSON *b = cJSON_CreateObject();
-    int code = b ? post_device("/api/study/dict/collections", b, rx, 8192) : -3;
-    cJSON_Delete(b);
-    if (code == 200) {
-        cJSON *r = cJSON_Parse(rx);
-        if (r) {
-            take_cols(cJSON_GetObjectItemCaseSensitive(r, "collections"));
-            cJSON_Delete(r);
-        }
-    }
-    free(rx);
 }
 
 /* cid/name co the duoc response ghi de (ten chuan tren may chu). */
@@ -447,19 +323,25 @@ static void do_lookup(const char *word, uint8_t dir)
         lock(); s_st.state = FD_DICTNET_ERROR; s_st.err = FD_DICTNET_ERR_NO_WIFI; unlock(); return;
     }
 
-    char *rx = ps_alloc(4096);
+    char cid[FD_DICTNET_CID_LEN];
+    lock(); ucpy(cid, sizeof(cid), s_last_cid); unlock();
+    char *rx = ps_alloc(RX_CAP);
     if (!rx) { lock(); s_st.state = FD_DICTNET_ERROR; s_st.err = FD_DICTNET_ERR_NOMEM; unlock(); return; }
+    /* 4.5.4: 1 lan goi duy nhat: server tra tu va luu vao bo (add:true), tra kem id/bo/danh sach bo. */
     cJSON *b = cJSON_CreateObject();
     int code = -3;
     if (b) {
         if (cJSON_AddStringToObject(b, "q", word) &&
-            (dir != FD_DICTNET_DIR_VI_EN || cJSON_AddStringToObject(b, "dir", "vi-en")))
-            code = post_device("/api/study/dict/lookup", b, rx, 4096);
+            (dir != FD_DICTNET_DIR_VI_EN || cJSON_AddStringToObject(b, "dir", "vi-en")) &&
+            cJSON_AddTrueToObject(b, "add") &&
+            (!cid[0] || cJSON_AddStringToObject(b, "collection_id", cid)))
+            code = post_device("/api/study/dict/lookup", b, rx, RX_CAP);
         cJSON_Delete(b);
     }
     fd_dictnet_entry_t e;
     memset(&e, 0, sizeof(e));
     fd_dictnet_err_t err = FD_DICTNET_ERR_NONE;
+    bool added = false;
     if (code == 200) {
         errno = 0;
         cJSON *r = cJSON_Parse(rx);
@@ -469,9 +351,12 @@ static void do_lookup(const char *word, uint8_t dir)
             err = FD_DICTNET_ERR_NOT_FOUND;
         else {
             /* Server (ham chung completeWordInfo) da lam day; thiet bi chi hien. */
+            /* Server cu khong biet add -> khong co "added": tu khong duoc luu (deploy web-app truoc). */
+            added = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(r, "added"));
             lock();
             ucpy(s_ex, sizeof(s_ex), jstr(r, "example"));
             ucpy(s_exvi, sizeof(s_exvi), s_ex[0] ? jstr(r, "example_vi") : "");
+            if (added) { take_add_body(r); s_added_n++; }
             unlock();
         }
         cJSON_Delete(r);
@@ -481,39 +366,25 @@ static void do_lookup(const char *word, uint8_t dir)
     else if (code < 0) err = FD_DICTNET_ERR_NET;
     else err = FD_DICTNET_ERR_SERVER;
 
-    bool added = false, queued = false;
     if (!err) {
         e.dir = dir;
-        fd_dictnet_err_t persist_err = hist_push(&e);
-        lock(); s_st.state = FD_DICTNET_ADD; unlock();
-        added = do_add(&e, s_ex, s_exvi);   /* chi task nay ghi s_ex/s_exvi */
-        if (!added) {
-            fd_dictnet_err_t qe = queue_append(&e);
-            queued = qe == FD_DICTNET_ERR_NONE;
-            if (qe) persist_err = qe;
-        }
-        err = persist_err;
+        err = hist_push(&e);
     }
 
-    if (!err && s_ncols == 0) fetch_cols();
     lock();
     s_st.http = code;
     s_st.err = err;
     s_st.result = e;
     s_st.added = added;
-    s_st.queued = queued;
     if (!err && added) {
         ucpy(s_st.word_id, sizeof(s_st.word_id), s_add_wid);
         ucpy(s_st.collection_id, sizeof(s_st.collection_id), s_add_cid);
         ucpy(s_st.collection_name, sizeof(s_st.collection_name), s_add_name);
-    } else if (!err && queued) {
-        ucpy(s_st.collection_id, sizeof(s_st.collection_id), s_last_cid);
-        ucpy(s_st.collection_name, sizeof(s_st.collection_name), s_last_name);
     }
     s_st.state = err ? FD_DICTNET_ERROR : FD_DICTNET_OK;
     unlock();
     free(rx);
-    ESP_LOGI(TAG, "lookup %s -> %d err=%d added=%d queued=%d", word, code, err, added, queued);
+    ESP_LOGI(TAG, "lookup %s -> %d err=%d added=%d", word, code, err, added);
 }
 
 static void task(void *arg)
@@ -522,12 +393,8 @@ static void task(void *arg)
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);   /* resources published atomically before wake */
     for (;;) {
         int cmd = 0;
-        if (xQueueReceive(s_q, &cmd, pdMS_TO_TICKS(30000)) != pdTRUE) {
-            flush_queue();
-            continue;
-        }
-        if (cmd == CMD_FLUSH) flush_queue();
-        else if (cmd == CMD_MOVE) {
+        if (xQueueReceive(s_q, &cmd, portMAX_DELAY) != pdTRUE) continue;
+        if (cmd == CMD_MOVE) {
             char wid[FD_DICTNET_CID_LEN], cid[FD_DICTNET_CID_LEN], name[FD_DICTNET_CNAME_LEN];
             lock();
             ucpy(wid, sizeof(wid), s_move_wid);
@@ -536,8 +403,8 @@ static void task(void *arg)
             unlock();
             bool ok = true;
             if (wid[0]) ok = http_move(wid, cid, sizeof(cid), name, sizeof(name));
-            if (ok) save_choice(cid, name);
             lock();
+            if (ok) save_choice(cid, name);
             if (ok) {
                 ucpy(s_move_cid, sizeof(s_move_cid), cid);
                 ucpy(s_move_name, sizeof(s_move_name), name);
@@ -575,6 +442,9 @@ bool fd_dictnet_init(void)
     if (fd_store_status() != ESP_OK) { error = FD_DICTNET_ERR_STORAGE; goto failed; }
     error = hist_load();
     if (error != FD_DICTNET_ERR_NONE) goto failed;   /* preserve history on OOM/parse failure */
+    /* 4.5.4: bo hang cho offline; xoa file cu neu con (best effort, bo qua loi). */
+    unlink(LEGACY_Q_PATH);
+    unlink(LEGACY_Q_PATH ".tmp");
     error = FD_DICTNET_ERR_NOMEM;
     if (xTaskCreate(task, "fd_dict", 8192, NULL, 4, &worker) != pdPASS) goto failed;
     taskENTER_CRITICAL(&s_init_gate);
@@ -607,7 +477,7 @@ bool fd_dictnet_lookup_dir(const char *word, uint8_t dir)
     if (!word || !word[0]) return false;
     if (!fd_dictnet_init()) return false;
     lock();
-    if (s_st.state == FD_DICTNET_LOOKUP || s_st.state == FD_DICTNET_ADD) { unlock(); return false; }
+    if (s_st.state == FD_DICTNET_LOOKUP) { unlock(); return false; }
     memset(&s_st, 0, sizeof(s_st));
     s_st.state = FD_DICTNET_LOOKUP;
     ucpy(s_st.result.en, sizeof(s_st.result.en), word);
@@ -653,11 +523,14 @@ int fd_dictnet_history(fd_dictnet_entry_t *out, int cap)
     return n;
 }
 
-void fd_dictnet_flush(void)
+int fd_dictnet_take_added(void)
 {
-    if (!fd_dictnet_init()) return;
-    int cmd = CMD_FLUSH;
-    xQueueSend(s_q, &cmd, 0);
+    if (!s_mx) return 0;
+    lock();
+    int n = s_added_n;
+    s_added_n = 0;
+    unlock();
+    return n;
 }
 
 int fd_dictnet_cols(fd_dictnet_col_t *out, int cap)
@@ -685,7 +558,7 @@ bool fd_dictnet_move(const char *wid, const char *cid, const char *name)
 {
     if (!cid || !cid[0] || !fd_dictnet_init()) return false;
     lock();
-    if (s_move_state == FD_DICTNET_MOVE_BUSY || s_st.state == FD_DICTNET_LOOKUP || s_st.state == FD_DICTNET_ADD) {
+    if (s_move_state == FD_DICTNET_MOVE_BUSY || s_st.state == FD_DICTNET_LOOKUP) {
         unlock();
         return false;
     }

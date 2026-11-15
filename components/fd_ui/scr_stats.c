@@ -1,5 +1,5 @@
 /* 2.3.0 Man "Thong ke": LUON lay tu server (POST /api/study/stats, gui outbox truoc). Khong Wi-Fi -> bao can ket noi.
- * 2.3.4: noi dung trong vung cuon (s_list), nut Tro lai / Thu lai ghim day man.
+ * 2.3.4: noi dung trong vung cuon (s_list). 4.5.4: bo nut Thu lai, them tieu de ghim tren cung (trai, giong module khac).
  * 4.5.4: ba the Tu, Cau, Hoat dong 7 ngay (cot 7 ngay, phien, ti le dung, chuoi ngay, theo module).
  * Truong thieu (may chu cu khong gui days) hien 0. */
 #include <stdio.h>
@@ -15,9 +15,6 @@ static lv_obj_t *s_list;   /* vung noi dung cuon (tren thanh nut) */
 static bool s_gate, s_shown;
 
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
-static void load(void);
-static void retry_async(void *a) { (void)a; if (s_body) load(); }
-static void retry_cb(lv_event_t *e) { (void)e; lv_async_call(retry_async, NULL); }
 
 static lv_obj_t *text_on(lv_obj_t *p, const char *t, const lv_font_t *f, uint32_t c)
 {
@@ -45,6 +42,11 @@ static void reset(lv_flex_align_t main)
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 8, 0);
     lv_obj_set_scrollable(s_body, false);
+    /* Tieu de giong cac module (noto 18, mau chinh, 26 px), can trai, khong cuon theo noi dung. */
+    lv_obj_t *t = ui_label_create(s_body, _("STATISTICS"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_set_width(t, lv_pct(100));
+    lv_obj_set_height(t, 26);
+    lv_label_set_long_mode(t, LV_LABEL_LONG_DOT);
     s_list = lv_obj_create(s_body);
     lv_obj_remove_style_all(s_list);
     lv_obj_set_width(s_list, lv_pct(100));
@@ -266,8 +268,6 @@ static void show(const fd_sync_stats_t *st)
         char m[64];
         snprintf(m, sizeof(m), _("ERROR_FMT"), st->err);
         text_on(s_list, m, &fd_font_noto_18, 0xDC2626);
-        lv_obj_t *r = btn_row();
-        ui_gate_btn(r, _("RETRY"), true, retry_cb);
         return;
     }
     reset(LV_FLEX_ALIGN_START);
@@ -333,9 +333,6 @@ static void show(const fd_sync_stats_t *st)
     kv_row(acard, _("STATS_SCAN_USES"), v);
     snprintf(v, sizeof(v), "%d", st->scan_words);
     kv_row(acard, _("STATS_SCAN_WORDS"), v);
-
-    lv_obj_t *r = btn_row();
-    ui_gate_btn(r, _("RETRY"), true, retry_cb);
 }
 
 static void build(lv_obj_t *scr)

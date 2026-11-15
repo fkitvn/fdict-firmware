@@ -1,7 +1,8 @@
 #pragma once
 /*
  * Font Noto Sans (SIL OFL 1.1, assets/fonts/OFL.txt) sinh bang lv_font_conv 1.5.3 (tools/gen_fonts.sh).
- * Gom: ASCII, Latin-1, chu Viet day du (U+1EA0-1EF9, Ă Đ Ĩ Ũ Ơ Ư), IPA Extensions, ˈ ˌ ː, dau nhay/gach.
+ * Gom: ASCII, Latin-1, chu Viet day du (U+1EA0-1EF9, Ă Đ Ĩ Ũ Ơ Ư), dau nhay/gach va phien am IPA day du:
+ * IPA Extensions, Spacing Modifier, Combining (t͡ʃ n̩), Phonetic Ext (ᵻ), β. Mau that: tools/tests/data/ipa_samples.txt.
  * Khong co LV_SYMBOL_* trong Noto. fd_font_noto_14 la font mac dinh (LV_FONT_DEFAULT),
  * .fallback = lv_font_montserrat_14 cho icon. Van co the gan Montserrat truc tiep.
  */

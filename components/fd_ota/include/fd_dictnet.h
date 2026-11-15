@@ -1,5 +1,5 @@
 #pragma once
-/* 2.3.5: Tra tu online qua dict.fkit.vn (Bearer device_token) + lich su 30 tu + hang cho auto-add. */
+/* 2.3.5: Tra tu online qua dict.fkit.vn (Bearer device_token) + lich su. 4.5.4: tra va luu vao bo trong 1 lan goi, bo hang cho. */
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -30,8 +30,7 @@ typedef struct {
 
 typedef enum {
     FD_DICTNET_IDLE = 0,
-    FD_DICTNET_LOOKUP,
-    FD_DICTNET_ADD,
+    FD_DICTNET_LOOKUP,   /* tra + luu vao bo (1 request) */
     FD_DICTNET_OK,
     FD_DICTNET_ERROR,
 } fd_dictnet_state_t;
@@ -53,9 +52,8 @@ typedef struct {
     fd_dictnet_err_t err;
     int http;
     fd_dictnet_entry_t result;
-    bool added;          /* auto-add thanh cong trong lan lookup nay */
-    bool queued;         /* add that bai -> da xep hang */
-    char word_id[FD_DICTNET_CID_LEN];                 /* rong neu chua them duoc (hang cho) */
+    bool added;          /* server da luu tu vao bo trong lan tra nay */
+    char word_id[FD_DICTNET_CID_LEN];                 /* rong neu chua luu duoc */
     char collection_id[FD_DICTNET_CID_LEN];
     char collection_name[FD_DICTNET_CNAME_LEN];
 } fd_dictnet_status_t;
@@ -83,13 +81,13 @@ void fd_dictnet_get_example(char *ex, size_t ex_cap, char *ex_vi, size_t vi_cap)
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap);
 /* Xoa lich su tra (RAM + /data/dict_hist.json/.tmp). Goi khi dang xuat / khoi phuc cai dat goc. */
 void fd_dictnet_clear_history(void);
-/* Day hang cho add khi co Wi-Fi (goi tu task fd_dict / kick). */
-void fd_dictnet_flush(void);
-/* Danh sach bo cua lan tra gan nhat (add response, hoac tai them khi hang cho). */
+/* So tu da luu vao bo tu lan goi truoc, roi dat lai 0. Thoat Tu dien: > 0 thi goi dong bo de keo tu moi. */
+int fd_dictnet_take_added(void);
+/* Danh sach bo cua lan tra gan nhat (tu response lookup khi da luu). */
 int fd_dictnet_cols(fd_dictnet_col_t *out, int cap);
 /* Bo da chon lan cuoi (NVS). */
 void fd_dictnet_saved_collection(char *id, size_t id_cap, char *name, size_t name_cap);
-/* Doi bo cua tu vua them. wid rong: chi nho lua chon (tu dang xep hang). false = dang ban. */
+/* Doi bo cua tu vua them. wid rong: chi nho lua chon. false = dang ban. */
 bool fd_dictnet_move(const char *wid, const char *cid, const char *name);
 fd_dictnet_move_state_t fd_dictnet_move_state(char *id, size_t id_cap, char *name, size_t name_cap);
 void fd_dictnet_move_ack(void);   /* OK/ERR -> IDLE sau khi UI da doc */
