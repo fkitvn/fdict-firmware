@@ -58,6 +58,8 @@ class MemorySafety(unittest.TestCase):
         self.assertEqual(s.count("post_device(\"/api/study/dict/lookup\""), 1)
         self.assertIn('cJSON_AddTrueToObject(b, "add")', look)
         self.assertIn("take_add_body(r)", look)
+        self.assertIn('jstr(r, "state")', look)
+        self.assertIn('strcmp(st, "same") != 0) s_added_n++', look)
         for gone in ["/api/study/dict/words/add", "/api/study/dict/collections", "queue_append", "flush_queue", "CMD_FLUSH", "do_add("]:
             self.assertNotIn(gone, s)
         init = s.split("bool fd_dictnet_init(void)")[1].split("\nfailed:", 1)[0]
