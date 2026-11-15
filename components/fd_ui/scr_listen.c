@@ -54,6 +54,8 @@ static void show_setup(void);
 static void show_question(void);
 static void show_result(void);
 static void kb_enable(bool on);
+static void kb_set_visible(bool on);
+static void kb_focus_input(void);
 
 static void *ps_alloc(size_t n)
 {
@@ -148,6 +150,8 @@ static void paint_slots(void)
             col = FD_COLOR_TEXT_MUTED;
             border = FD_COLOR_TEXT_MUTED;
         }
+        /* O dang nhap (ke tiep): vien 2px mau chinh, de thay o duoc focus. */
+        if (!s_solved && !s_shake && i == s_typed) border = FD_COLOR_PRIMARY;
         lv_label_set_text(s_ch[i], txt);
         lv_obj_set_style_text_color(s_ch[i], lv_color_hex(col), 0);
         lv_obj_set_style_border_color(s_box[i], lv_color_hex(border), 0);
@@ -164,7 +168,7 @@ static void paint_slots(void)
     }
     if (s_prompt) lv_obj_set_hidden(s_prompt, s_solved);
     if (s_slots) lv_obj_set_hidden(s_slots, s_solved);
-    kb_enable(!s_solved);
+    if (s_solved) kb_set_visible(false);
     if (s_skip) lv_label_set_text(lv_obj_get_child(s_skip, 0), s_solved ? _("NEXT") : _("HEAR_SKIP"));
 }
 
@@ -178,6 +182,7 @@ static void shake_done(lv_anim_t *a)
     if (s_ta) lv_textarea_set_text(s_ta, "");
     s_guard = false;
     paint_slots();
+    kb_focus_input();
 }
 
 static void shake_cb(void *o, int32_t v)
@@ -194,7 +199,6 @@ static void slots_error(void)
     s_guard = true;
     if (s_ta) lv_textarea_set_text(s_ta, "");
     s_guard = false;
-    kb_enable(false);
     for (int i = 0; i < s_typed && i < FD_SEN_TOK; i++)
         if (s_box[i]) lv_obj_set_style_border_color(s_box[i], lv_color_hex(C_BAD), 0);
     lv_anim_t a;
@@ -249,6 +253,32 @@ static void kb_enable(bool on)
         if (on) lv_obj_remove_state(c, LV_STATE_DISABLED);
         else lv_obj_add_state(c, LV_STATE_DISABLED);
     }
+}
+
+/* An ban phim khi da hien dap an cuoi (s_solved) hoac man ket qua (body_clear).
+ * Sai can nhap lai: giu hien va focus o nhap. Cau moi: hien lai + focus o dau. */
+static void kb_focus_input(void)
+{
+    if (!s_ta || s_solved) return;
+    lv_obj_add_state(s_ta, LV_STATE_FOCUSED);
+}
+
+static void kb_set_visible(bool on)
+{
+    if (!s_kb) return;
+    if (on) {
+        lv_obj_set_hidden(s_kb, false);
+        lv_obj_set_flex_grow(s_kb, 1);
+        lv_obj_set_style_min_height(s_kb, 112, 0);
+        kb_enable(true);
+        kb_focus_input();
+    } else {
+        kb_enable(false);
+        lv_obj_set_hidden(s_kb, true);
+        lv_obj_set_flex_grow(s_kb, 0);
+        lv_obj_set_style_min_height(s_kb, 0, 0);
+    }
+    if (s_body) lv_obj_update_layout(s_body);
 }
 
 /* Ban phim Tu dien ghi vao textarea an. Chi giu chu a-z, du do thi tu doi chieu. */
@@ -447,6 +477,7 @@ static void show_question(void)
     lv_obj_set_style_min_height(s_kb, 112, 0);
 
     paint_slots();
+    kb_set_visible(true);
     say_current();
 }
 
@@ -614,18 +645,8 @@ static void dlg_no(lv_event_t *e) { (void)e; dlg_close(); }
 static void dlg_open(void)
 {
     if (s_dlg || !s_body) return;
-    s_dlg = lv_obj_create(lv_layer_top());
-    lv_obj_remove_style_all(s_dlg);
-    lv_obj_set_size(s_dlg, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(s_dlg, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(s_dlg, LV_OPA_40, 0);
-    lv_obj_set_clickable(s_dlg, true);
-    lv_obj_t *box = lv_obj_create(s_dlg);
-    lv_obj_set_width(box, lv_pct(88));
-    lv_obj_set_height(box, LV_SIZE_CONTENT);
-    lv_obj_center(box);
-    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(box, 8, 0);
+    s_dlg = ui_dialog_open();
+    lv_obj_t *box = ui_dialog_box(s_dlg);
     label(box, _("QUIT_THIS_QUIZ"), &fd_font_noto_18, FD_COLOR_TEXT);
     lv_obj_t *r = lv_obj_create(box);
     lv_obj_remove_style_all(r);

@@ -116,3 +116,14 @@ lv_obj_t *ui_setup_start(lv_obj_t *body, lv_event_cb_t cb);
 /* hang Bo tu tren man cho: nhan + gia tri hien tai, cham de mo man cau hinh Bo tu. */
 void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *));
 lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb);
+
+/* Nhan luon gan font Noto (font NULL = fd_font_noto_14). Dung khi tao chu tren overlay hoac sau remove_style_all. */
+lv_obj_t *ui_label_create(lv_obj_t *parent, const char *txt, const lv_font_t *font, uint32_t color);
+/* Hop thoai xac nhan tren lv_layer_top: nen mo + hop trang, font Noto. Tra ve overlay; hop la con dau tien. */
+lv_obj_t *ui_dialog_open(void);
+lv_obj_t *ui_dialog_box(lv_obj_t *overlay);
+lv_obj_t *ui_dialog_title(lv_obj_t *box, const char *txt);
+lv_obj_t *ui_dialog_btns(lv_obj_t *box);
+lv_obj_t *ui_dialog_btn(lv_obj_t *row, const char *txt, bool primary, lv_event_cb_t cb, void *user_data);
+void ui_dialog_close(lv_obj_t **overlay);
+

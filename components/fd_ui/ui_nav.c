@@ -126,12 +126,15 @@ static void theme_init(void)
     lv_theme_t *base = lv_theme_default_init(d, lv_color_hex(FD_COLOR_PRIMARY), lv_color_hex(FD_COLOR_PRIMARY_DARK),
                                              false, &fd_font_noto_14);
     lv_style_init(&s_btn_text);
+    lv_style_set_text_font(&s_btn_text, &fd_font_noto_14);
     lv_style_set_text_color(&s_btn_text, lv_color_hex(FD_COLOR_ON_PRIMARY));
     lv_theme_t *th = lv_theme_create();
     lv_theme_copy(th, base);
     lv_theme_set_parent(th, base);
     lv_theme_set_apply_cb(th, theme_apply_cb);
     lv_display_set_theme(d, th);
+    lv_obj_set_style_text_font(lv_layer_top(), &fd_font_noto_14, 0);
+    lv_obj_set_style_text_font(lv_layer_sys(), &fd_font_noto_14, 0);
 }
 
 static void devmode_load(void)

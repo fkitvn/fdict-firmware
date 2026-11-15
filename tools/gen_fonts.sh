@@ -15,9 +15,11 @@ RANGES="0x20-0x7E,0xA0-0xFF,0x100-0x17F,0x1A0-0x1A1,0x1AF-0x1B0,0x1EA0-0x1EF9,\
 0x250-0x2AF,0x2C8,0x2CC,0x2D0-0x2D1,0x300-0x303,0x309,0x323,0x3B8,0x3C7,\
 0x2013-0x2014,0x2016,0x2018-0x201D,0x2022,0x2026,0x203F,0x207F,0x25CC"
 # 20/10 14:44: bo Spacing Modifier (tru ˈ ˌ ː ˑ), Combining chi giu dau Viet (0300-0303, 0309, 0323), bo Phonetic Ext 1D00-1DBF.
+# Noto 14 = font mac dinh (LV_FONT_DEFAULT): fallback Montserrat 14 cho LV_SYMBOL_*.
 for SZ in 14 18; do
+  FB=""; if [ "$SZ" = 14 ]; then FB="--lv-fallback lv_font_montserrat_14"; fi
   npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Regular.ttf -r "$RANGES" \
-    --size $SZ --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_${SZ} \
+    --size $SZ --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_${SZ} $FB \
     -o components/fd_fonts/fd_font_noto_${SZ}.c
 done
 # Tieu de 32 px (ui_screen_title): ASCII day du (tieu de tieng Anh, 1.3.0) + ky tu co dau cua tieu de tieng Viet.

@@ -264,7 +264,7 @@ vi:
   SYNC_AUTO_HINT: 'Tự động đồng bộ khi có Wi-Fi'
   STATS_NEED_WIFI: 'Cần kết nối Wi-Fi để xem thống kê'
   STATS_LOADING: 'Đang tải thống kê…'
-  STATS_VOCAB: 'Từ vựng'
+  STATS_VOCAB: 'Từ'
   STATS_SEN_SECTION: 'Câu'
   STATS_WORDS: 'Tổng số từ'
   STATS_MASTERED: 'Đã thuộc'
@@ -279,14 +279,19 @@ vi:
   STATS_MOD_FMT: '%d phiên, %d/%d đúng'
   STATS_MOD_HINT_FMT: ', %d gợi ý'
   SPELLING: Chính tả
-  SPELL_BUILD_EN: Ghép Anh
-  SPELL_BUILD_VI: Ghép Việt
+  SPELL_BUILD_EN: 'Việt - Anh'
+  SPELL_BUILD_VI: 'Anh - Việt'
   SPELL_DIR_MIX: Trộn
+  SPELL_NO_FIT: Không có từ dài từ 2 đến 20 ký tự
   SPELL_PROMPT_EN: Ghép từ tiếng Anh
   SPELL_PROMPT_VI: Ghép nghĩa tiếng Việt
   STATS_DAYS_FMT: '%d ngày'
   STATS_SCAN_USES: 'Lượt scan AI'
   STATS_SCAN_WORDS: 'Từ scan thành công'
+  STATS_ACTIVITY: 'Hoạt động 7 ngày qua'
+  STATS_ACCURACY: 'Tỷ lệ đúng'
+  STATS_SESSIONS: 'Phiên học'
+  STATS_DOW: 'CN,T2,T3,T4,T5,T6,T7'
   PHONE_QR_HINT: Quét mã bằng điện thoại để scan từ vựng
   DECK: 'Bộ từ'
   DECK_CONFIG: 'Cấu hình bộ từ'

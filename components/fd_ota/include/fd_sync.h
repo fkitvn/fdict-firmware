@@ -46,6 +46,8 @@ typedef struct {
 
 typedef enum { FD_STATS_IDLE = 0, FD_STATS_LOADING, FD_STATS_OK, FD_STATS_ERROR } fd_stats_state_t;
 
+#define FD_STATS_DAYS 7
+
 typedef struct {
     fd_stats_state_t state;
     char err[24];            /* no_wifi, unpaired, no_account, http_NNN, net, format */
@@ -57,6 +59,8 @@ typedef struct {
     int scan_uses, scan_words;   /* luot scan AI / tu luu tu scan (server) */
     /* 4.5.3: 7 ngay theo module (server week.modules), thu tu FD_MOD_*. hinted chi co o Nghe. */
     struct { int answers, correct, hinted, sessions; } mod[6];
+    /* 4.5.4: 7 ngay gan nhat neu server gui mang days (thieu thi 0). Phan tu cuoi la hom nay. */
+    struct { char date[11]; int answers, correct, hinted; } day[FD_STATS_DAYS];
 } fd_sync_stats_t;
 
 enum { FD_MOD_QUIZ = 0, FD_MOD_POS, FD_MOD_SPELL, FD_MOD_CLOZE, FD_MOD_ORDER, FD_MOD_HEAR, FD_MOD_N };

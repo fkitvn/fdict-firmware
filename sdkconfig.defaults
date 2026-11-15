@@ -47,8 +47,12 @@ CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_DEF_REFR_PERIOD=16
 CONFIG_LV_USE_FONT_COMPRESSED=y
-# Montserrat 14 giu lai vi chua LV_SYMBOL_* va dung cho perf monitor; text tieng Viet dung fd_font_noto_*
+# Montserrat 14 giu lai cho LV_SYMBOL_* (fallback cua fd_font_noto_14) va perf monitor.
+# Font chu mac dinh la fd_font_noto_14 (co dau Viet), xem fd_lv_font_default.h.
 CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_USE_CUSTOM_INCLUDE=y
+CONFIG_LV_FONT_CUSTOM_INCLUDE="fd_lv_font_default.h"
+CONFIG_LV_USE_CUSTOM_FONT_DEFAULT=y
 # CONFIG_LV_FONT_MONTSERRAT_24 is not set
 # CONFIG_LV_FONT_MONTSERRAT_32 is not set
 # CONFIG_LV_USE_SYSMON is not set
