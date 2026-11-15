@@ -7,14 +7,15 @@
 #   Ơ Ư, chu Viet dung san U+1EA0-1EF9
 #   IPA Extensions U+0250-02AF, Spacing Modifier Letters U+02B0-02FF (ʰ ʲ ʷ ˈ ˌ ː ˑ ˞ ˡ)
 #   Combining Diacritics U+0300-036F (LVGL khong shaping: dau ve de len ky tu truoc theo offset cua font)
-#   Hy Lap θ U+03B8, χ U+03C7 (IPA dung chu Hy Lap, khong nam trong khoi IPA)
+#   Hy Lap β U+03B2, θ U+03B8, χ U+03C7 (IPA dung chu Hy Lap, khong nam trong khoi IPA)
 #   Phonetic Extensions + Supplement U+1D00-1DBF (ᵻ ᵿ ᵊ ...)
-#   Dau cau: – — ‖ ‘ ’ “ ” • … ‿ ⁿ ◌
+#   Dau cau: – — ‖ ‘ ’ “ ” • … ‿ ⁓ ⁿ ◌
 set -euo pipefail
 RANGES="0x20-0x7E,0xA0-0xFF,0x100-0x17F,0x1A0-0x1A1,0x1AF-0x1B0,0x1EA0-0x1EF9,\
-0x250-0x2AF,0x2C8,0x2CC,0x2D0-0x2D1,0x300-0x303,0x309,0x323,0x3B8,0x3C7,\
-0x2013-0x2014,0x2016,0x2018-0x201D,0x2022,0x2026,0x203F,0x207F,0x25CC"
-# 20/10 14:44: bo Spacing Modifier (tru ˈ ˌ ː ˑ), Combining chi giu dau Viet (0300-0303, 0309, 0323), bo Phonetic Ext 1D00-1DBF.
+0x250-0x2FF,0x300-0x36F,0x3B2,0x3B8,0x3C7,0x1D00-0x1DBF,\
+0x2013-0x2014,0x2016,0x2018-0x201D,0x2022,0x2026,0x203F,0x2053,0x207F,0x25CC"
+# 20/10 tung bo Spacing Modifier, Combining (tru dau Viet), Phonetic Ext -> phien am that bi o vuong (t͡ʃ d͡ʒ n̩ ʰ ᵻ).
+# 15/11 (4.5.4): them lai du 3 khoi + β ⁓. Mau IPA that: tools/tests/data/ipa_samples.txt, test: tools/tests/test_ipa_glyphs.py.
 # Noto 14 = font mac dinh (LV_FONT_DEFAULT): fallback Montserrat 14 cho LV_SYMBOL_*.
 for SZ in 14 18; do
   FB=""; if [ "$SZ" = 14 ]; then FB="--lv-fallback lv_font_montserrat_14"; fi

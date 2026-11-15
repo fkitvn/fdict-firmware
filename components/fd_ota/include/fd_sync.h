@@ -79,6 +79,7 @@ int fd_sync_build_spell(fd_spell_word_t *out, int cap);
 void fd_sync_init(void);                 /* goi 1 lan sau khi mount /data (nap kho + outbox, tao task) */
 void fd_sync_kick(void);                 /* co ket qua moi: gui outbox som */
 void fd_sync_force(void);                /* nut "Dong bo ngay": gui outbox + tai lai toan bo */
+void fd_sync_check(void);                /* 4.5.4: gui outbox + hoi rev, chi keo khi doi (khong chan UI, khong co Wi-Fi thi bo qua) */
 void fd_sync_get(fd_sync_status_t *out);
 bool fd_sync_ready(void);                /* kho co >= 4 tu (du tao trac nghiem) */
 /* Tao phien Luyen tap (Practice) tu kho (theo uu tien hoc). n <= FD_STUDY_MAX. session_id "lq-..." (ket qua = su kien fd_sync_event). */

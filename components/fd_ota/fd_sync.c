@@ -46,7 +46,7 @@ static const char *TAG = "fd_sync";
 #define MASTER_STREAK 3
 #define NVS_NS      "fdsync"
 
-enum { CMD_PUSH = 1, CMD_FORCE, CMD_STATS };
+enum { CMD_PUSH = 1, CMD_FORCE, CMD_STATS, CMD_CHECK };
 
 typedef struct {
     char id[FD_SYNC_WID_LEN], cid[FD_SYNC_WID_LEN];
@@ -1130,6 +1130,11 @@ static void task(void *arg)
             continue;
         }
         if (!on) continue;
+        if (got && c == CMD_CHECK) {   /* 4.5.4: thoat Tu dien sau khi luu tu: hoi rev, doi thi keo kho */
+            bool ok = do_sync(rx, false);
+            if (ok) { back = BACK_MIN_US; next = esp_timer_get_time() + CHECK_US; }
+            continue;
+        }
         lock(); int pend = s_st.pending; unlock();
         if (got && c == CMD_PUSH && pend > 0) {
             int code = push_all(rx);
@@ -1187,6 +1192,7 @@ static void send_cmd(int c)
 
 void fd_sync_kick(void) { send_cmd(CMD_PUSH); }
 void fd_sync_force(void) { send_cmd(CMD_FORCE); }
+void fd_sync_check(void) { send_cmd(CMD_CHECK); }
 
 void fd_sync_stats_fetch(void)
 {

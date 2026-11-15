@@ -1,5 +1,5 @@
 """Ve chu Viet + LV_SYMBOL_* bang font mac dinh tren may host (gcc + LVGL trong managed_components).
-Bat loi crash cua font boc (4.5.4). Bo qua neu khong co gcc (hoac WSL co gcc tren Windows) hay chua co managed_components
+Bat loi crash cua font boc (4.5.4) va phien am o vuong (moi ky tu trong tools/tests/data/ipa_samples.txt, vi_samples.txt phai co glyph Noto trong font cua nhan phien am). Bo qua neu khong co gcc (hoac WSL co gcc tren Windows) hay chua co managed_components
 (chay idf.py build mot lan). Tat: FD_SKIP_HOST_RENDER=1. Object LVGL cache o build/host_render."""
 from pathlib import Path
 import os

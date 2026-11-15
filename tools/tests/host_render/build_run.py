@@ -55,11 +55,19 @@ fonts_dir = os.path.join(repo, "components/fd_fonts")
 own = [os.path.join(fonts_dir, f) for f in sorted(os.listdir(fonts_dir)) if f.startswith("fd_font_") and f.endswith(".c")]
 own.append(os.path.join(here, "main.c"))
 exe = os.path.join(work, "font_render")
+# main.c: khong cho goi ham chua khai bao (vd ham private LVGL) - voi -w gcc 13 chi canh bao roi crash luc chay.
+strict = [f for f in flags if f != "-w"] + ["-Werror=implicit-function-declaration"]
+r = subprocess.run([cc, "-fsyntax-only", *strict, os.path.join(here, "main.c")], capture_output=True, text=True)
+if r.returncode:
+    print("BUILD_FAIL main.c:\n" + r.stderr[-3000:])
+    sys.exit(2)
 r = subprocess.run([cc, *flags, *own, *objs, "-lm", "-o", exe], capture_output=True, text=True)
 if r.returncode:
     print("BUILD_FAIL link:\n" + r.stderr[-3000:])
     sys.exit(2)
-r = subprocess.run([exe], capture_output=True, text=True, timeout=60)
+data = os.path.join(repo, "tools/tests/data")
+r = subprocess.run([exe, os.path.join(data, "ipa_samples.txt"), os.path.join(data, "vi_samples.txt")],
+                   capture_output=True, text=True, timeout=60)
 sys.stdout.write(r.stdout)
 if r.returncode:
     print("RUN_FAIL exit=%d (am = tin hieu, -11 = SIGSEGV)" % r.returncode)
