@@ -183,6 +183,7 @@ vi:
   HEAR_PROMPT: 'Nhập chữ cái đầu mỗi từ'
   HEAR_HINT: 'Gợi ý'
   HEAR_SKIP: 'Bỏ qua'
+  HEAR_MEANING: 'Nghĩa'
   STUDY_NEEDS_WIFI: 'Quiz cần Wi-Fi để tải câu hỏi.'
   SYNC: Đồng bộ
   SYNC_PENDING_N: Chờ đồng bộ %d

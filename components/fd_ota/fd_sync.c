@@ -1470,7 +1470,7 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
         if (L && line[L - 1] == '\n') line[--L] = 0;
         char *fl[32];
         int n = split_tabs(line, fl, 32);
-        const char *sen[9], *svi[9];
+        const char *sen[9], *svi[9];     /* so cau moi tu (toi da 9), khong phai so token */
         int k = line_sents(fl, n, sen, svi, 9);
         bool used = false;
         for (int j = 0; j < k; j++) {
@@ -1695,7 +1695,7 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
         if (L && line[L - 1] == '\n') line[--L] = 0;
         char *fl[32];
         int nf = split_tabs(line, fl, 32);
-        const char *sens[9], *svi[9];
+        const char *sens[9], *svi[9];    /* so cau moi tu (toi da 9), khong phai so token */
         int k = line_sents(fl, nf, sens, svi, 9);
         bool used = false;
         for (int j = 0; j < k; j++) {

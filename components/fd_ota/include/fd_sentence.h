@@ -14,10 +14,10 @@
 #include "fd_study.h"   /* fd_study_err_t */
 
 #define FD_SEN_MAX      40
-#define FD_SEN_TOK      9
+#define FD_SEN_TOK      15   /* 3..15 tu; du lieu cu 9 tu van hop le */
 #define FD_SEN_TOK_LEN  16
 #define FD_SEN_ID_LEN   48
-#define FD_SEN_TXT_LEN  160
+#define FD_SEN_TXT_LEN  208  /* du cau tay 200 ky tu */
 
 typedef struct {
     char id[FD_SEN_ID_LEN];

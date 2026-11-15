@@ -352,6 +352,29 @@ void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)
     lv_keyboard_set_mode(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER);
 }
 
+/* Nghe: 3 hang, xoa ben trai Z (rong 2 de can hang A 9 o); khong cach/OK/hang duoi. */
+static const char *const qw_map_listen[] = {
+    "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
+    "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
+    LV_SYMBOL_BACKSPACE, "z", "x", "c", "v", "b", "n", "m", ""
+};
+static const lv_buttonmatrix_ctrl_t qw_ctrl_listen[] = {
+    QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
+    QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
+    QW_CHK | 2, QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1)
+};
+
+void fd_t9kb_set_qwerty_listen(lv_obj_t *kb)
+{
+    fd_t9kb_set_layout(kb, FD_T9KB_LAYOUT_QWERTY);
+    t9_ctx_t *c = ctx_of(kb);
+    if (!c || !c->qwerty) return;
+    lv_keyboard_set_map(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER, qw_map_listen, qw_ctrl_listen);
+    lv_keyboard_set_map(c->qwerty, LV_KEYBOARD_MODE_TEXT_UPPER, qw_map_listen, qw_ctrl_listen);
+    lv_keyboard_set_map(c->qwerty, LV_KEYBOARD_MODE_SPECIAL, qw_map_listen, qw_ctrl_listen);
+    lv_keyboard_set_mode(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER);
+}
+
 void fd_t9kb_set_layout(lv_obj_t *kb, fd_t9kb_layout_t layout)
 {
     t9_ctx_t *c = ctx_of(kb);

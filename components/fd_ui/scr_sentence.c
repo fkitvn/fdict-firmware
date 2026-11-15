@@ -25,6 +25,7 @@
 #define SEN_REP_KEY "sen_rep"   /* 2.3.6 NVS fd: tu dong phat cau dung 0 Tat (mac dinh) / 1 / 2 lan (thay sen_snd) */
 #define SEN_CNT_KEY "sen_cnt"   /* NVS fd: so cau/phien 10|20|0=Vo tan */
 #define SEN_DIR_KEY "sen_dir"   /* NVS fd: 0 = Viet>Anh, 1 = Anh>Viet */
+#define NT (s_loc ? s_vn : s_ex.n)
 
 typedef enum { V_SETUP, V_LOAD, V_MSG, V_PLAY, V_FEED, V_RESULT } view_t;
 
@@ -120,10 +121,11 @@ static lv_obj_t *row(lv_obj_t *p, bool wrap)
 
 static void tile_box(lv_obj_t *b, bool cur)
 {
+    int compact = (NT > 9);
     lv_obj_set_style_shadow_width(b, 0, 0);
     lv_obj_set_style_radius(b, 4, 0);
-    lv_obj_set_style_pad_hor(b, 8, 0);
-    lv_obj_set_style_pad_ver(b, 4, 0);
+    lv_obj_set_style_pad_hor(b, compact ? 5 : 8, 0);
+    lv_obj_set_style_pad_ver(b, compact ? 3 : 4, 0);
     lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(b, cur ? 3 : 2, 0);
     lv_obj_set_style_border_color(b, lv_color_hex(cur ? FD_COLOR_PRIMARY : 0x9CA3AF), 0);
@@ -133,7 +135,7 @@ static void tile_box(lv_obj_t *b, bool cur)
 static lv_obj_t *tile_label(lv_obj_t *b, const char *t)
 {
     lv_obj_t *l = lv_label_create(b);
-    lv_obj_set_style_text_font(l, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_font(l, (NT > 9) ? &fd_font_noto_14 : &fd_font_noto_18, 0);
     lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_TEXT), 0);
     lv_label_set_text(l, t);
     return l;
@@ -263,7 +265,6 @@ static void poll_load(void)
 }
 
 /* ---------- PLAY ---------- */
-#define NT (s_loc ? s_vn : s_ex.n)
 static const char *tok_at(int i) { return s_loc ? s_vt[i] : s_ex.tok[i]; }
 
 static int ccpy(char *d, size_t cap, const char *s, size_t n)
@@ -420,6 +421,12 @@ static void show_play(void)
     lv_obj_set_clickable(s_ans, true);
     lv_obj_add_event_cb(s_ans, undo_cb, LV_EVENT_CLICKED, NULL);   /* cham cau = xoa the cuoi */
     lv_obj_t *pool = row(s_body, true);
+    if (NT > 9) {
+        lv_obj_set_style_pad_column(s_ans, 4, 0);
+        lv_obj_set_style_pad_row(s_ans, 4, 0);
+        lv_obj_set_style_pad_column(pool, 4, 0);
+        lv_obj_set_style_pad_row(pool, 4, 0);
+    }
     for (int i = 0; i < NT; i++) {
         lv_obj_t *b = lv_button_create(pool);
         tile_box(b, false);

@@ -183,6 +183,7 @@ en:
   HEAR_PROMPT: 'Type the first letter of each word'
   HEAR_HINT: 'Hint'
   HEAR_SKIP: 'Skip'
+  HEAR_MEANING: 'Meaning'
   STUDY_NEEDS_WIFI: 'Quiz needs Wi-Fi to download questions.'
   SYNC: Sync
   SYNC_PENDING_N: '%d waiting to sync'
