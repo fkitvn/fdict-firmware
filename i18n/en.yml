@@ -264,7 +264,7 @@ en:
   SYNC_AUTO_HINT: 'Syncs automatically when Wi-Fi is on'
   STATS_NEED_WIFI: 'Wi-Fi is needed to view statistics'
   STATS_LOADING: 'Loading statistics…'
-  STATS_VOCAB: 'Vocabulary'
+  STATS_VOCAB: 'Words'
   STATS_SEN_SECTION: 'Sentences'
   STATS_WORDS: 'Total words'
   STATS_MASTERED: 'Mastered'
@@ -279,14 +279,19 @@ en:
   STATS_MOD_FMT: '%d sess, %d/%d correct'
   STATS_MOD_HINT_FMT: ', %d hinted'
   SPELLING: Spelling
-  SPELL_BUILD_EN: Build EN
-  SPELL_BUILD_VI: Build VI
+  SPELL_BUILD_EN: 'Vietnamese - English'
+  SPELL_BUILD_VI: 'English - Vietnamese'
   SPELL_DIR_MIX: Mixed
+  SPELL_NO_FIT: No words are 2 to 20 characters long
   SPELL_PROMPT_EN: Spell the English word
   SPELL_PROMPT_VI: Spell the Vietnamese meaning
   STATS_DAYS_FMT: '%d days'
   STATS_SCAN_USES: 'AI scan uses'
   STATS_SCAN_WORDS: 'Words saved from scan'
+  STATS_ACTIVITY: 'Last 7 days'
+  STATS_ACCURACY: 'Accuracy'
+  STATS_SESSIONS: 'Sessions'
+  STATS_DOW: 'Su,Mo,Tu,We,Th,Fr,Sa'
   PHONE_QR_HINT: Scan with your phone to study vocabulary
   DECK: Deck
   DECK_CONFIG: Deck settings

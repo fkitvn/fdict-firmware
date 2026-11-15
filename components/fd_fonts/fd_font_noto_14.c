@@ -4616,7 +4616,7 @@ lv_font_t fd_font_noto_14 = {
 #endif
     .dsc = &font_dsc,          /*The custom font data. Will be accessed by `get_glyph_bitmap/dsc` */
 #if LV_VERSION_CHECK(8, 2, 0) || LVGL_VERSION_MAJOR >= 9
-    .fallback = NULL,
+    .fallback = &lv_font_montserrat_14,   /* LV_SYMBOL_* (Noto khong co); font mac dinh LV_FONT_DEFAULT */
 #endif
     .user_data = NULL,
 };

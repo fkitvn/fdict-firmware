@@ -1072,6 +1072,22 @@ static void do_stats(char *rx)
                 s_stats.mod[i].hinted = jint(mo, "hinted");
                 s_stats.mod[i].sessions = jint(mo, "sessions");
             }
+            memset(s_stats.day, 0, sizeof(s_stats.day));
+            const cJSON *days = cJSON_GetObjectItemCaseSensitive(r, "days");
+            if (cJSON_IsArray(days)) {
+                int n = cJSON_GetArraySize(days);
+                int start = n > FD_STATS_DAYS ? n - FD_STATS_DAYS : 0;
+                int out_i = FD_STATS_DAYS - (n - start);
+                if (out_i < 0) out_i = 0;
+                for (int i = start; i < n && out_i < FD_STATS_DAYS; i++, out_i++) {
+                    const cJSON *d = cJSON_GetArrayItem(days, i);
+                    const char *date = js(d, "date");
+                    if (date && date[0]) strlcpy(s_stats.day[out_i].date, date, sizeof(s_stats.day[out_i].date));
+                    s_stats.day[out_i].answers = jint(d, "answers");
+                    s_stats.day[out_i].correct = jint(d, "correct");
+                    s_stats.day[out_i].hinted = jint(d, "hinted");
+                }
+            }
             unlock();
         }
         cJSON_Delete(r);

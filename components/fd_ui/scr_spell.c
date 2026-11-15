@@ -2,7 +2,7 @@
  * Moi the la 1 ky tu (UTF-8, chu tieng Viet co dau la 1 ky tu). Khoang trang giua cac tu khong thanh the,
  * vung tra loi tu chen khoang cach. Cham the de chon lan luot, cham vung tra loi de xoa ky tu cuoi.
  * Chon du the thi cham ngay. Chi tinh lan ghep dau (dung hoac sai), giong Sap xep cau va Dien tu.
- * Chieu: Ghep Anh (hien nghia tieng Viet), Ghep Viet (hien tu tieng Anh), Tron (xen ke tung the).
+ * Chieu: Viet - Anh (hien nghia tieng Viet, ghep tieng Anh), Anh - Viet (hien tu tieng Anh, ghep tieng Viet), Tron (xen ke tung the).
  * Ket qua: fd_sync_event("spell") luu events.log, dong bo cung cac module khac. Hoc offline tu kho dong bo. */
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +18,7 @@
 #define C_OK  0x16A34A
 #define C_BAD 0xDC2626
 #define SP_CNT_KEY "spl_cnt"   /* NVS fd: so the/phien 10|20|0=Vo tan */
-#define SP_DIR_KEY "spl_dir"   /* NVS fd: 0 Ghep Anh, 1 Ghep Viet, 2 Tron */
+#define SP_DIR_KEY "spl_dir"   /* NVS fd: 0 Viet-Anh, 1 Anh-Viet, 2 Tron */
 #define SP_REP_KEY "spl_rep"   /* NVS fd: doc tu tieng Anh sau moi the 0 Tat / 1 Bat */
 #define SP_TOK FD_SPELL_TOK
 #define SP_CH  8               /* 1 ky tu UTF-8 + dau ket hop */
@@ -220,19 +220,19 @@ static void show_setup(void)
     static const char *const RP[] = {"OFF", "ON"};
     int nsel = s_cnt == 0 ? 2 : (s_cnt == 20 ? 1 : 0);
     ui_setup_opt_row(sc, _("QUESTIONS"), CNT, 3, nsel, opt_cb, OPT_CNT, 0);
-    ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 3, s_dir, opt_cb, OPT_DIR, 0);
+    ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 3, s_dir, opt_cb, OPT_DIR, UI_OPT_WRAP);
     ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_reps, opt_cb, OPT_REP, UI_OPT_WIDE);
     ui_setup_start(s_body, begin_cb);
 }
 
-static void show_msg(void)
+static void show_msg(const char *msg, const char *hint)
 {
     s_view = V_MSG;
     body_reset();
     lv_obj_t *c = content();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    label(c, _("NO_OFFLINE_DATA_YET"), &fd_font_noto_18, FD_COLOR_TEXT);
-    label(c, _("SYNC_AUTO_HINT"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    label(c, msg, &fd_font_noto_18, FD_COLOR_TEXT);
+    if (hint) label(c, hint, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_t *r = row(s_body, false);
     button(r, _("BACK"), retry_cb);
 }
@@ -241,9 +241,12 @@ static void start(void)
 {
     if (fd_sync_pick_count(0) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
     if (!s_words) s_words = ps_alloc(SP_MAX * sizeof(fd_spell_word_t));
-    if (!s_words) { show_msg(); return; }
+    if (!s_words) { show_msg(_("MEMORY_ERROR"), NULL); return; }
+    /* Chua co du lieu offline (chua dong bo / kho < 4 tu): bao nhu cac module khac, khong phai SPELL_NO_FIT. */
+    if (!fd_sync_ready()) { show_msg(_("NO_OFFLINE_DATA_YET"), _("SYNC_AUTO_HINT")); return; }
     int cap = s_cnt == 0 ? SP_MAX : s_cnt;
     int got = fd_sync_build_spell(s_words, SP_MAX);
+    if (got <= 0) { show_msg(_("NO_OFFLINE_DATA_YET"), _("SYNC_AUTO_HINT")); return; }
     /* Chi giu tu ghep duoc it nhat mot chieu */
     int n = 0;
     for (int i = 0; i < got && n < cap; i++) {
@@ -252,7 +255,7 @@ static void start(void)
         n++;
     }
     s_n = n;
-    if (s_n <= 0) { show_msg(); return; }
+    if (s_n <= 0) { show_msg(_("SPELL_NO_FIT"), NULL); return; }   /* co tu nhung khong tu nao dai 2..20 ky tu */
     s_pos = s_correct = 0;
     fd_sync_session_begin("spell");
     show_play();
@@ -446,6 +449,7 @@ static void dlg_btn(lv_obj_t *r, const char *t, bool primary)
     lv_obj_set_style_shadow_width(b, 0, 0);
     lv_obj_set_style_bg_color(b, lv_color_hex(primary ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
     lv_obj_t *l = lv_label_create(b);
+    lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
     lv_obj_set_style_text_color(l, lv_color_hex(FD_COLOR_ON_PRIMARY), 0);
     lv_obj_set_width(l, lv_pct(100));
     lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
@@ -457,22 +461,8 @@ static void dlg_btn(lv_obj_t *r, const char *t, bool primary)
 
 static void dlg_open(void)
 {
-    s_dlg = lv_obj_create(lv_layer_top());
-    lv_obj_remove_style_all(s_dlg);
-    lv_obj_set_size(s_dlg, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(s_dlg, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(s_dlg, LV_OPA_40, 0);
-    lv_obj_set_clickable(s_dlg, true);
-    lv_obj_t *box = lv_obj_create(s_dlg);
-    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
-    lv_obj_center(box);
-    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
-    lv_obj_set_style_border_width(box, 0, 0);
-    lv_obj_set_style_radius(box, 14, 0);
-    lv_obj_set_style_pad_all(box, 12, 0);
-    lv_obj_set_style_pad_row(box, 6, 0);
-    lv_obj_set_scrollable(box, false);
-    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    s_dlg = ui_dialog_open();
+    lv_obj_t *box = ui_dialog_box(s_dlg);
     label(box, _("QUIT_THIS_QUIZ"), &fd_font_noto_18, FD_COLOR_TEXT);
     lv_obj_t *r = row(box, false);
     lv_obj_set_style_pad_column(r, 10, 0);

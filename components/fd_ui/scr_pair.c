@@ -245,24 +245,8 @@ static void unpair_cb(lv_event_t *e)
 {
     (void)e;
     if (s_dlg) return;
-    s_dlg = lv_obj_create(lv_layer_top());   /* nen mo phu toan man, chan cham xuong duoi */
-    lv_obj_remove_style_all(s_dlg);
-    lv_obj_set_size(s_dlg, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(s_dlg, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(s_dlg, LV_OPA_40, 0);
-    lv_obj_set_clickable(s_dlg, true);
-    lv_obj_t *box = lv_obj_create(s_dlg);
-    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
-    lv_obj_center(box);
-    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
-    lv_obj_set_style_border_width(box, 0, 0);
-    lv_obj_set_style_radius(box, 14, 0);
-    lv_obj_set_style_pad_all(box, 14, 0);
-    lv_obj_set_style_pad_row(box, 8, 0);
-    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
-    lv_obj_set_style_text_color(box, lv_color_hex(0x111827), 0);
-    lv_obj_set_scrollable(box, false);
-    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    s_dlg = ui_dialog_open();
+    lv_obj_t *box = ui_dialog_box(s_dlg);
     lv_obj_set_flex_align(box, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *t = lv_label_create(box);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);

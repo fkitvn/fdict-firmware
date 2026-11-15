@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Ten firmware = app version (esp_app_desc.version, char[32]): "FDict One - x.y.z" (dinh dang duy nhat).
 # Build ID = 10 ky tu hex dau (chu thuong) cua SHA256 file ELF (vd 3fa9c01b7e).
-set(PROJECT_VER "FDict One - 4.5.3")
+set(PROJECT_VER "FDict One - 4.5.4")
 # Hau to theo nhanh git (tu dong, KHONG sua tay): nhanh dung "dev" -> "FDict One - x.y.z-dev";
 # moi nhanh/trang thai khac (prod, detached HEAD, CI tren prod, khong co git) -> giu nguyen.
 # Nhanh: git rev-parse --abbrev-ref HEAD; neu detached ("HEAD") / loi -> env GITHUB_REF_NAME, roi CI_COMMIT_BRANCH.
@@ -68,6 +68,9 @@ file(CONFIGURE OUTPUT "${FD_FW_NAME_H}"
      CONTENT "#pragma once\n#define FD_FW_NAME \"@PROJECT_VER@\"\n#define FD_FW_SEMVER \"@FD_FW_SEMVER@\"\n" @ONLY)
 # SHELL: giu "-include <file>" thanh mot cap (CMake khong khu trung lap tach roi)
 idf_build_set_property(COMPILE_OPTIONS "SHELL:-include ${FD_FW_NAME_H}" APPEND)
+# Font chu mac dinh = Noto 14 (co dau Viet). Phai -include truoc lv_conf de thang Montserrat.
+idf_build_set_property(COMPILE_OPTIONS "SHELL:-include ${CMAKE_CURRENT_LIST_DIR}/components/fd_fonts/include/fd_lv_font_default.h" APPEND)
+idf_build_set_property(INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/components/fd_fonts/include" APPEND)
 
 project(fdict-firmware)
 

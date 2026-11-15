@@ -506,3 +506,86 @@ void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *))
     lv_obj_center(v);
     lv_obj_add_event_cb(b, deck_open_cb, LV_EVENT_CLICKED, NULL);
 }
+
+lv_obj_t *ui_label_create(lv_obj_t *parent, const char *txt, const lv_font_t *font, uint32_t color)
+{
+    lv_obj_t *l = lv_label_create(parent);
+    lv_obj_set_style_text_font(l, font ? font : &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(l, lv_color_hex(color), 0);
+    if (txt) lv_label_set_text(l, txt);
+    return l;
+}
+
+lv_obj_t *ui_dialog_open(void)
+{
+    lv_obj_t *ov = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(ov);
+    lv_obj_set_size(ov, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_color(ov, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(ov, LV_OPA_40, 0);
+    lv_obj_set_style_text_font(ov, &fd_font_noto_14, 0);
+    lv_obj_set_clickable(ov, true);
+    lv_obj_t *box = lv_obj_create(ov);
+    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
+    lv_obj_center(box);
+    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
+    lv_obj_set_style_border_width(box, 0, 0);
+    lv_obj_set_style_radius(box, 14, 0);
+    lv_obj_set_style_pad_all(box, 12, 0);
+    lv_obj_set_style_pad_row(box, 6, 0);
+    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(box, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_scrollable(box, false);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    return ov;
+}
+
+lv_obj_t *ui_dialog_box(lv_obj_t *overlay)
+{
+    return overlay ? lv_obj_get_child(overlay, 0) : NULL;
+}
+
+lv_obj_t *ui_dialog_title(lv_obj_t *box, const char *txt)
+{
+    lv_obj_t *t = ui_label_create(box, txt, &fd_font_noto_18, FD_COLOR_TEXT);
+    lv_obj_set_width(t, lv_pct(100));
+    lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
+    return t;
+}
+
+lv_obj_t *ui_dialog_btns(lv_obj_t *box)
+{
+    lv_obj_t *r = lv_obj_create(box);
+    lv_obj_remove_style_all(r);
+    lv_obj_set_size(r, lv_pct(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(r, 10, 0);
+    lv_obj_set_style_pad_top(r, 4, 0);
+    lv_obj_set_scrollable(r, false);
+    return r;
+}
+
+lv_obj_t *ui_dialog_btn(lv_obj_t *row, const char *txt, bool primary, lv_event_cb_t cb, void *user_data)
+{
+    lv_obj_t *b = lv_button_create(row);
+    lv_obj_set_height(b, 40);
+    lv_obj_set_flex_grow(b, 1);
+    lv_obj_set_style_radius(b, 10, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_bg_color(b, lv_color_hex(primary ? FD_COLOR_PRIMARY : FD_COLOR_BORDER), 0);
+    lv_obj_t *l = ui_label_create(b, txt, &fd_font_noto_14, FD_COLOR_ON_PRIMARY);
+    lv_obj_set_width(l, lv_pct(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_center(l);
+    if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, user_data);
+    return b;
+}
+
+void ui_dialog_close(lv_obj_t **overlay)
+{
+    if (!overlay || !*overlay) return;
+    lv_obj_delete(*overlay);
+    *overlay = NULL;
+}
+

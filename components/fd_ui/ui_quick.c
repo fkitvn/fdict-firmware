@@ -318,24 +318,8 @@ static void sleep_cb(lv_event_t *e)
     (void)e;
     ui_quick_close(false);
     if (s_pdlg) return;
-    s_pdlg = lv_obj_create(lv_layer_top());   /* cung kieu hop thoai devmode */
-    lv_obj_remove_style_all(s_pdlg);
-    lv_obj_set_size(s_pdlg, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(s_pdlg, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(s_pdlg, LV_OPA_40, 0);
-    lv_obj_set_clickable(s_pdlg, true);
-    lv_obj_t *box = lv_obj_create(s_pdlg);
-    lv_obj_set_size(box, lv_pct(88), LV_SIZE_CONTENT);
-    lv_obj_center(box);
-    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
-    lv_obj_set_style_border_width(box, 0, 0);
-    lv_obj_set_style_radius(box, 14, 0);
-    lv_obj_set_style_pad_all(box, 12, 0);
-    lv_obj_set_style_pad_row(box, 6, 0);
-    lv_obj_set_style_text_font(box, &fd_font_noto_14, 0);
-    lv_obj_set_style_text_color(box, lv_color_hex(FD_COLOR_TEXT), 0);
-    lv_obj_set_scrollable(box, false);
-    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    s_pdlg = ui_dialog_open();
+    lv_obj_t *box = ui_dialog_box(s_pdlg);
     lv_obj_t *t = lv_label_create(box);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);   /* ngang: chu khong tran khung */
