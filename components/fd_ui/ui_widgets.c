@@ -516,6 +516,25 @@ lv_obj_t *ui_label_create(lv_obj_t *parent, const char *txt, const lv_font_t *fo
     return l;
 }
 
+void ui_result_score(lv_obj_t *parent, int correct, int total, uint32_t color)
+{
+    char num[24], cap[64];
+    snprintf(num, sizeof(num), "%d/%d", correct, total);
+    snprintf(cap, sizeof(cap), _("SEN_RESULT"), correct, total);
+    lv_obj_t *n = lv_label_create(parent);
+    lv_obj_set_style_text_font(n, &fd_font_mont_32, 0);
+    lv_obj_set_style_text_color(n, lv_color_hex(color), 0);
+    lv_obj_set_style_text_align(n, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(n, num);
+    lv_obj_t *c = lv_label_create(parent);
+    lv_obj_set_style_text_font(c, &fd_font_noto_18, 0);
+    lv_obj_set_style_text_color(c, lv_color_hex(color), 0);
+    lv_obj_set_style_text_align(c, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(c, lv_pct(100));
+    lv_label_set_long_mode(c, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(c, cap);
+}
+
 lv_obj_t *ui_dialog_open(void)
 {
     lv_obj_t *ov = lv_obj_create(lv_layer_top());

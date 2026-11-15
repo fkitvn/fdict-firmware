@@ -22,7 +22,7 @@ typedef struct {
 } ui_screen_t;
 
 extern const ui_screen_t g_scr_home, g_scr_settings, g_scr_wifi,
-    g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_flashcard, g_scr_practice, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
+    g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_deepsleep, g_scr_flashcard, g_scr_practice, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
     g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty, g_scr_phone_qr, g_scr_deck, g_scr_listen, g_scr_spell;
 
 /* Ma thiet bi: MAC eFuse 12 hex (same stable ID used in pairing QR). */
@@ -80,6 +80,9 @@ bool ui_quick_hit(const lv_point_t *p);
 /* Thoi gian cho man hinh (giay, 0 = khong tat), NVS fd/scr_to */
 int ui_sleep_get_timeout(void);
 void ui_sleep_set_timeout(int sec);
+/* Ngu sau sau khi tat man (giay: 120/180/300/600, mac dinh 300), NVS fd/deep_to */
+int ui_sleep_get_deep_timeout(void);
+void ui_sleep_set_deep_timeout(int sec);
 /* "HH:MM" theo gio dia phuong, "--:--" neu chua dong bo SNTP */
 void ui_fmt_clock(char *out, size_t len, bool seconds);
 /* Mau icon WiFi theo trang thai (xanh = da ket noi, vang = dang ket noi, xam = chua) */
@@ -119,6 +122,8 @@ lv_obj_t *ui_gate_btn(lv_obj_t *p, const char *t, bool primary, lv_event_cb_t cb
 
 /* Nhan luon gan font Noto (font NULL = fd_font_noto_14). Dung khi tao chu tren overlay hoac sau remove_style_all. */
 lv_obj_t *ui_label_create(lv_obj_t *parent, const char *txt, const lv_font_t *font, uint32_t color);
+/* Man ket qua: so to mont_32 ("%d/%d") + chu SEN_RESULT bang Noto 18. */
+void ui_result_score(lv_obj_t *parent, int correct, int total, uint32_t color);
 /* Hop thoai xac nhan tren lv_layer_top: nen mo + hop trang, font Noto. Tra ve overlay; hop la con dau tien. */
 lv_obj_t *ui_dialog_open(void);
 lv_obj_t *ui_dialog_box(lv_obj_t *overlay);

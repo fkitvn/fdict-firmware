@@ -19,6 +19,7 @@ static lv_obj_t *s_rot_sub;
 static lv_obj_t *s_bri_sub;
 static lv_obj_t *s_vol_sub;
 static lv_obj_t *s_to_sub;
+static lv_obj_t *s_deep_sub;
 static lv_obj_t *s_pin_sub;
 static lv_obj_t *s_dev_sub;   /* 2.2.2: Che do nha phat trien -> man rieng */
 static lv_obj_t *s_lang_sub;   /* 1.3.0: Ngon ngu / Language */
@@ -306,6 +307,7 @@ static void refresh(void)
     if (to == 0) lv_label_set_text(s_to_sub, _("NEVER"));
     else if (to % 60 == 0) lv_label_set_text_fmt(s_to_sub, _("N_MIN"), to / 60);
     else lv_label_set_text_fmt(s_to_sub, _("N_SEC"), to);
+    lv_label_set_text_fmt(s_deep_sub, _("N_MIN"), ui_sleep_get_deep_timeout() / 60);
     lv_label_set_text(s_pin_sub, fd_pin_is_set() ? _("SET") : _("NOT_SET"));
     lv_label_set_text(s_lang_sub, fd_i18n_lang_name(fd_i18n_get_lang()));
     lv_label_set_text(s_dev_sub, fd_ui_devmode_get() ? _("ON") : _("OFF"));
@@ -327,6 +329,7 @@ static void build(lv_obj_t *scr)
     item(body, LV_SYMBOL_EYE_OPEN, _("SCREEN_BRIGHTNESS"), go_cb, (void *)(intptr_t)FD_SCR_BRIGHTNESS, &s_bri_sub);
     item(body, LV_SYMBOL_VOLUME_MAX, _("VOLUME"), go_cb, (void *)(intptr_t)FD_SCR_VOLUME, &s_vol_sub);
     item(body, LV_SYMBOL_POWER, _("SCREEN_TIMEOUT"), go_cb, (void *)(intptr_t)FD_SCR_TIMEOUT, &s_to_sub);
+    item(body, LV_SYMBOL_POWER, _("DEEP_SLEEP_AFTER"), go_cb, (void *)(intptr_t)FD_SCR_DEEP_SLEEP, &s_deep_sub);
     item(body, LV_SYMBOL_REFRESH, _("SCREEN_ROTATION"), go_cb, (void *)(intptr_t)FD_SCR_ROTATION, &s_rot_sub);
     switch_row(body, LV_SYMBOL_IMAGE, _("GRAYSCALE_MODE"), fd_display_get_grayscale(), gray_cb);
     item(body, LV_SYMBOL_EYE_CLOSE, _("PIN_CODE"), go_cb, (void *)(intptr_t)FD_SCR_PIN, &s_pin_sub);
@@ -340,7 +343,7 @@ static void build(lv_obj_t *scr)
 
 static void destroy(void) {
     if (!s_resetting) dlg_dismiss();
-    s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
+    s_wifi_sub = s_rot_sub = s_bri_sub = s_vol_sub = s_to_sub = s_deep_sub = s_pin_sub = s_lang_sub = s_dev_sub = s_pair_card = s_pair_sub = s_pair_ico = s_pair_title = NULL;
 }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
 

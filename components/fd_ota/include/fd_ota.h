@@ -28,6 +28,7 @@ typedef struct {
     char build[20];           /* build_id ban moi */
     uint32_t size;            /* byte */
     bool mandatory;
+    int min_batt;            /* min_battery tu may chu, 0 = khong chan */
     int pct;                  /* 0..100 khi DOWNLOADING */
     char notes[160];          /* notes_vi */
     char err[20];             /* ma ngan: no_wifi, no_time, batt_low, too_large, net, http_NNN, verify_failed,
@@ -89,6 +90,7 @@ bool fd_ota_is_paired(void);
 /* Truoc khi ngu (deep sleep = khoi dong lai -> bootloader coi PENDING_VERIFY la loi): cho tu kiem tra xong
  * (toi da timeout_ms). */
 void fd_ota_selftest_wait(uint32_t timeout_ms);
+bool fd_ota_selftest_pending(void);
 
 /* API chung cho fd_study: POST {base}{path} JSON + Bearer device_token (khong log); 401 -> xoa token, ve Chua ghep.
  * Goi tu task rieng (khong phai LVGL). Tra HTTP status, -1 = loi mang. resp = body (cat theo cap, ket thuc 0). */

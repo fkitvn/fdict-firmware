@@ -66,7 +66,14 @@ if r.returncode:
     print("BUILD_FAIL link:\n" + r.stderr[-3000:])
     sys.exit(2)
 data = os.path.join(repo, "tools/tests/data")
-r = subprocess.run([exe, os.path.join(data, "ipa_samples.txt"), os.path.join(data, "vi_samples.txt")],
+# Gop moi chuoi i18n (vi+en, da the %d) de test host render quet glyph.
+sys.path.insert(0, os.path.join(repo, "tools/tests"))
+from font_util import c_phrases, instantiate  # noqa: E402
+i18n_path = os.path.join(work, "i18n_strings.txt")
+with open(i18n_path, "w", encoding="utf-8", newline="\n") as f:
+    for _lang, _k, raw in c_phrases():
+        f.write(instantiate(raw).replace("\n", " ").replace("\r", " ") + "\n")
+r = subprocess.run([exe, os.path.join(data, "ipa_samples.txt"), os.path.join(data, "vi_samples.txt"), i18n_path],
                    capture_output=True, text=True, timeout=60)
 sys.stdout.write(r.stdout)
 if r.returncode:

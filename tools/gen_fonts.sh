@@ -24,6 +24,25 @@ for SZ in 14 18; do
     -o components/fd_fonts/fd_font_noto_${SZ}.c
 done
 # Tieu de 32 px (ui_screen_title): ASCII day du (tieu de tieng Anh, 1.3.0) + ky tu co dau cua tieu de tieng Viet.
+# --lv-fallback fd_font_noto_18: tieu de moi thieu glyph khong bi o vuong (ve Noto 18).
 npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Regular.ttf -r 0x20-0x7E --symbols "àđặãĐáìĐềữáâạừậắếộ" \
-  --size 32 --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_32_title --no-compress \
+  --size 32 --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_32_title \
+  --lv-fallback fd_font_noto_18 --no-compress \
   -o components/fd_fonts/fd_font_noto_32_title.c
+# Montserrat 24/32: ASCII + do + bullet + LV_SYMBOL_*. Bat buoc --lv-fallback fd_font_noto_18
+# de chu Viet/IPA khong bi o vuong. Khong gan fallback nguoc cho noto_18 (tranh vong lap).
+# Nguon TTF/WOFF nam trong managed_components (sau idf.py build mot lan).
+MONT_TTF="managed_components/lvgl__lvgl/scripts/generators/built_in_font/Montserrat-Medium.ttf"
+FA_WOFF="managed_components/lvgl__lvgl/scripts/generators/built_in_font/FontAwesome5-Solid+Brands+Regular.woff"
+FA_RANGES="61451,61452,61453,61457,61459,61461,61473,61478,61479,61480,61502,61523,61524,61543,61544,61550,61552,61553,61556,61559,61560,61724,61931,62189,62212,62810,63650"
+if [[ -f "$MONT_TTF" && -f "$FA_WOFF" ]]; then
+  for SZ in 24 32; do
+    npx -y lv_font_conv@1.5.3 --no-prefilter --bpp 4 --size $SZ \
+      --font "$MONT_TTF" -r 0x20-0x7E,0xB0,0x2022 --font "$FA_WOFF" -r "$FA_RANGES" \
+      --format lvgl --lv-include lvgl.h --lv-font-name fd_font_mont_${SZ} \
+      --lv-fallback fd_font_noto_18 --force-fast-kern-format \
+      -o components/fd_fonts/fd_font_mont_${SZ}.c
+  done
+else
+  echo "bo qua mont 24/32: thieu $MONT_TTF hoac $FA_WOFF (chay idf.py build truoc)" >&2
+fi

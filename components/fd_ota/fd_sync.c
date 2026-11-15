@@ -61,6 +61,8 @@ typedef struct {
 static SemaphoreHandle_t s_mx;    /* kho (s_w, file store.tsv) + s_st */
 static SemaphoreHandle_t s_evmx;  /* events.log */
 static QueueHandle_t s_q;
+static int64_t s_next;
+static bool s_periodic_paused;
 static word_t *s_w;               /* FD_SYNC_MAX_WORDS, PSRAM */
 static int s_nw;
 typedef struct {
@@ -1104,7 +1106,7 @@ static void task(void *arg)
     (void)arg;
     char *rx = ps_alloc(RX_CAP);
     bool was_on = false;
-    int64_t next = 0, back = BACK_MIN_US;
+    int64_t back = BACK_MIN_US;
     for (;;) {
         int c = 0;
         bool got = xQueueReceive(s_q, &c, pdMS_TO_TICKS(2000)) == pdTRUE;
@@ -1118,7 +1120,7 @@ static void task(void *arg)
         }
         bool on = fd_net_is_connected() && fd_ota_is_paired();
         int64_t now = esp_timer_get_time();
-        if (on && !was_on) next = 0;   /* vua co mang: dong bo ngay */
+        if (on && !was_on) s_next = 0;   /* vua co mang: dong bo ngay */
         was_on = on;
         if (got && c == CMD_STATS) { do_stats(rx); continue; }
         if (got && c == CMD_FORCE) {
@@ -1126,13 +1128,13 @@ static void task(void *arg)
             bool ok = do_sync(rx, true);
             lock(); s_st.manual = false; s_st.force_ok = ok; s_st.force_done++; unlock();
             back = BACK_MIN_US;
-            next = esp_timer_get_time() + (ok ? CHECK_US : back);
+            s_next = esp_timer_get_time() + (ok ? CHECK_US : back);
             continue;
         }
         if (!on) continue;
         if (got && c == CMD_CHECK) {   /* 4.5.4: thoat Tu dien sau khi luu tu: hoi rev, doi thi keo kho */
             bool ok = do_sync(rx, false);
-            if (ok) { back = BACK_MIN_US; next = esp_timer_get_time() + CHECK_US; }
+            if (ok) { back = BACK_MIN_US; s_next = esp_timer_get_time() + CHECK_US; }
             continue;
         }
         lock(); int pend = s_st.pending; unlock();
@@ -1143,11 +1145,11 @@ static void task(void *arg)
             set_err(e);
             continue;
         }
-        if (now >= next) {
+        if (!s_periodic_paused && now >= s_next) {
             bool ok = do_sync(rx, false);
             now = esp_timer_get_time();
-            if (ok) { back = BACK_MIN_US; next = now + CHECK_US; }
-            else { next = now + back; back = back * 2 > BACK_MAX_US ? BACK_MAX_US : back * 2; }
+            if (ok) { back = BACK_MIN_US; s_next = now + CHECK_US; }
+            else { s_next = now + back; back = back * 2 > BACK_MAX_US ? BACK_MAX_US : back * 2; }
         }
     }
 }
@@ -1193,6 +1195,21 @@ static void send_cmd(int c)
 void fd_sync_kick(void) { send_cmd(CMD_PUSH); }
 void fd_sync_force(void) { send_cmd(CMD_FORCE); }
 void fd_sync_check(void) { send_cmd(CMD_CHECK); }
+
+void fd_sync_pause_periodic(bool pause)
+{
+    bool kick = false;
+    if (!s_mx) {
+        s_periodic_paused = pause;
+        return;
+    }
+    lock();
+    bool was = s_periodic_paused;
+    s_periodic_paused = pause;
+    if (!pause && was && esp_timer_get_time() >= s_next) kick = true;
+    unlock();
+    if (kick) send_cmd(CMD_CHECK);
+}
 
 void fd_sync_stats_fetch(void)
 {
@@ -1453,7 +1470,7 @@ int fd_sync_build_sentences(fd_sen_ex_t *out, char (*wid)[FD_SYNC_WID_LEN], int 
         if (L && line[L - 1] == '\n') line[--L] = 0;
         char *fl[32];
         int n = split_tabs(line, fl, 32);
-        const char *sen[9], *svi[9];
+        const char *sen[9], *svi[9];     /* so cau moi tu (toi da 9), khong phai so token */
         int k = line_sents(fl, n, sen, svi, 9);
         bool used = false;
         for (int j = 0; j < k; j++) {
@@ -1678,7 +1695,7 @@ fd_study_err_t fd_sync_build_cloze_quiz(fd_study_session_t *s, int n)
         if (L && line[L - 1] == '\n') line[--L] = 0;
         char *fl[32];
         int nf = split_tabs(line, fl, 32);
-        const char *sens[9], *svi[9];
+        const char *sens[9], *svi[9];    /* so cau moi tu (toi da 9), khong phai so token */
         int k = line_sents(fl, nf, sens, svi, 9);
         bool used = false;
         for (int j = 0; j < k; j++) {

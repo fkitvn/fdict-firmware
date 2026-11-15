@@ -97,7 +97,7 @@ en:
   OTA_CONNECTING: Connecting...
   OTA_DOWNLOADING: Downloading %d%%
   OTA_ERR_BAD_IMAGE: invalid image
-  OTA_ERR_BATT_LOW: low battery
+  OTA_ERR_BATT_LOW: 'Cannot update when battery is below %d%%'
   OTA_ERR_HTTP: server (%s)
   OTA_ERR_NET: network
   OTA_ERR_NO_TIME: clock not synced
@@ -163,6 +163,8 @@ en:
   SCREEN_BRIGHTNESS: Screen brightness
   SCREEN_ROTATION: Screen rotation
   SCREEN_TIMEOUT: Screen timeout
+  DEEP_SLEEP_AFTER: Deep sleep after
+  DEEP_SLEEP_HINT: After the screen turns off, the device enters deep sleep.
   SECURED: Secured
   SERVER: Server
   SERVER_ERROR_CODE: Server error (%d)
@@ -181,6 +183,7 @@ en:
   HEAR_PROMPT: 'Type the first letter of each word'
   HEAR_HINT: 'Hint'
   HEAR_SKIP: 'Skip'
+  HEAR_MEANING: 'Meaning'
   STUDY_NEEDS_WIFI: 'Quiz needs Wi-Fi to download questions.'
   SYNC: Sync
   SYNC_PENDING_N: '%d waiting to sync'

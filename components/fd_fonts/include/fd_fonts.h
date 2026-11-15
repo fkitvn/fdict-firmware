@@ -4,7 +4,9 @@
  * Gom: ASCII, Latin-1, chu Viet day du (U+1EA0-1EF9, Ă Đ Ĩ Ũ Ơ Ư), dau nhay/gach va phien am IPA day du:
  * IPA Extensions, Spacing Modifier, Combining (t͡ʃ n̩), Phonetic Ext (ᵻ), β. Mau that: tools/tests/data/ipa_samples.txt.
  * Khong co LV_SYMBOL_* trong Noto. fd_font_noto_14 la font mac dinh (LV_FONT_DEFAULT),
- * .fallback = lv_font_montserrat_14 cho icon. Van co the gan Montserrat truc tiep.
+ * .fallback = lv_font_montserrat_14 cho icon.
+ * fd_font_mont_24/32 (ASCII + icon) PHAI giu .fallback = fd_font_noto_18; fd_font_noto_32_title cung vay.
+ * Khong ve chu da dich bang Montserrat khi chua co fallback. Khong gan noto_18.fallback ve mont (vong lap).
  */
 #include "lvgl.h"
 

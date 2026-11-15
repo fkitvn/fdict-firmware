@@ -5,11 +5,18 @@
  * - Nut toan cuc: giu B1 = quay lai man cha. Xoay: Cai dat > Huong xoay man hinh.
  */
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "sdkconfig.h"
 #include "fd_audio.h"
 void ui_ota_init(void);   /* ui_ota.c */
+#include "fd_dictnet.h"
 #include "fd_display.h"
 #include "fd_fonts.h"
 #include "fd_ota.h"
+#include "fd_pin.h"
+#include "fd_sync.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs.h"
 #include "ui_priv.h"
 #include "board_pins.h"
@@ -26,6 +33,7 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_BRIGHTNESS] = &g_scr_brightness,
     [FD_SCR_VOLUME] = &g_scr_volume,
     [FD_SCR_TIMEOUT] = &g_scr_timeout,
+    [FD_SCR_DEEP_SLEEP] = &g_scr_deepsleep,
     [FD_SCR_FLASHCARD] = &g_scr_flashcard,
     [FD_SCR_PRACTICE] = &g_scr_practice,
     [FD_SCR_SYNC] = &g_scr_sync,
@@ -171,7 +179,12 @@ const ui_screen_t *ui_nav_current(void)
  * Khong hoat dong (cham: lv_display_get_inactive_time; nut: trigger_activity) >= timeout -> tat den nen.
  * Cham/nut bat ky -> bat lai, va lan cham/bam danh thuc do bi nuot (khong kich hoat UI). */
 #define SCR_TO_DEFAULT 30
+#define DEEP_TO_DEFAULT 300
 static int s_scr_to = SCR_TO_DEFAULT;
+static int s_deep_to = DEEP_TO_DEFAULT;
+static int64_t s_scr_off_us;           /* moc tat den nen; 0 = man dang bat */
+static TaskHandle_t s_deep_task;
+static volatile bool s_deep_abort;
 static bool s_swallow;                 /* dang nuot lan cham danh thuc cho toi khi nha tay */
 static lv_indev_read_cb_t s_touch_read;
 static bool s_tp_was_pressed;          /* trang thai cham lan doc truoc (phat hien luc nha tay) */
@@ -191,15 +204,105 @@ void ui_sleep_set_timeout(int sec)
     ESP_LOGI(TAG, "screen: timeout %d s", s_scr_to);
 }
 
+static bool deep_to_ok(int sec)
+{
+    return sec == 120 || sec == 180 || sec == 300 || sec == 600;
+}
+
+int ui_sleep_get_deep_timeout(void) { return s_deep_to; }
+
+void ui_sleep_set_deep_timeout(int sec)
+{
+    s_deep_to = deep_to_ok(sec) ? sec : DEEP_TO_DEFAULT;
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) == ESP_OK) {
+        nvs_set_u16(h, "deep_to", (uint16_t)s_deep_to);
+        nvs_commit(h);
+        nvs_close(h);
+    }
+    ESP_LOGI(TAG, "deep sleep: after %d s", s_deep_to);
+}
+
 static void sleep_load(void)
 {
     nvs_handle_t h;
-    uint16_t v = SCR_TO_DEFAULT;
+    uint16_t scr = SCR_TO_DEFAULT, deep = DEEP_TO_DEFAULT;
     if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) {
-        nvs_get_u16(h, "scr_to", &v);
+        nvs_get_u16(h, "scr_to", &scr);
+        if (nvs_get_u16(h, "deep_to", &deep) != ESP_OK || !deep_to_ok((int)deep)) deep = DEEP_TO_DEFAULT;
         nvs_close(h);
     }
-    s_scr_to = v;
+    s_scr_to = scr;
+    s_deep_to = deep;
+}
+
+static void set_idle_refresh(bool idle)
+{
+    lv_display_t *d = fd_display_get();
+    lv_timer_t *t = d ? lv_display_get_refr_timer(d) : NULL;
+    if (t) lv_timer_set_period(t, idle ? 200 : CONFIG_LV_DEF_REFR_PERIOD);
+}
+
+static bool auto_deep_blocked(void)
+{
+    if (fd_audio_is_playing() || fd_ota_selftest_pending()) return true;
+    fd_ota_status_t ota;
+    fd_ota_get_status(&ota);
+    if (ota.state == FD_OTA_ST_DOWNLOADING || ota.state == FD_OTA_ST_REBOOT_PENDING) return true;
+    fd_sync_status_t sync;
+    fd_sync_get(&sync);
+    if (sync.state == FD_SYNC_CHECKING || sync.state == FD_SYNC_PULLING || sync.state == FD_SYNC_PUSHING) return true;
+    fd_dictnet_status_t dict;
+    fd_dictnet_get(&dict);
+    if (dict.state == FD_DICTNET_LOOKUP) return true;
+    if (fd_dictnet_move_state(NULL, 0, NULL, 0) == FD_DICTNET_MOVE_BUSY) return true;
+    return false;
+}
+
+static void auto_deep_task(void *arg)
+{
+    (void)arg;
+    if (s_deep_abort || !fd_display_is_asleep() || auto_deep_blocked()) {
+        s_deep_task = NULL;
+        vTaskDelete(NULL);
+        return;
+    }
+    if (fd_pin_is_set()) fd_pin_req_set(true);
+    if (fd_display_lock(2000)) {
+        if (s_deep_abort || !fd_display_is_asleep() || auto_deep_blocked()) {
+            fd_display_unlock();
+        } else {
+            fd_sleep_enter();   /* khong tro ve */
+            fd_display_unlock();
+        }
+    }
+    s_deep_task = NULL;
+    vTaskDelete(NULL);
+}
+
+static void request_auto_deep_sleep(void)
+{
+    if (s_deep_task || auto_deep_blocked() || !fd_display_is_asleep()) return;
+    s_deep_abort = false;
+    if (xTaskCreate(auto_deep_task, "fd_dsleep", 8192, NULL, 3, &s_deep_task) != pdPASS) {
+        s_deep_task = NULL;
+        ESP_LOGW(TAG, "deep sleep: khong tao duoc task");
+    }
+}
+
+static void on_screen_off(void)
+{
+    if (!s_scr_off_us) s_scr_off_us = esp_timer_get_time();
+    set_idle_refresh(true);
+    fd_sync_pause_periodic(true);
+}
+
+static void on_screen_on(void)
+{
+    s_scr_off_us = 0;
+    s_deep_abort = true;
+    set_idle_refresh(false);
+    fd_sync_pause_periodic(false);
 }
 
 static void screen_wake(void)
@@ -207,6 +310,7 @@ static void screen_wake(void)
     if (!fd_display_is_asleep()) return;
     lv_display_trigger_activity(NULL);
     fd_display_set_sleep(false);   /* khoi phuc do sang da luu / dang dung */
+    on_screen_on();
     /* Khong splash: chi boot / thuc deep sleep (reboot) moi hien logo (ui_splash_show luc init) */
     fd_audio_reset_codec();        /* thuc khong reboot: reset codec+PA (wake) */
     ESP_LOGI(TAG, "screen: on");
@@ -215,7 +319,13 @@ static void screen_wake(void)
 static void sleep_timer_cb(lv_timer_t *t)
 {
     (void)t;
-    if (fd_display_is_asleep() || s_scr_to == 0) return;
+    if (fd_display_is_asleep()) {
+        if (!s_scr_off_us) on_screen_off();
+        int64_t elapsed = esp_timer_get_time() - s_scr_off_us;
+        if (elapsed >= (int64_t)s_deep_to * 1000000LL) request_auto_deep_sleep();
+        return;
+    }
+    if (s_scr_to == 0) return;
     if (fd_audio_is_playing()) {
         lv_display_trigger_activity(NULL);
         return;
@@ -223,6 +333,7 @@ static void sleep_timer_cb(lv_timer_t *t)
     uint32_t idle = lv_display_get_inactive_time(NULL);
     if (idle >= (uint32_t)s_scr_to * 1000u) {
         fd_display_set_sleep(true);
+        on_screen_off();
         ESP_LOGI(TAG, "screen: off (idle %us)", (unsigned)(idle / 1000));
     }
 }

@@ -21,6 +21,7 @@
 #define C_OK  0x16A34A
 #define C_BAD 0xDC2626
 #define CNT_KEY "hear_cnt"
+#define LISTEN_KB_MIN 90   /* 3 hang qwerty nghe (khong space/OK) */
 
 typedef enum { V_SETUP, V_LOAD, V_MSG, V_PLAY, V_RESULT } view_t;
 
@@ -34,6 +35,8 @@ typedef struct {
 
 static view_t s_view;
 static lv_obj_t *s_body, *s_kb, *s_ta, *s_slots, *s_sent, *s_vi, *s_skip, *s_prompt, *s_dlg;
+static lv_obj_t *s_meaning;
+static lv_timer_t *s_meaning_tmr;
 static lv_obj_t *s_box[FD_SEN_TOK], *s_ch[FD_SEN_TOK];
 static hear_t *s_items;
 static int s_n, s_pos, s_correct, s_cnt = 10;
@@ -118,8 +121,68 @@ static lv_obj_t *label(lv_obj_t *p, const char *t, const lv_font_t *f, uint32_t 
     return l;
 }
 
+static void meaning_hide(void)
+{
+    if (s_meaning_tmr) {
+        lv_timer_delete(s_meaning_tmr);
+        s_meaning_tmr = NULL;
+    }
+    if (s_meaning) {
+        lv_obj_delete(s_meaning);
+        s_meaning = NULL;
+    }
+}
+
+static void meaning_tmr_cb(lv_timer_t *tmr)
+{
+    (void)tmr;
+    s_meaning_tmr = NULL;   /* timer 1 lan: LVGL tu xoa */
+    if (s_meaning) {
+        lv_obj_delete(s_meaning);
+        s_meaning = NULL;
+    }
+}
+
+static void meaning_show(const char *txt)
+{
+    meaning_hide();
+    if (!txt || !txt[0]) return;
+    lv_obj_t *top = lv_layer_top();
+    if (!top) return;
+    int w = (int)lv_display_get_horizontal_resolution(NULL);
+    if (w < 80) w = 320;
+    int box_w = w - 28;
+    if (box_w > 292) box_w = 292;
+    if (box_w < 160) box_w = (w > 24) ? w - 16 : w;
+
+    s_meaning = lv_obj_create(top);
+    lv_obj_set_width(s_meaning, box_w);
+    lv_obj_set_height(s_meaning, LV_SIZE_CONTENT);
+    lv_obj_align(s_meaning, LV_ALIGN_TOP_MID, 0, 8);
+    lv_obj_set_style_bg_color(s_meaning, lv_color_hex(0x111827), 0);
+    lv_obj_set_style_bg_opa(s_meaning, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(s_meaning, 10, 0);
+    lv_obj_set_style_pad_hor(s_meaning, 12, 0);
+    lv_obj_set_style_pad_ver(s_meaning, 8, 0);
+    lv_obj_set_style_border_width(s_meaning, 0, 0);
+    lv_obj_set_style_shadow_width(s_meaning, 0, 0);
+    lv_obj_set_clickable(s_meaning, false);
+    lv_obj_set_scrollable(s_meaning, false);
+
+    lv_obj_t *l = lv_label_create(s_meaning);
+    lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
+    lv_obj_set_style_text_color(l, lv_color_white(), 0);
+    lv_obj_set_width(l, lv_pct(100));
+    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+    lv_label_set_text(l, txt);
+
+    s_meaning_tmr = lv_timer_create(meaning_tmr_cb, 3000, NULL);
+    lv_timer_set_repeat_count(s_meaning_tmr, 1);
+}
+
 static void body_clear(void)
 {
+    meaning_hide();
     if (s_dlg) { lv_obj_delete(s_dlg); s_dlg = NULL; }
     lv_obj_clean(s_body);
     s_kb = s_ta = s_slots = s_sent = s_vi = s_skip = s_prompt = NULL;
@@ -230,6 +293,7 @@ static void report_on_exit(void)
 static void finish_ok(void)
 {
     if (s_solved || s_pos < 0 || s_pos >= s_n) return;
+    meaning_hide();
     s_solved = true;
     report_current(true);
     paint_slots();
@@ -269,7 +333,7 @@ static void kb_set_visible(bool on)
     if (on) {
         lv_obj_set_hidden(s_kb, false);
         lv_obj_set_flex_grow(s_kb, 1);
-        lv_obj_set_style_min_height(s_kb, 112, 0);
+        lv_obj_set_style_min_height(s_kb, LISTEN_KB_MIN, 0);
         kb_enable(true);
         kb_focus_input();
     } else {
@@ -338,6 +402,16 @@ static void next_question(void)
 }
 
 static void skip_cb(lv_event_t *e) { (void)e; if (s_view == V_PLAY) next_question(); }
+static void meaning_cb(lv_event_t *e)
+{
+    (void)e;
+    if (s_view != V_PLAY || s_solved) return;
+    if (s_pos < 0 || s_pos >= s_n) return;
+    const hear_t *h = &s_items[s_pos];
+    if (!h->hint[0]) return;
+    meaning_show(h->hint);
+    kb_focus_input();
+}
 static void speak_cb(lv_event_t *e) { (void)e; say_current(); }
 
 static lv_obj_t *text_act(lv_obj_t *row, const char *txt, lv_event_cb_t cb)
@@ -347,7 +421,7 @@ static lv_obj_t *text_act(lv_obj_t *row, const char *txt, lv_event_cb_t cb)
     lv_obj_set_flex_grow(b, 1);
     lv_obj_set_style_shadow_width(b, 0, 0);
     lv_obj_set_style_radius(b, 10, 0);
-    lv_obj_set_style_pad_hor(b, 8, 0);
+    lv_obj_set_style_pad_hor(b, 6, 0);
     lv_obj_set_style_pad_ver(b, 0, 0);
     lv_obj_set_style_bg_color(b, lv_color_white(), 0);
     lv_obj_set_style_bg_color(b, lv_color_hex(FD_COLOR_PRIMARY_TINT), LV_STATE_PRESSED);
@@ -383,7 +457,7 @@ static void show_question(void)
     lv_obj_remove_style_all(stage);
     lv_obj_set_width(stage, lv_pct(100));
     lv_obj_set_height(stage, LV_SIZE_CONTENT);
-    lv_obj_set_style_max_height(stage, 78, 0);
+    lv_obj_set_style_max_height(stage, 100, 0);
     lv_obj_set_flex_flow(stage, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(stage, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(stage, 2, 0);
@@ -416,13 +490,13 @@ static void show_question(void)
     lv_obj_set_height(s_slots, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(s_slots, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(s_slots, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(s_slots, 4, 0);
-    lv_obj_set_style_pad_row(s_slots, 4, 0);
+    lv_obj_set_style_pad_column(s_slots, 3, 0);
+    lv_obj_set_style_pad_row(s_slots, 3, 0);
     int nlet = s_items[s_pos].n;
     for (int i = 0; i < nlet; i++) {
         lv_obj_t *b = lv_obj_create(s_slots);
         lv_obj_remove_style_all(b);
-        lv_obj_set_size(b, 26, 28);
+        lv_obj_set_size(b, 24, 26);
         lv_obj_set_style_radius(b, 6, 0);
         lv_obj_set_style_border_width(b, 2, 0);
         lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
@@ -444,7 +518,7 @@ static void show_question(void)
     lv_obj_set_height(acts, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(acts, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(acts, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(acts, 6, 0);
+    lv_obj_set_style_pad_column(acts, 4, 0);
 
     lv_obj_t *spk = lv_button_create(acts);
     lv_obj_set_size(spk, 36, 36);
@@ -461,6 +535,8 @@ static void show_question(void)
     lv_obj_center(si);
 
     text_act(acts, _("HEAR_HINT"), hint_cb);
+    lv_obj_t *mb = text_act(acts, _("HEAR_MEANING"), meaning_cb);
+    if (!s_items[s_pos].hint[0]) lv_obj_add_state(mb, LV_STATE_DISABLED);
     s_skip = text_act(acts, _("HEAR_SKIP"), skip_cb);
 
     s_ta = lv_textarea_create(s_body);
@@ -471,10 +547,10 @@ static void show_question(void)
     lv_obj_add_event_cb(s_ta, ta_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     s_kb = fd_t9kb_create(s_body, s_ta, NULL, NULL);
-    fd_t9kb_set_qwerty_plain(s_kb);
+    fd_t9kb_set_qwerty_listen(s_kb);
     lv_obj_set_width(s_kb, lv_pct(100));
     lv_obj_set_flex_grow(s_kb, 1);
-    lv_obj_set_style_min_height(s_kb, 112, 0);
+    lv_obj_set_style_min_height(s_kb, LISTEN_KB_MIN, 0);
 
     paint_slots();
     kb_set_visible(true);
@@ -554,13 +630,12 @@ static void show_result(void)
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    char tmp[48];
     /* Cau da dung Gợi ý khong tinh vao tong. Moi cau deu dung Gợi ý thi hien 0/0 mau trung tinh. */
     int total = s_n - s_hinted_n;
     if (total < 0) total = 0;
-    snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, total);
     label(s_body, _("LISTEN"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    label(s_body, tmp, &fd_font_mont_32, total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
+    ui_result_score(s_body, s_correct, total,
+                    total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
     lv_obj_t *b = lv_button_create(s_body);
     lv_obj_t *l = lv_label_create(b);
     lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
@@ -644,6 +719,7 @@ static void dlg_no(lv_event_t *e) { (void)e; dlg_close(); }
 
 static void dlg_open(void)
 {
+    meaning_hide();
     if (s_dlg || !s_body) return;
     s_dlg = ui_dialog_open();
     lv_obj_t *box = ui_dialog_box(s_dlg);
@@ -687,6 +763,7 @@ static void destroy(void)
     } else s_gen++;
     report_on_exit();
     fd_sync_session_end();
+    meaning_hide();
     dlg_close();
     s_body = NULL;
 }

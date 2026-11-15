@@ -408,10 +408,9 @@ static void show_result(void)
     lv_obj_t *c = content();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     int total = s_pos < s_n ? s_pos : s_n;
-    char tmp[48];
-    snprintf(tmp, sizeof(tmp), _("SEN_RESULT"), s_correct, total);
     label(c, _("SPELLING"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    label(c, tmp, &fd_font_mont_32, total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
+    ui_result_score(c, s_correct, total,
+                    total == 0 ? FD_COLOR_TEXT_MUTED : s_correct * 2 >= total ? C_OK : C_BAD);
     lv_obj_t *r = row(s_body, false);
     button(r, _("BACK"), home_cb);
     button(r, _("SEN_AGAIN"), retry_cb);

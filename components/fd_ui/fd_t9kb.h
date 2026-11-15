@@ -53,6 +53,8 @@ void            fd_t9kb_set_timeout(lv_obj_t *kb, uint32_t ms);
 void             fd_t9kb_set_layout(lv_obj_t *kb, fd_t9kb_layout_t layout);
 /* QWERTY tinh gon: chi a-z, xoa, cach, OK (khong so/ky hieu/T9). */
 void             fd_t9kb_set_qwerty_plain(lv_obj_t *kb);
+/* QWERTY Nghe: a-z, xoa ben trai Z; khong cach, khong OK, khong hang duoi. */
+void             fd_t9kb_set_qwerty_listen(lv_obj_t *kb);
 fd_t9kb_layout_t fd_t9kb_get_layout(lv_obj_t *kb);
 
 /* Cac thao tac cho phim cung (B1..B4) - tuy chon. */

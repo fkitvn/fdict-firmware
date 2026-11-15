@@ -97,7 +97,7 @@ vi:
   OTA_CONNECTING: Đang kết nối...
   OTA_DOWNLOADING: Đang tải %d%%
   OTA_ERR_BAD_IMAGE: ảnh không hợp lệ
-  OTA_ERR_BATT_LOW: pin yếu
+  OTA_ERR_BATT_LOW: 'Mức pin dưới %d%% thì không thể nâng cấp'
   OTA_ERR_HTTP: máy chủ (%s)
   OTA_ERR_NET: mạng
   OTA_ERR_NO_TIME: chưa đồng bộ giờ
@@ -163,6 +163,8 @@ vi:
   SCREEN_BRIGHTNESS: Độ sáng màn hình
   SCREEN_ROTATION: Hướng xoay màn hình
   SCREEN_TIMEOUT: Thời gian chờ màn hình
+  DEEP_SLEEP_AFTER: Ngủ sâu sau
+  DEEP_SLEEP_HINT: Sau khi tắt màn hình, máy sẽ tự ngủ sâu.
   SECURED: Bảo mật
   SERVER: Máy chủ
   SERVER_ERROR_CODE: Máy chủ báo lỗi (%d)
@@ -181,6 +183,7 @@ vi:
   HEAR_PROMPT: 'Nhập chữ cái đầu mỗi từ'
   HEAR_HINT: 'Gợi ý'
   HEAR_SKIP: 'Bỏ qua'
+  HEAR_MEANING: 'Nghĩa'
   STUDY_NEEDS_WIFI: 'Quiz cần Wi-Fi để tải câu hỏi.'
   SYNC: Đồng bộ
   SYNC_PENDING_N: Chờ đồng bộ %d
