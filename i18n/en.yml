@@ -302,5 +302,8 @@ en:
   NEW_ADDED: Newly added
   COMBINED: Combined
   COMBINED_N: 'Combined (%d collections)'
+  DECK_PICK_N: 'Selected %d/%d'
+  DECK_PICK_ALL: 'Select all'
+  DECK_PICK_NONE: 'Clear'
   NO_DECK_WORDS: 'No words match this selection'
   SAVE: Save
