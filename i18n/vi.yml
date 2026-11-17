@@ -302,5 +302,8 @@ vi:
   NEW_ADDED: 'Từ mới thêm'
   COMBINED: 'Kết hợp'
   COMBINED_N: 'Kết hợp (%d bộ sưu tập)'
+  DECK_PICK_N: 'Đã chọn %d/%d'
+  DECK_PICK_ALL: 'Chọn hết'
+  DECK_PICK_NONE: 'Bỏ chọn'
   NO_DECK_WORDS: 'Không có từ phù hợp với lựa chọn này'
   SAVE: Lưu lại

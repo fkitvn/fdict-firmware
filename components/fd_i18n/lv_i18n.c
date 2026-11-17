@@ -321,6 +321,9 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"NEW_ADDED", "Newly added"},
     {"COMBINED", "Combined"},
     {"COMBINED_N", "Combined (%d collections)"},
+    {"DECK_PICK_N", "Selected %d/%d"},
+    {"DECK_PICK_ALL", "Select all"},
+    {"DECK_PICK_NONE", "Clear"},
     {"NO_DECK_WORDS", "No words match this selection"},
     {"SAVE", "Save"},
     {NULL, NULL} // End mark
@@ -649,6 +652,9 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"NEW_ADDED", "Từ mới thêm"},
     {"COMBINED", "Kết hợp"},
     {"COMBINED_N", "Kết hợp (%d bộ sưu tập)"},
+    {"DECK_PICK_N", "Đã chọn %d/%d"},
+    {"DECK_PICK_ALL", "Chọn hết"},
+    {"DECK_PICK_NONE", "Bỏ chọn"},
     {"NO_DECK_WORDS", "Không có từ phù hợp với lựa chọn này"},
     {"SAVE", "Lưu lại"},
     {NULL, NULL} // End mark
