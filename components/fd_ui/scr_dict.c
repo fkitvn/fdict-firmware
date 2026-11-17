@@ -94,6 +94,40 @@ static void magnifier_anim_cb(void *obj, int32_t v)
     lv_obj_set_style_translate_y(g, y, 0);
 }
 
+static void spin_cb(void *obj, int32_t v)
+{
+    lv_obj_set_style_transform_rotation(obj, v, 0);
+}
+
+static void twinkle_cb(void *obj, int32_t v)
+{
+    lv_obj_set_style_bg_opa(obj, (lv_opa_t)v, 0);
+}
+
+static lv_obj_t *ai_spark(lv_obj_t *parent, int x, int y, int size, uint32_t delay)
+{
+    lv_obj_t *s = lv_obj_create(parent);
+    lv_obj_remove_style_all(s);
+    lv_obj_set_size(s, size, size);
+    lv_obj_set_pos(s, x, y);
+    lv_obj_set_scrollable(s, false);
+    lv_obj_set_clickable(s, false);
+    lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(s, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_set_style_bg_opa(s, LV_OPA_40, 0);
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s);
+    lv_anim_set_exec_cb(&a, twinkle_cb);
+    lv_anim_set_values(&a, LV_OPA_40, LV_OPA_COVER);
+    lv_anim_set_duration(&a, 700);
+    lv_anim_set_reverse_duration(&a, 700);
+    lv_anim_set_delay(&a, delay);
+    lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&a);
+    return s;
+}
+
 static void show_loading(void)
 {
     s_at_home = false;
@@ -101,10 +135,36 @@ static void show_loading(void)
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 10, 0);
 
-    /* Kinh lup ve bang hinh LVGL (khong anh): kinh tron + canh nghieng, dao nhe nhu dang so. */
-    lv_obj_t *glass = lv_obj_create(s_body);
+    /* Kinh lup dao nhe. Vanh hat sang quay quanh, nhap nha lech nhau. */
+    lv_obj_t *stage = lv_obj_create(s_body);
+    lv_obj_remove_style_all(stage);
+    lv_obj_set_size(stage, 96, 96);
+    lv_obj_set_scrollable(stage, false);
+    lv_obj_set_style_clip_corner(stage, false, 0);
+
+    lv_obj_t *ring = lv_obj_create(stage);
+    lv_obj_remove_style_all(ring);
+    lv_obj_set_size(ring, 96, 96);
+    lv_obj_set_scrollable(ring, false);
+    lv_obj_set_style_transform_pivot_x(ring, 48, 0);
+    lv_obj_set_style_transform_pivot_y(ring, 48, 0);
+    ai_spark(ring, 45, 2, 6, 0);
+    ai_spark(ring, 82, 40, 5, 240);
+    ai_spark(ring, 14, 68, 4, 480);
+    lv_anim_t spin;
+    lv_anim_init(&spin);
+    lv_anim_set_var(&spin, ring);
+    lv_anim_set_exec_cb(&spin, spin_cb);
+    lv_anim_set_values(&spin, 0, 3600);
+    lv_anim_set_duration(&spin, 2800);
+    lv_anim_set_repeat_count(&spin, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_path_cb(&spin, lv_anim_path_linear);
+    lv_anim_start(&spin);
+
+    lv_obj_t *glass = lv_obj_create(stage);
     lv_obj_remove_style_all(glass);
     lv_obj_set_size(glass, 76, 76);
+    lv_obj_set_pos(glass, 10, 10);
     lv_obj_set_scrollable(glass, false);
     lv_obj_set_style_clip_corner(glass, false, 0);
 
@@ -152,8 +212,17 @@ static void show_loading(void)
     lv_anim_start(&a);
 
     s_load_dots = 0;
-    s_load_lbl = label(s_body, _("LOOKUP_SEARCHING"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_t *copy = lv_obj_create(s_body);
+    lv_obj_remove_style_all(copy);
+    lv_obj_set_width(copy, lv_pct(100));
+    lv_obj_set_height(copy, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(copy, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(copy, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(copy, 2, 0);
+    s_load_lbl = label(copy, _("LOOKUP_SEARCHING"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
     lv_obj_set_style_text_align(s_load_lbl, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_t *ctx = label(copy, _("LOOKUP_SEARCHING_CTX"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_set_style_text_align(ctx, LV_TEXT_ALIGN_CENTER, 0);
 
     if (s_word[0]) {
         const lv_font_t *wf = &fd_font_noto_18;
