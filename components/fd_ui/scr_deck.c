@@ -2,6 +2,7 @@
  * Hang 1: ba nut chon mot (radio) Tat ca, Tu moi them, Ket hop.
  * Hang 2: danh sach bo tu xep ngang, chi hien khi chon Ket hop.
  * Nut Luu lai o cuoi: chi ghi NVS khi bam Luu; quay lai khong luu. */
+#include <stdio.h>
 #include <string.h>
 #include "fd_fonts.h"
 #include "fd_sync.h"
@@ -227,7 +228,12 @@ static void build(lv_obj_t *scr)
         lv_obj_t *l = lv_label_create(b);
         lv_obj_set_style_text_font(l, &fd_font_noto_14, 0);
         lv_obj_set_style_text_color(l, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_hex(FD_COLOR_TEXT), 0);
-        lv_label_set_text(l, _(MD_KEYS[i]));
+        char mode_txt[64];
+        if (i == (int)FD_SYNC_PICK_COMBINED)
+            snprintf(mode_txt, sizeof(mode_txt), _("COMBINED_N"), s_nsel);
+        else
+            snprintf(mode_txt, sizeof(mode_txt), "%s", _(MD_KEYS[i]));
+        lv_label_set_text(l, mode_txt);
         lv_obj_set_width(l, lv_pct(100));
         lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
         lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);

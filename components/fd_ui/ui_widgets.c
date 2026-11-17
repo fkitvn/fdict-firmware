@@ -488,7 +488,8 @@ void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *))
     lv_obj_set_width(lab, por ? 48 : 62);
 
     lv_obj_t *b = lv_button_create(r);
-    lv_obj_set_height(b, bh);
+    lv_obj_set_height(b, LV_SIZE_CONTENT);
+    lv_obj_set_style_min_height(b, bh, 0);
     lv_obj_set_flex_grow(b, 1);
     lv_obj_set_style_radius(b, 10, 0);
     lv_obj_set_style_shadow_width(b, 0, 0);
@@ -496,11 +497,17 @@ void ui_setup_deck(lv_obj_t *sc, void (*refresh)(void *))
     lv_obj_set_style_border_width(b, 1, 0);
     lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
     lv_obj_set_style_pad_hor(b, 8, 0);
+    lv_obj_set_style_pad_ver(b, 6, 0);
     lv_obj_t *v = lv_label_create(b);
     lv_obj_set_style_text_font(v, &fd_font_noto_14, 0);
     lv_obj_set_style_text_color(v, lv_color_hex(FD_COLOR_TEXT), 0);
-    lv_label_set_text(v, _(MD[md]));
-    lv_label_set_long_mode(v, LV_LABEL_LONG_DOT);
+    char deck_txt[64];
+    if (md == (int)FD_SYNC_PICK_COMBINED)
+        snprintf(deck_txt, sizeof(deck_txt), _("COMBINED_N"), p.nsel);
+    else
+        snprintf(deck_txt, sizeof(deck_txt), "%s", _(MD[md]));
+    lv_label_set_text(v, deck_txt);
+    lv_label_set_long_mode(v, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(v, lv_pct(100));
     lv_obj_set_style_text_align(v, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_center(v);

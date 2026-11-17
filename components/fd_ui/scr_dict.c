@@ -523,7 +523,7 @@ static void show_home(void)
     lv_obj_set_size(lens, 14, 14);
     lv_obj_set_pos(lens, 9, 8);
     lv_obj_set_scrollable(lens, false);
-    lv_obj_remove_flag(lens, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(lens, false);
     lv_obj_set_style_radius(lens, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(lens, 2, 0);
     lv_obj_set_style_border_color(lens, lv_color_white(), 0);
@@ -533,7 +533,7 @@ static void show_home(void)
     lv_obj_set_size(handle, 8, 2);
     lv_obj_set_pos(handle, 20, 22);
     lv_obj_set_scrollable(handle, false);
-    lv_obj_remove_flag(handle, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_clickable(handle, false);
     lv_obj_set_style_radius(handle, 1, 0);
     lv_obj_set_style_bg_color(handle, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, 0);
