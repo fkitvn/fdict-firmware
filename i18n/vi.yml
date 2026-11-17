@@ -120,7 +120,8 @@ vi:
   WORD_TYPE: Phân loại từ
   FILL_BLANK: Điền từ
   DICTIONARY: Từ điển
-  LOOKUP_HINT: Nhập từ tiếng Anh để tra
+  LOOKUP_HINT: Nhập từ cần tra
+  LOOKUP_SAVE_TO: Lưu vào
   LOOKUP_HISTORY: Đã tra gần đây
   LOOKUP_ADDED: Đã thêm vào từ cần học
   LOOKUP_ADDED_TO: Đã thêm vào

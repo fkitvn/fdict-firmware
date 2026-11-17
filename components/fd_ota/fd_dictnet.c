@@ -47,9 +47,6 @@ static char s_move_cid[FD_DICTNET_CID_LEN];
 static char s_move_name[FD_DICTNET_CNAME_LEN];
 static fd_dictnet_move_state_t s_move_state;
 static int s_added_n;   /* so tu da luu tu lan fd_dictnet_take_added gan nhat (guarded by lock) */
-/* Vi du cua lan tra gan nhat (PSRAM, guarded by lock). Tach khoi fd_dictnet_entry_t de khong phinh lich su / stack. */
-static EXT_RAM_BSS_ATTR char s_ex[FD_DICTNET_EX_LEN];
-static EXT_RAM_BSS_ATTR char s_exvi[FD_DICTNET_EXVI_LEN];
 
 enum { CMD_LOOKUP = 1, CMD_MOVE };
 
@@ -303,15 +300,11 @@ static bool http_move(const char *wid, char *cid, size_t cid_n, char *name, size
     return ok;
 }
 
-static uint8_t s_dir; /* chieu cua lookup dang xep hang (guarded by lock) */
-
-static void do_lookup(const char *word, uint8_t dir)
+static void do_lookup(const char *word)
 {
     lock();
     memset(&s_st, 0, sizeof(s_st));
     s_st.state = FD_DICTNET_LOOKUP;
-    s_ex[0] = 0;
-    s_exvi[0] = 0;
     s_ncols = 0;
     s_add_cid[0] = s_add_name[0] = s_add_wid[0] = 0;
     unlock();
@@ -332,7 +325,6 @@ static void do_lookup(const char *word, uint8_t dir)
     int code = -3;
     if (b) {
         if (cJSON_AddStringToObject(b, "q", word) &&
-            (dir != FD_DICTNET_DIR_VI_EN || cJSON_AddStringToObject(b, "dir", "vi-en")) &&
             cJSON_AddTrueToObject(b, "add") &&
             (!cid[0] || cJSON_AddStringToObject(b, "collection_id", cid)))
             code = post_device("/api/study/dict/lookup", b, rx, RX_CAP);
@@ -354,8 +346,6 @@ static void do_lookup(const char *word, uint8_t dir)
             /* Server cu khong biet add -> khong co "added": tu khong duoc luu (deploy web-app truoc). */
             added = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(r, "added"));
             lock();
-            ucpy(s_ex, sizeof(s_ex), jstr(r, "example"));
-            ucpy(s_exvi, sizeof(s_exvi), s_ex[0] ? jstr(r, "example_vi") : "");
             if (added) {
                 take_add_body(r);
                 /* state=same: tu da co trong bo, khong can dong bo lai luc thoat Tu dien. Server cu khong gui state -> van dem. */
@@ -372,7 +362,7 @@ static void do_lookup(const char *word, uint8_t dir)
     else err = FD_DICTNET_ERR_SERVER;
 
     if (!err) {
-        e.dir = dir;
+        e.dir = FD_DICTNET_DIR_EN_VI;
         err = hist_push(&e);
     }
 
@@ -422,10 +412,9 @@ static void task(void *arg)
             unlock();
         } else if (cmd == CMD_LOOKUP) {
             char word[FD_DICTNET_WORD_LEN];
-            uint8_t dir;
-            lock(); ucpy(word, sizeof(word), s_st.result.en); dir = s_dir; unlock();
+            lock(); ucpy(word, sizeof(word), s_st.result.en); unlock();
             /* word stashed in result.en before queueing */
-            do_lookup(word, dir);
+            do_lookup(word);
         }
     }
 }
@@ -486,7 +475,7 @@ bool fd_dictnet_lookup_dir(const char *word, uint8_t dir)
     memset(&s_st, 0, sizeof(s_st));
     s_st.state = FD_DICTNET_LOOKUP;
     ucpy(s_st.result.en, sizeof(s_st.result.en), word);
-    s_dir = dir;
+    (void)dir;
     unlock();
     int cmd = CMD_LOOKUP;
     if (xQueueSend(s_q, &cmd, 0) == pdTRUE) return true;
@@ -504,17 +493,6 @@ void fd_dictnet_get(fd_dictnet_status_t *out)
         return;
     }
     lock(); *out = s_st; unlock();
-}
-
-void fd_dictnet_get_example(char *ex, size_t ex_cap, char *ex_vi, size_t vi_cap)
-{
-    if (ex && ex_cap) ex[0] = 0;
-    if (ex_vi && vi_cap) ex_vi[0] = 0;
-    if (!s_mx) return;
-    lock();
-    if (ex && ex_cap) ucpy(ex, ex_cap, s_ex);
-    if (ex_vi && vi_cap) ucpy(ex_vi, vi_cap, s_exvi);
-    unlock();
 }
 
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap)
@@ -556,6 +534,14 @@ void fd_dictnet_saved_collection(char *id, size_t id_cap, char *name, size_t nam
     lock();
     if (id && id_cap) ucpy(id, id_cap, s_last_cid);
     if (name && name_cap) ucpy(name, name_cap, s_last_name);
+    unlock();
+}
+
+void fd_dictnet_set_collection(const char *id, const char *name)
+{
+    if (!id || !id[0] || !fd_dictnet_init()) return;
+    lock();
+    save_choice(id, name ? name : "");
     unlock();
 }
 

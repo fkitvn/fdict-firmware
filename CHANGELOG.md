@@ -5,6 +5,11 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.5.7] - 2026-11-17
+- Từ điển bỏ chiều Anh Việt và Việt Anh. Máy chủ tự nhận ngôn ngữ.
+- Chọn bộ từ vựng sẽ tự lưu khi tra.
+- Bỏ câu ví dụ trên màn kết quả tra từ.
+
 ## [4.5.6] - 2026-11-15
 - Báo rõ khi pin quá yếu để nâng cấp.
 - Tự ngủ sâu sau khi tắt màn hình, chỉnh được trong Cài đặt.

@@ -9,9 +9,6 @@
 #define FD_DICTNET_IPA_LEN  64
 #define FD_DICTNET_MEAN_LEN 128
 #define FD_DICTNET_POS_LEN  40
-/* 4.3.5: cau vi du + nghia ca cau (server lam day, khong luu lich su) */
-#define FD_DICTNET_EX_LEN   320
-#define FD_DICTNET_EXVI_LEN 512
 /* 4.3.8: bo suu tap gan nhat (id Mongo 24 hex, ten UTF-8 toi da ~60 ky tu) */
 #define FD_DICTNET_CID_LEN   25
 #define FD_DICTNET_CNAME_LEN 192
@@ -71,13 +68,11 @@ typedef enum {
 } fd_dictnet_move_state_t;
 
 bool fd_dictnet_init(void);   /* false: clean failure, safe to retry */
-/* Tra cuu + (mac dinh) auto-add. false = dang ban. */
+/* Tra cuu + (mac dinh) auto-add. Server tu nhan ngon ngu. false = dang ban. */
 bool fd_dictnet_lookup(const char *word);
-/* dir = FD_DICTNET_DIR_*; VI_EN: word la tieng Viet, ket qua en = tu tieng Anh. */
+/* dir giu de doc lich su cu. Request khong gui dir. */
 bool fd_dictnet_lookup_dir(const char *word, uint8_t dir);
 void fd_dictnet_get(fd_dictnet_status_t *out);
-/* Cau vi du (tieng Anh) + nghia tieng Viet ca cau cua lan tra gan nhat (rong neu server khong co). */
-void fd_dictnet_get_example(char *ex, size_t ex_cap, char *ex_vi, size_t vi_cap);
 int fd_dictnet_history(fd_dictnet_entry_t *out, int cap);
 /* Xoa lich su tra (RAM + /data/dict_hist.json/.tmp). Goi khi dang xuat / khoi phuc cai dat goc. */
 void fd_dictnet_clear_history(void);
@@ -85,8 +80,10 @@ void fd_dictnet_clear_history(void);
 int fd_dictnet_take_added(void);
 /* Danh sach bo cua lan tra gan nhat (tu response lookup khi da luu). */
 int fd_dictnet_cols(fd_dictnet_col_t *out, int cap);
-/* Bo da chon lan cuoi (NVS). */
+/* Bo da chon lan cuoi (NVS). id hoac name co the NULL. */
 void fd_dictnet_saved_collection(char *id, size_t id_cap, char *name, size_t name_cap);
+/* Nho bo se gui kem lan tra sau. Khong goi mang. */
+void fd_dictnet_set_collection(const char *id, const char *name);
 /* Doi bo cua tu vua them. wid rong: chi nho lua chon. false = dang ban. */
 bool fd_dictnet_move(const char *wid, const char *cid, const char *name);
 fd_dictnet_move_state_t fd_dictnet_move_state(char *id, size_t id_cap, char *name, size_t name_cap);
