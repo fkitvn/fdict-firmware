@@ -378,47 +378,83 @@ static void ta_insert_cb(lv_event_t *e)
     lv_textarea_set_insert_replace(ta, "");   /* sau set_text: huy ky tu goc */
 }
 
-static void save_col_text(char *buf, size_t n)
+static EXT_RAM_BSS_ATTR char s_dd_opts[FD_SYNC_MAX_COLS * (FD_SYNC_COL_NAME_LEN + 1)];
+static char s_dd_ids[FD_SYNC_MAX_COLS][FD_SYNC_WID_LEN];
+static int s_dd_n;
+
+static void opt_add(const char *name)
 {
-    char name[FD_DICTNET_CNAME_LEN];
-    fd_dictnet_saved_collection(NULL, 0, name, sizeof(name));
-    if (name[0]) {
-        strlcpy(buf, name, n);
-        return;
-    }
-    int nc = fd_sync_col_count();
-    for (int i = 0; i < nc; i++) {
-        fd_sync_col_t c;
-        if (!fd_sync_col_get(i, &c) || !c.def || !c.name[0]) continue;
-        fd_dictnet_set_collection(c.id, c.name);
-        strlcpy(buf, c.name, n);
-        return;
-    }
-    strlcpy(buf, _("LOOKUP_SAVE_TO"), n);
+    size_t used = strlen(s_dd_opts);
+    if (s_dd_n && used + 1 < sizeof(s_dd_opts)) s_dd_opts[used++] = '\n';
+    for (const char *p = name; *p && used + 1 < sizeof(s_dd_opts); p++)
+        s_dd_opts[used++] = (*p == '\n' || *p == '\r') ? ' ' : *p;
+    s_dd_opts[used] = 0;
 }
 
-static void col_cycle_cb(lv_event_t *e)
+static bool find_col(const char *id, fd_sync_col_t *out)
 {
-    lv_obj_t *lbl = lv_event_get_user_data(e);
     int nc = fd_sync_col_count();
-    if (!lbl || nc <= 0) return;
-    char id[FD_DICTNET_CID_LEN];
-    fd_dictnet_saved_collection(id, sizeof(id), NULL, 0);
-    int cur = -1;
     for (int i = 0; i < nc; i++) {
         fd_sync_col_t c;
-        if (fd_sync_col_get(i, &c) && id[0] && !strcmp(id, c.id)) {
-            cur = i;
-            break;
-        }
+        if (!fd_sync_col_get(i, &c) || !c.id[0]) continue;
+        if (strcmp(c.id, id) == 0) { *out = c; return true; }
     }
-    for (int step = 1; step <= nc; step++) {
+    return false;
+}
+
+/* Tra ve chi so dang chon. -1 khi chua co bo nao. */
+static int fill_dd(void)
+{
+    s_dd_n = 0;
+    s_dd_opts[0] = 0;
+    char saved[FD_DICTNET_CID_LEN];
+    fd_dictnet_saved_collection(saved, sizeof(saved), NULL, 0);
+    int sel = -1, def = -1;
+    int nc = fd_sync_col_count();
+    for (int i = 0; i < nc && s_dd_n < FD_SYNC_MAX_COLS; i++) {
         fd_sync_col_t c;
-        if (!fd_sync_col_get((cur + step) % nc, &c) || !c.id[0]) continue;
-        fd_dictnet_set_collection(c.id, c.name);
-        lv_label_set_text(lbl, c.name[0] ? c.name : c.id);
+        if (!fd_sync_col_get(i, &c) || !c.id[0]) continue;
+        opt_add(c.name[0] ? c.name : c.id);
+        strlcpy(s_dd_ids[s_dd_n], c.id, sizeof(s_dd_ids[0]));
+        if (saved[0] && !strcmp(saved, c.id)) sel = s_dd_n;
+        if (def < 0 && c.def) def = s_dd_n;
+        s_dd_n++;
+    }
+    if (!s_dd_n) return -1;
+    if (sel < 0) {
+        sel = def >= 0 ? def : 0;
+        fd_sync_col_t c;
+        if (find_col(s_dd_ids[sel], &c))
+            fd_dictnet_set_collection(c.id, c.name[0] ? c.name : c.id);
+    }
+    return sel;
+}
+
+static void style_dd_list(lv_obj_t *dd)
+{
+    lv_obj_t *list = lv_dropdown_get_list(dd);
+    if (!list) return;
+    lv_obj_set_style_text_font(list, &fd_font_noto_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(list, &fd_font_noto_14, LV_PART_SELECTED);
+    lv_obj_set_style_bg_color(list, lv_color_hex(FD_COLOR_PRIMARY), LV_PART_SELECTED);
+    lv_obj_set_style_text_color(list, lv_color_white(), LV_PART_SELECTED);
+    lv_obj_set_style_max_height(list, 132, 0);
+    lv_coord_t w = lv_obj_get_width(dd);
+    if (w > 0) lv_obj_set_width(list, w);
+}
+
+static void col_dd_cb(lv_event_t *e)
+{
+    lv_obj_t *dd = lv_event_get_target(e);
+    if (lv_event_get_code(e) == LV_EVENT_READY) {
+        style_dd_list(dd);
         return;
     }
+    uint32_t sel = lv_dropdown_get_selected(dd);
+    if (sel >= (uint32_t)s_dd_n) return;
+    fd_sync_col_t c;
+    if (!find_col(s_dd_ids[sel], &c)) return;
+    fd_dictnet_set_collection(c.id, c.name[0] ? c.name : c.id);
 }
 
 static void show_home(void)
@@ -428,38 +464,38 @@ static void show_home(void)
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 6, 0);
-    /* Tieu de + bo se tu luu khi tra. Bam de doi bo. */
-    lv_obj_t *hdr = lv_obj_create(s_body);
-    lv_obj_remove_style_all(hdr);
-    lv_obj_set_size(hdr, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(hdr, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(hdr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    /* 4.1.9 FIX: label() dat rong 100% -> nut chieu tra bi day ra ngoai hang (khong cham duoc). Tieu de co gian, nut giu kich thuoc. */
-    lv_obj_t *ttl = label(hdr, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    lv_obj_set_width(ttl, LV_SIZE_CONTENT);
-    lv_obj_set_flex_grow(ttl, 1);
-    lv_label_set_long_mode(ttl, LV_LABEL_LONG_DOT);
-    lv_obj_t *db = lv_button_create(hdr);
-    lv_obj_set_size(db, LV_SIZE_CONTENT, 34);
-    lv_obj_set_ext_click_area(db, 6);
-    lv_obj_set_style_pad_hor(db, 10, 0);
-    lv_obj_set_style_radius(db, 8, 0);
-    lv_obj_set_style_shadow_width(db, 0, 0);
-    lv_obj_set_style_bg_color(db, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    lv_obj_set_style_max_width(db, 150, 0);
-    lv_obj_t *dl = lv_label_create(db);
-    lv_obj_set_style_text_font(dl, &fd_font_noto_14, 0);
-    lv_obj_set_style_text_color(dl, lv_color_white(), 0);
-    lv_obj_set_width(dl, 130);
-    lv_label_set_long_mode(dl, LV_LABEL_LONG_DOT);
-    lv_obj_set_style_text_align(dl, LV_TEXT_ALIGN_CENTER, 0);
-    {
-        char col[FD_DICTNET_CNAME_LEN];
-        save_col_text(col, sizeof(col));
-        lv_label_set_text(dl, col);
+    label(s_body, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    label(s_body, _("LOOKUP_SAVE_TO"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    int sel = fill_dd();
+    lv_obj_t *dd = lv_dropdown_create(s_body);
+    lv_obj_set_width(dd, lv_pct(100));
+    lv_obj_set_height(dd, 40);
+    lv_obj_set_style_radius(dd, 8, 0);
+    lv_obj_set_style_border_width(dd, 1, 0);
+    lv_obj_set_style_border_color(dd, lv_color_hex(FD_COLOR_BORDER), 0);
+    lv_obj_set_style_bg_color(dd, lv_color_white(), 0);
+    lv_obj_set_style_text_font(dd, &fd_font_noto_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(dd, &lv_font_montserrat_14, LV_PART_INDICATOR);
+    lv_obj_set_style_text_color(dd, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_style_pad_hor(dd, 10, 0);
+    if (sel < 0) {
+        lv_dropdown_set_options(dd, _("LOOKUP_NO_COLLECTION"));
+        lv_obj_add_state(dd, LV_STATE_DISABLED);
+    } else {
+        lv_dropdown_set_options(dd, s_dd_opts);
+        lv_dropdown_set_selected(dd, (uint32_t)sel);
+        lv_obj_add_event_cb(dd, col_dd_cb, LV_EVENT_VALUE_CHANGED, NULL);
+        lv_obj_add_event_cb(dd, col_dd_cb, LV_EVENT_READY, NULL);
+        style_dd_list(dd);
     }
-    lv_obj_center(dl);
-    lv_obj_add_event_cb(db, col_cycle_cb, LV_EVENT_CLICKED, dl);
+    uint32_t kids = lv_obj_get_child_count(dd);
+    for (uint32_t i = 0; i < kids; i++) {
+        lv_obj_t *ch = lv_obj_get_child(dd, i);
+        if (lv_obj_check_type(ch, &lv_label_class)) {
+            lv_obj_set_width(ch, lv_pct(88));
+            lv_label_set_long_mode(ch, LV_LABEL_LONG_DOT);
+        }
+    }
 
     lv_obj_t *row = lv_obj_create(s_body);
     lv_obj_remove_style_all(row);

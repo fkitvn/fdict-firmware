@@ -121,7 +121,8 @@ vi:
   FILL_BLANK: Điền từ
   DICTIONARY: Từ điển
   LOOKUP_HINT: Nhập từ cần tra
-  LOOKUP_SAVE_TO: Lưu vào
+  LOOKUP_SAVE_TO: Tự động lưu vào
+  LOOKUP_NO_COLLECTION: Chưa có bộ từ vựng
   LOOKUP_HISTORY: Đã tra gần đây
   LOOKUP_ADDED: Đã thêm vào từ cần học
   LOOKUP_ADDED_TO: Đã thêm vào

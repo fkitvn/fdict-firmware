@@ -121,7 +121,8 @@ en:
   FILL_BLANK: Fill in the blank
   DICTIONARY: Dictionary
   LOOKUP_HINT: Enter a word to look up
-  LOOKUP_SAVE_TO: Save to
+  LOOKUP_SAVE_TO: Automatically save to
+  LOOKUP_NO_COLLECTION: No collection yet
   LOOKUP_HISTORY: Recent lookups
   LOOKUP_ADDED: Added to your study list
   LOOKUP_ADDED_TO: Added to
