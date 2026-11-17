@@ -324,16 +324,21 @@ static void show_result_ok(const fd_dictnet_status_t *st)
 }
 
 static lv_obj_t *s_kb;
-static void kb_set_open(lv_obj_t *icon, bool open)
+static void kb_set_open(bool open)
 {
     if (s_kb) lv_obj_set_hidden(s_kb, !open);
-    if (icon) lv_label_set_text(icon, open ? LV_SYMBOL_DOWN : LV_SYMBOL_KEYBOARD);
 }
-static void kb_toggle_cb(lv_event_t *e)
+static void kb_open_cb(lv_event_t *e)
 {
-    kb_set_open((lv_obj_t *)lv_event_get_user_data(e), s_kb && lv_obj_is_hidden(s_kb));
+    (void)e;
+    kb_set_open(true);
 }
-static void kb_open_cb(lv_event_t *e) { kb_set_open((lv_obj_t *)lv_event_get_user_data(e), true); }
+static void search_cb(lv_event_t *e)
+{
+    (void)e;
+    if (!s_ta) return;
+    begin_lookup(lv_textarea_get_text(s_ta));
+}
 
 static char s_hwords[FD_DICTNET_HIST_MAX][FD_DICTNET_WORD_LEN];
 static void hist_cb(lv_event_t *e)
@@ -469,20 +474,42 @@ static void show_home(void)
     lv_textarea_set_placeholder_text(s_ta, _("LOOKUP_HINT"));   /* 4.1.7: goi y nam trong o nhap (bo nhan phia tren) */
     lv_obj_set_style_pad_all(s_ta, 8, 0);
 
-    /* 4.3.2: mac dinh an ban phim; nut / cham o nhap -> mo lai */
+    /* Kinh lup: tra tu dang nam trong o. Cham o nhap van mo ban phim. */
     lv_obj_t *tg = lv_button_create(row);
     lv_obj_set_size(tg, 40, 40);
     lv_obj_set_style_shadow_width(tg, 0, 0);
     lv_obj_set_style_radius(tg, 8, 0);
-    lv_obj_t *tgl = lv_label_create(tg);
-    lv_obj_set_style_text_font(tgl, &lv_font_montserrat_14, 0);   /* LV_SYMBOL_* chi co trong Montserrat (Noto -> o vuong) */
-    lv_obj_center(tgl);
+    lv_obj_set_style_pad_all(tg, 0, 0);
+    lv_obj_set_style_bg_color(tg, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_set_style_bg_color(tg, lv_color_hex(FD_COLOR_PRIMARY_DARK), LV_STATE_PRESSED);
+    lv_obj_t *lens = lv_obj_create(tg);
+    lv_obj_remove_style_all(lens);
+    lv_obj_set_size(lens, 14, 14);
+    lv_obj_set_pos(lens, 9, 8);
+    lv_obj_set_scrollable(lens, false);
+    lv_obj_remove_flag(lens, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(lens, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(lens, 2, 0);
+    lv_obj_set_style_border_color(lens, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(lens, LV_OPA_TRANSP, 0);
+    lv_obj_t *handle = lv_obj_create(tg);
+    lv_obj_remove_style_all(handle);
+    lv_obj_set_size(handle, 8, 2);
+    lv_obj_set_pos(handle, 20, 22);
+    lv_obj_set_scrollable(handle, false);
+    lv_obj_remove_flag(handle, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(handle, 1, 0);
+    lv_obj_set_style_bg_color(handle, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, 0);
+    lv_obj_set_style_transform_pivot_x(handle, 0, 0);
+    lv_obj_set_style_transform_pivot_y(handle, 1, 0);
+    lv_obj_set_style_transform_rotation(handle, 450, 0);
+    lv_obj_add_event_cb(tg, search_cb, LV_EVENT_CLICKED, NULL);
     s_kb = fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
     if (s_kb) fd_t9kb_set_qwerty_plain(s_kb);   /* chi chu thuong + xoa/cach/OK */
     lv_obj_add_event_cb(s_ta, ta_insert_cb, LV_EVENT_INSERT, NULL);
-    lv_obj_add_event_cb(tg, kb_toggle_cb, LV_EVENT_CLICKED, tgl);
-    lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, tgl);
-    kb_set_open(tgl, false);
+    lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, NULL);
+    kb_set_open(false);
 
     /* 2.3.6 FIX reboot: truoc day hist[30] (30 x 280 B = 8.4 KB) nam tren stack task LVGL (8 KB) -> tran stack -> reset.
      * Bo dem tinh trong PSRAM: khong ton stack hoac RAM noi. */

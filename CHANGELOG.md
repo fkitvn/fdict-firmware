@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.5.9] - 2026-11-17
+- Nút cạnh ô nhập từ là kính lúp để tra. Chạm ô nhập vẫn mở bàn phím.
+
 ## [4.5.8] - 2026-11-17
 - Kết quả tra từ chỉ hiện bộ đã lưu, không đổi bộ tại đó.
 - Vuốt lui từ kết quả tra về màn nhập từ, không thoát Từ điển.
