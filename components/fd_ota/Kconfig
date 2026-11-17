@@ -15,14 +15,14 @@ menu "FDict One OTA"
         string "Production base URL (https, khong co /api)"
         default "https://your-server.example"
         help
-            Endpoint: {base}/api/ota/check, {base}/api/ota/report, {base}/api/devices/pair/start|poll.
+            May chu fdict-web-app. Endpoint: {base}/api/ota/check, {base}/api/ota/report, {base}/api/devices/pair/start|poll. Dang nhap ghep may nam tren cung host.
 
     config FD_PAIR_LAB_WEB_URL
         string "LAB: trang ghep tren web (QR, them ?id=&hw=&fw=&b=)"
         default "https://fdict-dev.joinnow.vn/device-login"
 
     config FD_PAIR_WEB_URL
-        string "Production: trang ghep tren web (QR, them ?code=<ma>)"
+        string "Production: trang ghep tren fdict-web-app (QR, /device-login, dang nhap OTP tai do)"
         default "https://your-server.example/device-login"
 
     config FD_OTA_HW

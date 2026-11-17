@@ -1,5 +1,6 @@
 /* Cai dat > Ghep thiet bi (bo cuc gon, can giua).
- * Chua ghep: can WiFi truoc (nut Mo Wi-Fi); co WiFi -> tu lay ma (POST /api/devices/pair/start), QR {PAIR_WEB_URL}?id=<mac>&hw&fw&b (khong co ma)
+ * Chua ghep: can WiFi truoc (nut Mo Wi-Fi); co WiFi -> tu lay ma (POST /api/devices/pair/start), QR {PAIR_WEB_URL}?id=<mac>&hw&fw&b (khong co ma).
+ * PAIR_WEB_URL la /device-login tren fdict-web-app: nguoi dung dang nhap OTP tai trang do, may chi giu device_token.
  * + dem nguoc + 1 dong huong dan; poll 5 s trong fd_ota (410 -> tu mo phien moi, QR moi). Da ghep: avatar (chu cai dau) + "Xin chao, <ten>!" + nut Huy ghep doi
  * (hop thoai xac nhan -> xoa NVS fdict/device_token + user_name, ve Chua ghep va tu lay ma moi). KHONG hien/log token. Roi man -> dung ghep.
  * Chi dang nhap. Bao hanh la man rieng (scr_warranty.c). Khong thanh buoc, khong ma 6 so. */

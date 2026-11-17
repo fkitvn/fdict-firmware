@@ -120,7 +120,8 @@ en:
   WORD_TYPE: Word type
   FILL_BLANK: Fill in the blank
   DICTIONARY: Dictionary
-  LOOKUP_HINT: Type an English word to look up
+  LOOKUP_HINT: Enter a word to look up
+  LOOKUP_SAVE_TO: Save to
   LOOKUP_HISTORY: Recent lookups
   LOOKUP_ADDED: Added to your study list
   LOOKUP_ADDED_TO: Added to
