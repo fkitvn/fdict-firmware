@@ -1505,12 +1505,12 @@ static const pos_map_t POS_MAP[] = {
     {"verb", "Động từ", "Verb"}, {"v.", "Động từ", "Verb"}, {"v", "Động từ", "Verb"},
     {"adjective", "Tính từ", "Adjective"}, {"adj.", "Tính từ", "Adjective"}, {"adj", "Tính từ", "Adjective"},
     {"adverb", "Trạng từ", "Adverb"}, {"adv.", "Trạng từ", "Adverb"}, {"adv", "Trạng từ", "Adverb"},
-    {"preposition", "Giới từ", "Preposition"}, {"prep.", "Giới từ", "Preposition"},
+    {"preposition", "Giới từ", "Preposition"}, {"prep.", "Giới từ", "Preposition"}, {"prep", "Giới từ", "Preposition"},
     {"pronoun", "Đại từ", "Pronoun"}, {"pron.", "Đại từ", "Pronoun"},
     {"conjunction", "Liên từ", "Conjunction"}, {"conj.", "Liên từ", "Conjunction"},
     {"interjection", "Thán từ", "Interjection"},
     {"determiner", "Hạn định từ", "Determiner"}, {"article", "Mạo từ", "Article"},
-    {"phrasal verb", "Cụm động từ", "Phrasal verb"}, {"phr. v.", "Cụm động từ", "Phrasal verb"},
+    {"phrasal verb", "Cụm động từ", "Phrasal verb"}, {"phr. v.", "Cụm động từ", "Phrasal verb"}, {"phr", "Cụm động từ", "Phrasal verb"},
     {"phrase", "Cụm từ", "Phrase"},
 };
 
