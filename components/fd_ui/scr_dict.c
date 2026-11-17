@@ -19,13 +19,10 @@ static lv_obj_t *s_body, *s_ta, *s_load_lbl;
 static lv_timer_t *s_poll;
 static uint8_t s_load_dots;
 static bool s_gate;
+static bool s_at_home;   /* true = man nhap tu; vuot lui o man khac ve day, khong thoat Tu dien */
 static char s_word[FD_DICTNET_WORD_LEN];
 static char s_say[FD_DICTNET_WORD_LEN];  /* 4.3.2: tu tieng Anh de nut loa phat am */
-static EXT_RAM_BSS_ATTR fd_dictnet_col_t s_ui_cols[FD_DICTNET_COL_MAX];
-static int s_ui_nc;
 static fd_dictnet_status_t s_shown;
-static lv_obj_t *s_col_lbl;
-static lv_timer_t *s_move_timer;
 static char s_col_line[320];
 static bool s_telex_busy;
 
@@ -38,7 +35,6 @@ static void poll_cb(lv_timer_t *t);
 static void stop_poll(void)
 {
     if (s_poll) { lv_timer_delete(s_poll); s_poll = NULL; }
-    if (s_move_timer) { lv_timer_delete(s_move_timer); s_move_timer = NULL; }
 }
 
 static void body_reset(void)
@@ -47,7 +43,6 @@ static void body_reset(void)
     stop_poll();
     s_ta = NULL;
     s_load_lbl = NULL;
-    s_col_lbl = NULL;
     if (s_body) lv_obj_clean(s_body);
 }
 
@@ -101,6 +96,7 @@ static void magnifier_anim_cb(void *obj, int32_t v)
 
 static void show_loading(void)
 {
+    s_at_home = false;
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 10, 0);
@@ -230,6 +226,7 @@ static void t9_done_cb(lv_obj_t *kb, const char *text, void *user_data)
 
 static void show_error(const fd_dictnet_status_t *st)
 {
+    s_at_home = false;
     body_reset();
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(s_body, 8, 0);
@@ -260,71 +257,9 @@ static void speak_cb(lv_event_t *e)
     ui_pron_say_cfg(s_say, &cfg);
 }
 
-static void fill_ui_cols(void)
-{
-    s_ui_nc = fd_dictnet_cols(s_ui_cols, FD_DICTNET_COL_MAX);
-    if (s_ui_nc > 0) return;
-    int n = fd_sync_col_count();
-    for (int i = 0; i < n && s_ui_nc < FD_DICTNET_COL_MAX; i++) {
-        fd_sync_col_t c;
-        if (!fd_sync_col_get(i, &c) || !c.id[0]) continue;
-        strlcpy(s_ui_cols[s_ui_nc].id, c.id, sizeof(s_ui_cols[0].id));
-        strlcpy(s_ui_cols[s_ui_nc].name, c.name, sizeof(s_ui_cols[0].name));
-        s_ui_nc++;
-    }
-}
-
-static const char *shown_name(void)
-{
-    if (s_shown.collection_name[0]) return s_shown.collection_name;
-    for (int i = 0; i < s_ui_nc; i++) {
-        if (s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id) && s_ui_cols[i].name[0])
-            return s_ui_cols[i].name;
-    }
-    return "";
-}
-
-static void move_poll_cb(lv_timer_t *t)
-{
-    (void)t;
-    char id[FD_DICTNET_CID_LEN];
-    char name[FD_DICTNET_CNAME_LEN];
-    fd_dictnet_move_state_t st = fd_dictnet_move_state(id, sizeof(id), name, sizeof(name));
-    if (st == FD_DICTNET_MOVE_BUSY) return;
-    if (st == FD_DICTNET_MOVE_OK) {
-        fd_dictnet_move_ack();
-        if (id[0]) strlcpy(s_shown.collection_id, id, sizeof(s_shown.collection_id));
-        strlcpy(s_shown.collection_name, name, sizeof(s_shown.collection_name));
-        show_result_ok(&s_shown);
-        return;
-    }
-    if (st == FD_DICTNET_MOVE_ERR) {
-        fd_dictnet_move_ack();
-        if (s_col_lbl) lv_label_set_text(s_col_lbl, _("LOOKUP_MOVE_FAIL"));
-    }
-    stop_poll();
-}
-
-static void arm_move_timer(void)
-{
-    if (s_move_timer) return;
-    s_move_timer = lv_timer_create(move_poll_cb, 200, NULL);
-}
-
-static void col_pick_cb(lv_event_t *e)
-{
-    int i = (int)(intptr_t)lv_event_get_user_data(e);
-    if (i < 0 || i >= s_ui_nc) return;
-    if (s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id)) return;
-    if (fd_dictnet_move_state(NULL, 0, NULL, 0) == FD_DICTNET_MOVE_BUSY) return;
-    const char *nm = s_ui_cols[i].name[0] ? s_ui_cols[i].name : s_ui_cols[i].id;
-    if (!fd_dictnet_move(s_shown.word_id, s_ui_cols[i].id, nm)) return;
-    if (s_col_lbl) lv_label_set_text(s_col_lbl, _("LOOKUP_MOVE"));
-    arm_move_timer();
-}
-
 static void show_result_ok(const fd_dictnet_status_t *st)
 {
+    s_at_home = false;
     s_shown = *st;
     body_reset();
     lv_obj_set_scroll_dir(s_body, LV_DIR_VER);
@@ -369,64 +304,41 @@ static void show_result_ok(const fd_dictnet_status_t *st)
     if (st->result.ipa[0]) label(s_body, st->result.ipa, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     if (st->result.pos[0]) label(s_body, st->result.pos, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     label(s_body, st->result.vi, &fd_font_noto_18, FD_COLOR_TEXT);
-    /* 4.3.8: bo nut Tro lai. Ghi bo vua them va cho doi bo ngay tai day.
-     * 4.5.4: server luu trong cung lan tra; chua luu duoc (loi / server cu) thi bao ngan, khong hien bo. */
+    /* Da luu thi chi ghi ten bo, khong cho doi bo tai man ket qua. */
     if (!s_shown.added) {
         label(s_body, _("LOOKUP_NOT_SAVED"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
         return;
     }
-    fill_ui_cols();
-    const char *cname = shown_name();
+    const char *cname = s_shown.collection_name;
+    char saved_name[FD_DICTNET_CNAME_LEN];
     if (!cname[0]) {
-        char saved_id[FD_DICTNET_CID_LEN];
-        char saved_name[FD_DICTNET_CNAME_LEN];
-        fd_dictnet_saved_collection(saved_id, sizeof(saved_id), saved_name, sizeof(saved_name));
-        if (saved_name[0] && (!s_shown.collection_id[0] || !strcmp(saved_id, s_shown.collection_id))) {
-            strlcpy(s_shown.collection_name, saved_name, sizeof(s_shown.collection_name));
-            if (!s_shown.collection_id[0] && saved_id[0])
-                strlcpy(s_shown.collection_id, saved_id, sizeof(s_shown.collection_id));
-            cname = s_shown.collection_name;
-        }
+        fd_dictnet_saved_collection(NULL, 0, saved_name, sizeof(saved_name));
+        cname = saved_name;
     }
     if (cname[0]) {
         snprintf(s_col_line, sizeof(s_col_line), "%s\n%s", _("LOOKUP_ADDED_TO"), cname);
-        s_col_lbl = label(s_body, s_col_line, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
+        label(s_body, s_col_line, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     } else {
-        s_col_lbl = label(s_body, _("LOOKUP_ADDED"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
-    }
-    for (int i = 0; i < s_ui_nc; i++) {
-        bool on = s_shown.collection_id[0] && !strcmp(s_ui_cols[i].id, s_shown.collection_id);
-        lv_obj_t *b = lv_button_create(s_body);
-        lv_obj_set_width(b, lv_pct(100));
-        lv_obj_set_height(b, 36);
-        lv_obj_set_style_radius(b, 10, 0);
-        lv_obj_set_style_shadow_width(b, 0, 0);
-        lv_obj_set_style_bg_color(b, on ? lv_color_hex(FD_COLOR_PRIMARY) : lv_color_white(), 0);
-        lv_obj_set_style_border_width(b, on ? 0 : 1, 0);
-        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
-        lv_obj_set_style_pad_hor(b, 10, 0);
-        lv_obj_add_event_cb(b, col_pick_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
-        lv_obj_t *cl = lv_label_create(b);
-        lv_obj_set_style_text_font(cl, &fd_font_noto_14, 0);
-        lv_obj_set_style_text_color(cl, on ? lv_color_hex(FD_COLOR_ON_PRIMARY) : lv_color_hex(FD_COLOR_TEXT), 0);
-        lv_label_set_long_mode(cl, LV_LABEL_LONG_DOT);
-        lv_obj_set_width(cl, lv_pct(100));
-        lv_label_set_text(cl, s_ui_cols[i].name[0] ? s_ui_cols[i].name : s_ui_cols[i].id);
-        lv_obj_center(cl);
+        label(s_body, _("LOOKUP_ADDED"), &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     }
 }
 
 static lv_obj_t *s_kb;
-static void kb_set_open(lv_obj_t *icon, bool open)
+static void kb_set_open(bool open)
 {
     if (s_kb) lv_obj_set_hidden(s_kb, !open);
-    if (icon) lv_label_set_text(icon, open ? LV_SYMBOL_DOWN : LV_SYMBOL_KEYBOARD);
 }
-static void kb_toggle_cb(lv_event_t *e)
+static void kb_open_cb(lv_event_t *e)
 {
-    kb_set_open((lv_obj_t *)lv_event_get_user_data(e), s_kb && lv_obj_is_hidden(s_kb));
+    (void)e;
+    kb_set_open(true);
 }
-static void kb_open_cb(lv_event_t *e) { kb_set_open((lv_obj_t *)lv_event_get_user_data(e), true); }
+static void search_cb(lv_event_t *e)
+{
+    (void)e;
+    if (!s_ta) return;
+    begin_lookup(lv_textarea_get_text(s_ta));
+}
 
 static char s_hwords[FD_DICTNET_HIST_MAX][FD_DICTNET_WORD_LEN];
 static void hist_cb(lv_event_t *e)
@@ -466,87 +378,124 @@ static void ta_insert_cb(lv_event_t *e)
     lv_textarea_set_insert_replace(ta, "");   /* sau set_text: huy ky tu goc */
 }
 
-static void save_col_text(char *buf, size_t n)
+static EXT_RAM_BSS_ATTR char s_dd_opts[FD_SYNC_MAX_COLS * (FD_SYNC_COL_NAME_LEN + 1)];
+static char s_dd_ids[FD_SYNC_MAX_COLS][FD_SYNC_WID_LEN];
+static int s_dd_n;
+
+static void opt_add(const char *name)
 {
-    char name[FD_DICTNET_CNAME_LEN];
-    fd_dictnet_saved_collection(NULL, 0, name, sizeof(name));
-    if (name[0]) {
-        strlcpy(buf, name, n);
-        return;
-    }
-    int nc = fd_sync_col_count();
-    for (int i = 0; i < nc; i++) {
-        fd_sync_col_t c;
-        if (!fd_sync_col_get(i, &c) || !c.def || !c.name[0]) continue;
-        fd_dictnet_set_collection(c.id, c.name);
-        strlcpy(buf, c.name, n);
-        return;
-    }
-    strlcpy(buf, _("LOOKUP_SAVE_TO"), n);
+    size_t used = strlen(s_dd_opts);
+    if (s_dd_n && used + 1 < sizeof(s_dd_opts)) s_dd_opts[used++] = '\n';
+    for (const char *p = name; *p && used + 1 < sizeof(s_dd_opts); p++)
+        s_dd_opts[used++] = (*p == '\n' || *p == '\r') ? ' ' : *p;
+    s_dd_opts[used] = 0;
 }
 
-static void col_cycle_cb(lv_event_t *e)
+static bool find_col(const char *id, fd_sync_col_t *out)
 {
-    lv_obj_t *lbl = lv_event_get_user_data(e);
     int nc = fd_sync_col_count();
-    if (!lbl || nc <= 0) return;
-    char id[FD_DICTNET_CID_LEN];
-    fd_dictnet_saved_collection(id, sizeof(id), NULL, 0);
-    int cur = -1;
     for (int i = 0; i < nc; i++) {
         fd_sync_col_t c;
-        if (fd_sync_col_get(i, &c) && id[0] && !strcmp(id, c.id)) {
-            cur = i;
-            break;
-        }
+        if (!fd_sync_col_get(i, &c) || !c.id[0]) continue;
+        if (strcmp(c.id, id) == 0) { *out = c; return true; }
     }
-    for (int step = 1; step <= nc; step++) {
+    return false;
+}
+
+/* Tra ve chi so dang chon. -1 khi chua co bo nao. */
+static int fill_dd(void)
+{
+    s_dd_n = 0;
+    s_dd_opts[0] = 0;
+    char saved[FD_DICTNET_CID_LEN];
+    fd_dictnet_saved_collection(saved, sizeof(saved), NULL, 0);
+    int sel = -1, def = -1;
+    int nc = fd_sync_col_count();
+    for (int i = 0; i < nc && s_dd_n < FD_SYNC_MAX_COLS; i++) {
         fd_sync_col_t c;
-        if (!fd_sync_col_get((cur + step) % nc, &c) || !c.id[0]) continue;
-        fd_dictnet_set_collection(c.id, c.name);
-        lv_label_set_text(lbl, c.name[0] ? c.name : c.id);
+        if (!fd_sync_col_get(i, &c) || !c.id[0]) continue;
+        opt_add(c.name[0] ? c.name : c.id);
+        strlcpy(s_dd_ids[s_dd_n], c.id, sizeof(s_dd_ids[0]));
+        if (saved[0] && !strcmp(saved, c.id)) sel = s_dd_n;
+        if (def < 0 && c.def) def = s_dd_n;
+        s_dd_n++;
+    }
+    if (!s_dd_n) return -1;
+    if (sel < 0) {
+        sel = def >= 0 ? def : 0;
+        fd_sync_col_t c;
+        if (find_col(s_dd_ids[sel], &c))
+            fd_dictnet_set_collection(c.id, c.name[0] ? c.name : c.id);
+    }
+    return sel;
+}
+
+static void style_dd_list(lv_obj_t *dd)
+{
+    lv_obj_t *list = lv_dropdown_get_list(dd);
+    if (!list) return;
+    lv_obj_set_style_text_font(list, &fd_font_noto_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(list, &fd_font_noto_14, LV_PART_SELECTED);
+    lv_obj_set_style_bg_color(list, lv_color_hex(FD_COLOR_PRIMARY), LV_PART_SELECTED);
+    lv_obj_set_style_text_color(list, lv_color_white(), LV_PART_SELECTED);
+    lv_obj_set_style_max_height(list, 132, 0);
+    lv_coord_t w = lv_obj_get_width(dd);
+    if (w > 0) lv_obj_set_width(list, w);
+}
+
+static void col_dd_cb(lv_event_t *e)
+{
+    lv_obj_t *dd = lv_event_get_target(e);
+    if (lv_event_get_code(e) == LV_EVENT_READY) {
+        style_dd_list(dd);
         return;
     }
+    uint32_t sel = lv_dropdown_get_selected(dd);
+    if (sel >= (uint32_t)s_dd_n) return;
+    fd_sync_col_t c;
+    if (!find_col(s_dd_ids[sel], &c)) return;
+    fd_dictnet_set_collection(c.id, c.name[0] ? c.name : c.id);
 }
 
 static void show_home(void)
 {
+    s_at_home = true;
     body_reset();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_body, 6, 0);
-    /* Tieu de + bo se tu luu khi tra. Bam de doi bo. */
-    lv_obj_t *hdr = lv_obj_create(s_body);
-    lv_obj_remove_style_all(hdr);
-    lv_obj_set_size(hdr, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(hdr, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(hdr, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    /* 4.1.9 FIX: label() dat rong 100% -> nut chieu tra bi day ra ngoai hang (khong cham duoc). Tieu de co gian, nut giu kich thuoc. */
-    lv_obj_t *ttl = label(hdr, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    lv_obj_set_width(ttl, LV_SIZE_CONTENT);
-    lv_obj_set_flex_grow(ttl, 1);
-    lv_label_set_long_mode(ttl, LV_LABEL_LONG_DOT);
-    lv_obj_t *db = lv_button_create(hdr);
-    lv_obj_set_size(db, LV_SIZE_CONTENT, 34);
-    lv_obj_set_ext_click_area(db, 6);
-    lv_obj_set_style_pad_hor(db, 10, 0);
-    lv_obj_set_style_radius(db, 8, 0);
-    lv_obj_set_style_shadow_width(db, 0, 0);
-    lv_obj_set_style_bg_color(db, lv_color_hex(FD_COLOR_PRIMARY), 0);
-    lv_obj_set_style_max_width(db, 150, 0);
-    lv_obj_t *dl = lv_label_create(db);
-    lv_obj_set_style_text_font(dl, &fd_font_noto_14, 0);
-    lv_obj_set_style_text_color(dl, lv_color_white(), 0);
-    lv_obj_set_width(dl, 130);
-    lv_label_set_long_mode(dl, LV_LABEL_LONG_DOT);
-    lv_obj_set_style_text_align(dl, LV_TEXT_ALIGN_CENTER, 0);
-    {
-        char col[FD_DICTNET_CNAME_LEN];
-        save_col_text(col, sizeof(col));
-        lv_label_set_text(dl, col);
+    label(s_body, _("DICTIONARY"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    label(s_body, _("LOOKUP_SAVE_TO"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    int sel = fill_dd();
+    lv_obj_t *dd = lv_dropdown_create(s_body);
+    lv_obj_set_width(dd, lv_pct(100));
+    lv_obj_set_height(dd, 40);
+    lv_obj_set_style_radius(dd, 8, 0);
+    lv_obj_set_style_border_width(dd, 1, 0);
+    lv_obj_set_style_border_color(dd, lv_color_hex(FD_COLOR_BORDER), 0);
+    lv_obj_set_style_bg_color(dd, lv_color_white(), 0);
+    lv_obj_set_style_text_font(dd, &fd_font_noto_14, LV_PART_MAIN);
+    lv_obj_set_style_text_font(dd, &lv_font_montserrat_14, LV_PART_INDICATOR);
+    lv_obj_set_style_text_color(dd, lv_color_hex(FD_COLOR_TEXT), 0);
+    lv_obj_set_style_pad_hor(dd, 10, 0);
+    if (sel < 0) {
+        lv_dropdown_set_options(dd, _("LOOKUP_NO_COLLECTION"));
+        lv_obj_add_state(dd, LV_STATE_DISABLED);
+    } else {
+        lv_dropdown_set_options(dd, s_dd_opts);
+        lv_dropdown_set_selected(dd, (uint32_t)sel);
+        lv_obj_add_event_cb(dd, col_dd_cb, LV_EVENT_VALUE_CHANGED, NULL);
+        lv_obj_add_event_cb(dd, col_dd_cb, LV_EVENT_READY, NULL);
+        style_dd_list(dd);
     }
-    lv_obj_center(dl);
-    lv_obj_add_event_cb(db, col_cycle_cb, LV_EVENT_CLICKED, dl);
+    uint32_t kids = lv_obj_get_child_count(dd);
+    for (uint32_t i = 0; i < kids; i++) {
+        lv_obj_t *ch = lv_obj_get_child(dd, i);
+        if (lv_obj_check_type(ch, &lv_label_class)) {
+            lv_obj_set_width(ch, lv_pct(88));
+            lv_label_set_long_mode(ch, LV_LABEL_LONG_DOT);
+        }
+    }
 
     lv_obj_t *row = lv_obj_create(s_body);
     lv_obj_remove_style_all(row);
@@ -561,20 +510,42 @@ static void show_home(void)
     lv_textarea_set_placeholder_text(s_ta, _("LOOKUP_HINT"));   /* 4.1.7: goi y nam trong o nhap (bo nhan phia tren) */
     lv_obj_set_style_pad_all(s_ta, 8, 0);
 
-    /* 4.3.2: mac dinh an ban phim; nut / cham o nhap -> mo lai */
+    /* Kinh lup: tra tu dang nam trong o. Cham o nhap van mo ban phim. */
     lv_obj_t *tg = lv_button_create(row);
     lv_obj_set_size(tg, 40, 40);
     lv_obj_set_style_shadow_width(tg, 0, 0);
     lv_obj_set_style_radius(tg, 8, 0);
-    lv_obj_t *tgl = lv_label_create(tg);
-    lv_obj_set_style_text_font(tgl, &lv_font_montserrat_14, 0);   /* LV_SYMBOL_* chi co trong Montserrat (Noto -> o vuong) */
-    lv_obj_center(tgl);
+    lv_obj_set_style_pad_all(tg, 0, 0);
+    lv_obj_set_style_bg_color(tg, lv_color_hex(FD_COLOR_PRIMARY), 0);
+    lv_obj_set_style_bg_color(tg, lv_color_hex(FD_COLOR_PRIMARY_DARK), LV_STATE_PRESSED);
+    lv_obj_t *lens = lv_obj_create(tg);
+    lv_obj_remove_style_all(lens);
+    lv_obj_set_size(lens, 14, 14);
+    lv_obj_set_pos(lens, 9, 8);
+    lv_obj_set_scrollable(lens, false);
+    lv_obj_remove_flag(lens, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(lens, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(lens, 2, 0);
+    lv_obj_set_style_border_color(lens, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(lens, LV_OPA_TRANSP, 0);
+    lv_obj_t *handle = lv_obj_create(tg);
+    lv_obj_remove_style_all(handle);
+    lv_obj_set_size(handle, 8, 2);
+    lv_obj_set_pos(handle, 20, 22);
+    lv_obj_set_scrollable(handle, false);
+    lv_obj_remove_flag(handle, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_radius(handle, 1, 0);
+    lv_obj_set_style_bg_color(handle, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(handle, LV_OPA_COVER, 0);
+    lv_obj_set_style_transform_pivot_x(handle, 0, 0);
+    lv_obj_set_style_transform_pivot_y(handle, 1, 0);
+    lv_obj_set_style_transform_rotation(handle, 450, 0);
+    lv_obj_add_event_cb(tg, search_cb, LV_EVENT_CLICKED, NULL);
     s_kb = fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
     if (s_kb) fd_t9kb_set_qwerty_plain(s_kb);   /* chi chu thuong + xoa/cach/OK */
     lv_obj_add_event_cb(s_ta, ta_insert_cb, LV_EVENT_INSERT, NULL);
-    lv_obj_add_event_cb(tg, kb_toggle_cb, LV_EVENT_CLICKED, tgl);
-    lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, tgl);
-    kb_set_open(tgl, false);
+    lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, NULL);
+    kb_set_open(false);
 
     /* 2.3.6 FIX reboot: truoc day hist[30] (30 x 280 B = 8.4 KB) nam tren stack task LVGL (8 KB) -> tran stack -> reset.
      * Bo dem tinh trong PSRAM: khong ton stack hoac RAM noi. */
@@ -630,7 +601,10 @@ static void destroy(void)
 static bool on_back(void)
 {
     if (s_gate) return false;
-    if (s_poll) { stop_poll(); show_home(); return true; }
+    if (!s_at_home) {
+        show_home();
+        return true;
+    }
     return false;
 }
 
