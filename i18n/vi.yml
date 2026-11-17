@@ -300,5 +300,6 @@ vi:
   DECK_CONFIG: 'Cấu hình bộ từ'
   NEW_ADDED: 'Từ mới thêm'
   COMBINED: 'Kết hợp'
+  COMBINED_N: 'Kết hợp (%d bộ sưu tập)'
   NO_DECK_WORDS: 'Không có từ phù hợp với lựa chọn này'
   SAVE: Lưu lại

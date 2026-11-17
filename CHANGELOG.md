@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.6.1] - 2026-11-17
+- Kết hợp hiện số bộ sưu tập đã chọn trên màn chuẩn bị của các module học.
+
 ## [4.5.10] - 2026-11-17
 - Chọn bộ tự lưu bằng danh sách xổ xuống. Dòng chữ ghi Tự động lưu vào.
 - Tên bộ dài được cắt bớt. Chưa có bộ thì báo rõ.
