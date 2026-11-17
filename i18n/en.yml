@@ -132,7 +132,8 @@ en:
   LOOKUP_NEED_WIFI: Wi-Fi needed to look up words
   LOOKUP_NOT_FOUND: Word not found
   LOOKUP_ERROR: Lookup failed
-  LOOKUP_SEARCHING: Looking up
+  LOOKUP_SEARCHING: AI is looking up
+  LOOKUP_SEARCHING_CTX: from your context
   PASSWORD: Password
   PIN_CODE: PIN code
   PIN_ENTER_CURRENT: Enter current PIN
