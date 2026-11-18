@@ -56,7 +56,7 @@ typedef struct {
     int word_quiz, word_pos, word_spell;   /* 4.5.3: word_progress.spell (Chinh ta) */
     int today_answers, today_correct, week_answers, week_correct, week_sessions, streak_days;
     int today_hinted, week_hinted;   /* 4.5.3: cau Nghe dung Gợi ý, la hoat dong nhung khong tinh ti le dung */
-    int scan_uses, scan_words;   /* luot scan AI / tu luu tu scan (server) */
+    int ai_calls, ai_tokens;     /* luot Gemini va tong token trong thang (server) */
     /* 4.5.3: 7 ngay theo module (server week.modules), thu tu FD_MOD_*. hinted chi co o Nghe. */
     struct { int answers, correct, hinted, sessions; } mod[6];
     /* 4.5.4: 7 ngay gan nhat neu server gui mang days (thieu thi 0). Phan tu cuoi la hom nay. */

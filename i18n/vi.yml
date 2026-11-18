@@ -290,8 +290,8 @@ vi:
   SPELL_PROMPT_EN: Ghép từ tiếng Anh
   SPELL_PROMPT_VI: Ghép nghĩa tiếng Việt
   STATS_DAYS_FMT: '%d ngày'
-  STATS_SCAN_USES: 'Lượt scan AI'
-  STATS_SCAN_WORDS: 'Từ scan thành công'
+  STATS_AI_CALLS: 'Lượt AI tháng này'
+  STATS_AI_TOKENS: 'Token tháng này'
   STATS_ACTIVITY: 'Hoạt động 7 ngày qua'
   STATS_ACCURACY: 'Tỷ lệ đúng'
   STATS_SESSIONS: 'Phiên học'
