@@ -1063,8 +1063,8 @@ static void do_stats(char *rx)
             s_stats.today_hinted = jint(td, "hinted");
             s_stats.week_hinted = jint(wk, "hinted");
             s_stats.streak_days = jint(r, "streak_days");
-            s_stats.scan_uses = jint(r, "scan_uses");
-            s_stats.scan_words = jint(r, "scan_words");
+            s_stats.ai_calls = jint(r, "ai_calls");
+            s_stats.ai_tokens = jint(r, "ai_tokens");
             static const char *const MODS[FD_MOD_N] = {"quiz", "pos", "spell", "cloze", "order", "hear"};
             const cJSON *wm = cJSON_GetObjectItemCaseSensitive(wk, "modules");
             for (int i = 0; i < FD_MOD_N; i++) {

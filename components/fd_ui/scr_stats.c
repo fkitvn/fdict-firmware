@@ -329,10 +329,10 @@ static void show(const fd_sync_stats_t *st)
             snprintf(v + n, sizeof(v) - (size_t)n, _("STATS_MOD_HINT_FMT"), st->mod[i].hinted);
         kv_row(acard, _(MOD_KEY[i]), v);
     }
-    snprintf(v, sizeof(v), "%d", st->scan_uses);
-    kv_row(acard, _("STATS_SCAN_USES"), v);
-    snprintf(v, sizeof(v), "%d", st->scan_words);
-    kv_row(acard, _("STATS_SCAN_WORDS"), v);
+    snprintf(v, sizeof(v), "%d", st->ai_calls);
+    kv_row(acard, _("STATS_AI_CALLS"), v);
+    snprintf(v, sizeof(v), "%d", st->ai_tokens);
+    kv_row(acard, _("STATS_AI_TOKENS"), v);
 }
 
 static void build(lv_obj_t *scr)
