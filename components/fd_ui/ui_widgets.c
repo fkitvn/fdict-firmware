@@ -11,6 +11,7 @@
 #include "fd_sync.h"
 #include "fd_voice.h"
 #include "ui_priv.h"
+#include "board.h"   /* 4.6.6: board_btn_pos (thu tu vat ly nut) */
 #include "fd_tts.h"
 
 LV_FONT_DECLARE(fd_font_batt_11);   /* fd_font_batt_11.c: Noto Sans 11 px, chi "0123456789%-" */
@@ -311,7 +312,9 @@ void ui_abcd_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m)
     ui_answer_cell_mark(cell, label, m, m == UI_ANS_CORRECT ? 0x16A34A : 0xDC2626);
 }
 
-int ui_abcd_button(int btn_index) { return (btn_index >= 0 && btn_index < 4) ? btn_index : -1; }
+/* 4.6.6: theo THU TU VAT LY (giong man Thu nut bam): Nut 1 IO21 -> A, Nut 2 IO14 -> B, Nut 3 IO3 -> C, Nut 4 IO2 -> D.
+ * Truoc 4.6.6 tra thang chi so driver (IO21, IO2, IO3, IO14) -> Nut 2 ra D, Nut 4 ra B. */
+int ui_abcd_button(int btn_index) { return board_btn_pos(btn_index); }
 
 /* 2.3.5: cong "Dang nhap de tiep tuc" dung chung cho MOI mo-dun hoc: chi kiem tra token cuc bo (buoc dang nhap = ghep thiet bi),
  * da dang nhap thi hoc offline tu kho dong bo. */

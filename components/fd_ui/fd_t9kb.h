@@ -51,9 +51,9 @@ void            fd_t9kb_set_timeout(lv_obj_t *kb, uint32_t ms);
 
 /** Chuyen T9 <-> QWERTY (commit ky tu dang cho; QWERTY tao lan dau, sau do chi an/hien; giai phong cung kb). */
 void             fd_t9kb_set_layout(lv_obj_t *kb, fd_t9kb_layout_t layout);
-/* QWERTY tinh gon: chi a-z, xoa, cach, OK (khong so/ky hieu/T9). */
+/* QWERTY tinh gon (Tu dien): chi a-z; hang duoi Thoat | cach | OK | xoa (khong so/ky hieu/T9). */
 void             fd_t9kb_set_qwerty_plain(lv_obj_t *kb);
-/* QWERTY Nghe: a-z, xoa ben trai Z; khong cach, khong OK, khong hang duoi. */
+/* QWERTY Nghe: a-z; hang Z = Thoat | z..m | xoa; khong cach, khong OK. */
 void             fd_t9kb_set_qwerty_listen(lv_obj_t *kb);
 fd_t9kb_layout_t fd_t9kb_get_layout(lv_obj_t *kb);
 

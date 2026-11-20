@@ -329,7 +329,7 @@ static bool on_button_common(const fd_evt_button_t *b)
 {
     if (!b || s_gate || s_view != V_QUIZ || s_answered) return false;
     if (b->action != FD_BTN_CLICK) return false;
-    int cell = ui_abcd_button(b->index);   /* nut 1..4 -> A..D, khong phu thuoc xoay */
+    int cell = ui_abcd_button(b->index);   /* Nut 1..4 vat ly -> A..D, khong phu thuoc xoay */
     if (cell < 0) return false;
     answer(cell);
     return true;

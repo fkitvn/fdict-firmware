@@ -677,7 +677,7 @@ static bool on_button(const fd_evt_button_t *b)
 {
     if (b->action != FD_BTN_CLICK || s_gate) return false;
     if (s_view == V_PRACTICE) {
-        /* 4.1.8: nut 1->A, 2->B, 3->C, 4->D (khong qua bang mau/xoay) */
+        /* 4.6.6: Nut vat ly 1->A, 2->B, 3->C, 4->D theo thu tu man Thu nut bam (khong qua bang mau/xoay) */
         int cell = ui_abcd_button(b->index);
         if (cell >= 0) answer(cell);
         return true;

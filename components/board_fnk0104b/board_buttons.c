@@ -10,6 +10,25 @@
 static const char *TAG = "board_btn";
 
 static const gpio_num_t s_pins[BOARD_BTN_COUNT] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};
+static const gpio_num_t s_pos_pins[BOARD_BTN_COUNT] = BOARD_BTN_POS_GPIOS;   /* vi tri vat ly trai -> phai */
+
+int board_btn_pos(int btn_index)
+{
+    if (btn_index < 0 || btn_index >= BOARD_BTN_COUNT) return -1;
+    for (int p = 0; p < BOARD_BTN_COUNT; p++) {
+        if (s_pos_pins[p] == s_pins[btn_index]) return p;
+    }
+    return -1;
+}
+
+int board_btn_at_pos(int pos)
+{
+    if (pos < 0 || pos >= BOARD_BTN_COUNT) return -1;
+    for (int i = 0; i < BOARD_BTN_COUNT; i++) {
+        if (s_pins[i] == s_pos_pins[pos]) return i;
+    }
+    return -1;
+}
 static button_handle_t s_btn[BOARD_BTN_COUNT];
 static board_btn_cb_t s_cb;
 static void *s_ctx;

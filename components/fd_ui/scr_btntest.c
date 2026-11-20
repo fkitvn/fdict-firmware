@@ -2,18 +2,17 @@
  * 4 vong tron so 1..4 o day man hinh, dung vi tri nut vat ly (2.3.2 dao lai: trai -> phai = IO21, IO14, IO3, IO2;
  * nut vat ly ngoai cung ben trai sang vong 1).
  * Anh xa: board_buttons.c dang ky nut chi so i tren chan s_pins[i] = {BOARD_BTN1..4} = {21, 2, 3, 14}
- * -> vong tim chi so nut theo GPIO (Nut 1 = IO21 = chi so 0, nut "giu de quay lai" toan cuc).
+ * -> vong p lay chi so nut bang board_btn_at_pos(p) (4.6.6: bang vi tri vat ly DUNG CHUNG BOARD_BTN_POS_GPIOS,
+ * cung bang voi dap an A..D va giu Nut 1 / Nut 2). Man nay nuot moi nut (ke ca giu Nut 2) de thu nut tho.
  * Moi lan bam (khong gioi han): vong to day ~250 ms + tieng bip ngan (ui_vol_beep, bo qua neu am thanh dang ban ->
  * khong chong/xep hang). Nut da bam: vien xanh; du 4 -> dong trang thai pass.
  * Thoat: nut [<] / vuot mep luon dung; giu Nut 1 (IO21) chi quay lai SAU KHI du 4 nut (truoc do giu = danh dau Nut 1). */
-#include "board_pins.h"
+#include "board.h"
 #include "fd_audio.h"
 #include "fd_fonts.h"
 #include "ui_priv.h"
 
 #define FLASH_MS 250
-static const int s_gpio[4] = {BOARD_BTN1, BOARD_BTN2, BOARD_BTN3, BOARD_BTN4};   /* theo chi so nut (driver) */
-static const int s_pos_gpio[4] = {21, 14, 3, 2};   /* vong 1..4 trai -> phai = vi tri nut vat ly (trai -> phai) */
 static lv_obj_t *s_cell[4], *s_num[4], *s_status, *s_hint;
 static lv_timer_t *s_flash_tm[4];
 static uint8_t s_done;   /* bit i = da bam nut chi so i */
@@ -132,8 +131,8 @@ static void build(lv_obj_t *scr)
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     for (int p = 0; p < 4; p++) {   /* p = vi tri trai -> phai; i = chi so nut co GPIO do */
-        int i = 0;
-        while (i < 3 && s_gpio[i] != s_pos_gpio[p]) i++;
+        int i = board_btn_at_pos(p);
+        if (i < 0) i = p;
         lv_obj_t *c = s_cell[i] = lv_obj_create(row);
         lv_obj_remove_style_all(c);
         lv_obj_set_size(c, 52, 52);
