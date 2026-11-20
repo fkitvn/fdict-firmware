@@ -2,7 +2,8 @@
 /*
  * Dieu huong man hinh + phan phoi su kien.
  * - Moi lan chuyen man: tao lv screen moi, build, load, xoa screen cu (deferred qua lv_async_call).
- * - Nut toan cuc: giu B1 = quay lai man cha. Xoay: Cai dat > Huong xoay man hinh.
+ * - Nut toan cuc (theo vi tri vat ly, board_btn_pos): giu Nut 1 = quay lai man cha, giu Nut 2 = bat/tat bang dieu
+ *   khien nhanh (4.6.6). Xoay: Cai dat > Huong xoay man hinh.
  */
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -19,7 +20,7 @@ void ui_ota_init(void);   /* ui_ota.c */
 #include "freertos/task.h"
 #include "nvs.h"
 #include "ui_priv.h"
-#include "board_pins.h"
+#include "board.h"
 #include <string.h>
 
 static const char *TAG = "fd_ui";
@@ -524,8 +525,8 @@ static void key_log(const fd_evt_button_t *b)
     int rot = fd_display_get_rotation();
     int k = ui_key_colour(idx), cell = ui_key_cell(idx);
     const ui_screen_t *s = ui_nav_current();
-    ESP_LOGD("fd_key", "gpio=%d idx=%d (B%d) evt=%s rot=%d (%d deg) colour=%s -> cell=%s screen=%s%s",
-             (idx >= 0 && idx < 4) ? GPIO[idx] : -1, idx, idx + 1,
+    ESP_LOGD("fd_key", "gpio=%d idx=%d (B%d) pos=Nut %d evt=%s rot=%d (%d deg) colour=%s -> cell=%s screen=%s%s",
+             (idx >= 0 && idx < 4) ? GPIO[idx] : -1, idx, idx + 1, board_btn_pos(idx) + 1,
              ((unsigned)b->action < 3) ? EVT[b->action] : "?", rot, fd_display_rotation_deg(rot),
              ui_key_colour_name(k), (cell >= 0 && cell < 4) ? CELL[cell] : "?",
              (s && s->name) ? s->name : "-", fd_display_is_asleep() ? " (asleep: wake only)" : "");
@@ -536,10 +537,20 @@ static void btn_async(void *p)
     fd_evt_button_t *b = p;
     const ui_screen_t *s = ui_nav_current();
     if (!ui_splash_active() && !fd_display_is_asleep()) {
-        if (b->index == 0 && b->action == FD_BTN_LONG_PRESS && ui_quick_is_open()) ui_quick_close(true);
-        else if (!(s && s->on_button && s->on_button(b)) && b->index == 0 && b->action == FD_BTN_LONG_PRESS && s) {
-            if (s_cur == FD_SCR_HOME) fd_ui_toast(HOME_TOAST);
-            else ui_nav_back();
+        /* 4.6.6: nut theo vi tri vat ly (Nut 1..4 = pos 0..3, giong man Thu nut bam). Giu = BUTTON_LONG_PRESS_START
+         * (800 ms, board_buttons.c); iot_button KHONG phat SINGLE_CLICK sau khi da giu -> giu khong tinh la tra loi. */
+        int pos = board_btn_pos(b->index);
+        bool hold = b->action == FD_BTN_LONG_PRESS;
+        if (ui_quick_is_open()) {
+            /* bang nhanh dang mo (che man): giu Nut 1 / Nut 2 = dong bang; nut khac nuot, khong lot xuong man duoi */
+            if (hold && (pos == 0 || pos == 1)) ui_quick_close(true);
+        } else if (!(s && s->on_button && s->on_button(b)) && hold && s) {
+            if (pos == 0) {   /* giu Nut 1 = quay lai */
+                if (s_cur == FD_SCR_HOME) fd_ui_toast(HOME_TOAST);
+                else ui_nav_back();
+            } else if (pos == 1) {   /* giu Nut 2 = mo bang dieu khien nhanh (giong vuot mep tren) */
+                ui_quick_open();
+            }
         }
     }
     free(b);

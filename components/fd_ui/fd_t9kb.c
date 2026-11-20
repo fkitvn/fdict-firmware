@@ -296,6 +296,7 @@ static void kb_delete_cb(lv_event_t *e)
 /* ---------- QWERTY ---------- */
 /* Thay lv_keyboard_def_event_cb: chan "T9" va OK, con lai giao cho handler mac dinh. */
 static const char *const qw_map_plain[];
+static const char *const qw_map_listen[];
 static void qw_event_cb(lv_event_t *e)
 {
     t9_ctx_t *c = (t9_ctx_t *)lv_event_get_user_data(e);
@@ -306,8 +307,10 @@ static void qw_event_cb(lv_event_t *e)
     if (!txt) return;
     if (strcmp(txt, QW_T9) == 0) { fd_t9kb_set_layout(c->kb, FD_T9KB_LAYOUT_T9); return; }
     if (strcmp(txt, LV_SYMBOL_OK) == 0) { fd_t9kb_done(c->kb); return; }
-    /* 4.1.8: phim Quay lai tren ban gon (vuot lui bi ban phim chan) */
-    if (lv_keyboard_get_map_array(k) == qw_map_plain && strcmp(txt, LV_SYMBOL_LEFT) == 0) { ui_nav_back(); return; }
+    /* 4.1.8: phim Quay lai tren ban gon (vuot lui bi ban phim chan). 4.6.6: phim Thoat dau trai hang duoi ca ban
+     * Tu dien va ban Nghe -> ui_nav_back (giong nut quay lai cua man: Nghe dang lam bai -> hop Thoat bai lam). */
+    const char *const *map = lv_keyboard_get_map_array(k);
+    if ((map == qw_map_plain || map == qw_map_listen) && strcmp(txt, LV_SYMBOL_LEFT) == 0) { ui_nav_back(); return; }
     lv_keyboard_def_event_cb(e);
 }
 
@@ -327,18 +330,21 @@ static void qw_create(t9_ctx_t *c)
     c->qwerty = k;
 }
 
-/* Ban QWERTY tinh gon (chi chu a-z, xoa, cach, OK): Tu dien - chi nhap text thuong. Wi-Fi van dung ban day du. */
+/* Ban QWERTY tinh gon (chi chu a-z, xoa, cach, OK): Tu dien - chi nhap text thuong. Wi-Fi van dung ban day du.
+ * 4.6.6: hang duoi = Thoat (dau trai) | cach | OK | xoa (dau phai). Hang Z giu 2 o an hai ben (rong 1) de phim chu
+ * Z..M rong bang hang A (9 don vi) va can giua nhu ban phim that. */
+#define QW_GAP (LV_BUTTONMATRIX_CTRL_HIDDEN | 1)
 static const char *const qw_map_plain[] = {
     "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
     "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
-    "z", "x", "c", "v", "b", "n", "m", LV_SYMBOL_BACKSPACE, "\n",
-    LV_SYMBOL_LEFT, " ", LV_SYMBOL_OK, ""
+    " ", "z", "x", "c", "v", "b", "n", "m", " ", "\n",
+    LV_SYMBOL_LEFT, " ", LV_SYMBOL_OK, LV_SYMBOL_BACKSPACE, ""
 };
 static const lv_buttonmatrix_ctrl_t qw_ctrl_plain[] = {
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
-    QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_CHK | 2,
-    QW_CTRL | 2, 3, QW_CTRL | 4   /* 4.1.8: Quay lai | cach | OK */
+    QW_GAP, QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_GAP,
+    QW_CTRL | 2, 3, QW_CTRL | 2, QW_CHK | 2   /* 4.6.6: Thoat | cach | OK | xoa */
 };
 
 void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)
@@ -352,16 +358,16 @@ void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)
     lv_keyboard_set_mode(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER);
 }
 
-/* Nghe: 3 hang, xoa ben trai Z (rong 2 de can hang A 9 o); khong cach/OK/hang duoi. */
+/* Nghe: 3 hang; khong cach/OK. 4.6.6: hang duoi = Thoat (dau trai) | Z..M | xoa (dau phai), 9 o rong 1 = hang A. */
 static const char *const qw_map_listen[] = {
     "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
     "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
-    LV_SYMBOL_BACKSPACE, "z", "x", "c", "v", "b", "n", "m", ""
+    LV_SYMBOL_LEFT, "z", "x", "c", "v", "b", "n", "m", LV_SYMBOL_BACKSPACE, ""
 };
 static const lv_buttonmatrix_ctrl_t qw_ctrl_listen[] = {
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
-    QW_CHK | 2, QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1)
+    QW_CTRL | 1, QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_CHK | 1
 };
 
 void fd_t9kb_set_qwerty_listen(lv_obj_t *kb)

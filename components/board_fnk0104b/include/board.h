@@ -35,6 +35,12 @@ typedef enum {
 typedef void (*board_btn_cb_t)(int btn_index, board_btn_evt_t evt, void *ctx);
 esp_err_t board_buttons_init(board_btn_cb_t cb, void *ctx);
 
+/* 4.6.6: THU TU VAT LY cua nut (trai -> phai duoi man = Nut 1..4, giong man Thu nut bam): IO21, IO14, IO3, IO2.
+ * btn_index (chi so driver, su kien FD_EVT_BUTTON) = thu tu BOARD_BTN1..4 = IO21, IO2, IO3, IO14 -> KHAC thu tu vat ly.
+ * Moi cho can "Nut 1..4" (dap an A..D, giu Nut 1 / Nut 2, man Thu nut bam) PHAI doi qua 2 ham nay. */
+int board_btn_pos(int btn_index);   /* chi so driver -> vi tri vat ly 0..3 (Nut 1 = 0); -1 neu sai */
+int board_btn_at_pos(int pos);      /* vi tri vat ly 0..3 -> chi so driver; -1 neu sai */
+
 #ifdef __cplusplus
 }
 #endif

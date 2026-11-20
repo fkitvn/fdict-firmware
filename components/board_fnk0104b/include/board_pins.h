@@ -51,3 +51,5 @@
 #define BOARD_BTN2              GPIO_NUM_2
 #define BOARD_BTN3              GPIO_NUM_3    /* strapping pin */
 #define BOARD_BTN4              GPIO_NUM_14
+/* Thu tu vat ly trai -> phai (Nut 1..4, da xac nhan tren may that 2.3.2): IO21, IO14, IO3, IO2 */
+#define BOARD_BTN_POS_GPIOS     {BOARD_BTN1, BOARD_BTN4, BOARD_BTN3, BOARD_BTN2}
