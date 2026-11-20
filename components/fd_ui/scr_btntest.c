@@ -153,7 +153,7 @@ static void build(lv_obj_t *scr)
         lv_obj_set_flex_align(body, LV_FLEX_ALIGN_START, right ? LV_FLEX_ALIGN_START : LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_width(s_hint, lv_pct(68));
         lv_obj_set_width(s_status, lv_pct(68));
-        lv_obj_add_flag(row, LV_OBJ_FLAG_IGNORE_LAYOUT);
+        lv_obj_set_ignore_layout(row, true);
         lv_obj_set_flex_flow(row, LV_FLEX_FLOW_COLUMN);
         lv_obj_update_layout(body);
         int32_t y0 = lv_obj_get_y2(top) - lv_obj_get_style_pad_top(body, 0) + 8;
