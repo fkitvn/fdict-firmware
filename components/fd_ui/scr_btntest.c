@@ -146,6 +146,23 @@ static void build(lv_obj_t *scr)
         lv_obj_center(s_num[i]);
     }
     if (ui_btn_on_top()) lv_obj_move_to_index(row, lv_obj_get_index(top) + 1);   /* 4.6.8: 0 do: hang vong len tren, sat nut */
+    if (ui_btn_vertical()) {
+        /* 4.6.9: 90 do (nut ben PHAI) / 270 do (nut ben TRAI): vong 1..4 thanh cot doc sat ben nut, 1 o tren cung,
+         * tu duoi tieu de xuong day. Chu huong dan / trang thai thu hep va day sang phia con lai de khong de len cot. */
+        bool right = ui_btn_side() == UI_BTN_RIGHT;
+        lv_obj_set_flex_align(body, LV_FLEX_ALIGN_START, right ? LV_FLEX_ALIGN_START : LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_width(s_hint, lv_pct(68));
+        lv_obj_set_width(s_status, lv_pct(68));
+        lv_obj_add_flag(row, LV_OBJ_FLAG_IGNORE_LAYOUT);
+        lv_obj_set_flex_flow(row, LV_FLEX_FLOW_COLUMN);
+        lv_obj_update_layout(body);
+        int32_t y0 = lv_obj_get_y2(top) - lv_obj_get_style_pad_top(body, 0) + 8;
+        int32_t h = lv_obj_get_content_height(body) - y0;
+        if (h < 4 * 44) h = 4 * 44;
+        lv_obj_set_size(row, 56, h);
+        lv_obj_align(row, right ? LV_ALIGN_TOP_RIGHT : LV_ALIGN_TOP_LEFT, 0, y0);
+        for (int i = 0; i < 4; i++) if (s_cell[i]) lv_obj_set_size(s_cell[i], 44, 44);
+    }
     s_done = 0;
     for (int i = 0; i < 4; i++) style_cell(i, false);
     refresh_status();

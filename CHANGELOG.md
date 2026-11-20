@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.6.9] - 2026-11-20
+- Xoay 90 độ và 270 độ thì nút trên cùng là nút 1 và đáp án A. Đáp án xếp một cột từ A đến D, màn Thử nút bấm xếp nút thành cột bên cạnh nút.
+
 ## [4.6.8] - 2026-11-20
 - Khi xoay màn hình 0 độ thứ tự nút xoay theo. Nút bên trái là nút 1 và đáp án A, lưới đáp án và màn Thử nút bấm đưa lên phía trên gần nút.
 
