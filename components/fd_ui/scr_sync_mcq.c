@@ -249,19 +249,21 @@ static void show_quiz(void)
     bool por = (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL));
     lv_obj_t *g = lv_obj_create(s_body);
     lv_obj_remove_style_all(g);
-    lv_obj_set_size(g, lv_pct(100), por ? 2 * 64 + 4 : 2 * 48 + 6);
+    bool col = ui_btn_vertical();   /* 4.6.9: 90/270 do: 4 dap an 1 cot A..D tren -> duoi (giong Luyen tap) */
+    lv_obj_set_size(g, lv_pct(100), col ? 4 * 44 + 3 * 4 : por ? 2 * 64 + 4 : 2 * 48 + 6);
     if (ui_btn_on_top()) lv_obj_move_to_index(g, lv_obj_get_index(top) + 1);   /* 4.6.8: 0 do: luoi len tren, sat nut */
     lv_obj_set_flex_flow(g, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_style_pad_row(g, por ? 4 : 6, 0);
     lv_obj_set_style_pad_column(g, 6, 0);
     lv_obj_update_layout(s_body);
-    int32_t cw = (lv_obj_get_content_width(g) - 6) / 2;
+    int32_t cw = col ? lv_obj_get_content_width(g) : (lv_obj_get_content_width(g) - 6) / 2;
     if (cw < 40) cw = 40;
     for (int cell = 0; cell < 4; cell++) {
         lv_obj_t *l;
         lv_obj_t *b = ui_abcd_cell(g, cell, q->choice[cell], &l);   /* 4.1.9: giong Luyen tap - A/B/C/D, mot mau */
-        lv_obj_set_size(b, cw, por ? 64 : 48);
-        if (por && l) lv_obj_set_height(l, 60);
+        lv_obj_set_size(b, cw, col ? 44 : por ? 64 : 48);
+        if (l && col) lv_obj_set_height(l, 40);
+        else if (por && l) lv_obj_set_height(l, 60);
         if (l) lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
         s_ans[cell] = b;
         s_lbl[cell] = l;

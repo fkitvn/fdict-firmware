@@ -317,22 +317,33 @@ void ui_abcd_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m)
  * Truoc 4.6.6 tra thang chi so driver (IO21, IO2, IO3, IO14) -> Nut 2 ra D, Nut 4 ra B. */
 int ui_abcd_button(int btn_index) { return ui_btn_user_pos(btn_index); }
 
-/* 4.6.8: nut theo GOC NHIN NGUOI DUNG. 180 do (mac dinh, idx 2): nut nam DUOI man, trai -> phai = IO21, IO14, IO3, IO2
- * (= board_btn_pos). 0 do (idx 0): may lat nguoc, nut nam TREN man va thu tu trai -> phai dao lai = IO2, IO3, IO14, IO21.
- * 90/270 do: chua xu ly, giu nhu 180 do. Doc huong xoay MOI LAN goi (doi xoay luc chay co hieu luc ngay). */
-bool ui_btn_on_top(void) { return (fd_display_get_rotation() & 3) == 0; }
+/* 4.6.8 / 4.6.9: nut theo GOC NHIN NGUOI DUNG (Nut 1 = A = giu de quay lai, Nut 2 = giu mo bang nhanh).
+ *   180 do (mac dinh, idx 2): nut DUOI man, trai -> phai = IO21, IO14, IO3, IO2 (= board_btn_pos).
+ *   0 do   (idx 0): nut TREN man, trai -> phai dao lai = IO2, IO3, IO14, IO21.
+ *   90 do  (idx 1): nut BEN PHAI man (cot doc), tren -> duoi = IO2, IO3, IO14, IO21 (dao lai).
+ *   270 do (idx 3): nut BEN TRAI man (cot doc), tren -> duoi = IO21, IO14, IO3, IO2.
+ * 90/270: ben nut da xac nhan tren may; thu tu tren -> duoi suy tu bang cam ung board_orient.h, kiem lai bang Thu nut bam.
+ * Doc huong xoay MOI LAN goi (doi xoay luc chay co hieu luc ngay). */
+ui_btn_side_t ui_btn_side(void)
+{
+    static const ui_btn_side_t SIDE[4] = {UI_BTN_TOP, UI_BTN_RIGHT, UI_BTN_BOTTOM, UI_BTN_LEFT};
+    return SIDE[fd_display_get_rotation() & 3];
+}
+bool ui_btn_on_top(void) { return ui_btn_side() == UI_BTN_TOP; }
+bool ui_btn_vertical(void) { ui_btn_side_t s = ui_btn_side(); return s == UI_BTN_LEFT || s == UI_BTN_RIGHT; }
+static bool btn_reversed(void) { ui_btn_side_t s = ui_btn_side(); return s == UI_BTN_TOP || s == UI_BTN_RIGHT; }
 
 int ui_btn_user_pos(int btn_index)
 {
     int p = board_btn_pos(btn_index);
     if (p < 0) return -1;
-    return ui_btn_on_top() ? 3 - p : p;
+    return btn_reversed() ? 3 - p : p;
 }
 
 int ui_btn_at_user_pos(int pos)
 {
     if (pos < 0 || pos > 3) return -1;
-    return board_btn_at_pos(ui_btn_on_top() ? 3 - pos : pos);
+    return board_btn_at_pos(btn_reversed() ? 3 - pos : pos);
 }
 
 /* 2.3.5: cong "Dang nhap de tiep tuc" dung chung cho MOI mo-dun hoc: chi kiem tra token cuc bo (buoc dang nhap = ghep thiet bi),

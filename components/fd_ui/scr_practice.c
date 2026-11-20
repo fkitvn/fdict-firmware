@@ -551,7 +551,9 @@ static void show_practice(void)
     lv_obj_remove_style_all(g);
     /* 23/10: luoi 2x2 A B / C D ca doc lan ngang; doc: o 64 px (chu toi da 3 dong), 2 x 64 + 4 = 132 px. */
     bool por = (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL));
-    lv_obj_set_size(g, lv_pct(100), por ? 2 * 64 + 4 : 2 * 48 + 6);
+    /* 4.6.9: 90/270 do (cum nut la cot doc): 4 dap an xep doc 1 cot A..D tren -> duoi, o 44 px (toi da 2 dong). */
+    bool col = ui_btn_vertical();
+    lv_obj_set_size(g, lv_pct(100), col ? 4 * 44 + 3 * 4 : por ? 2 * 64 + 4 : 2 * 48 + 6);
     /* 4.6.8: 0 do cum nut nam TREN man -> luoi dap an len ngay duoi hang tieu de (sat nut). 180/90/270: o duoi (nhu 180).
      * (Truoc: dua len tren o 90 do theo gia dinh cu ve cum phim 2x2, khong dung voi hang nut hien tai.) */
     if (ui_btn_on_top()) lv_obj_move_to_index(g, lv_obj_get_index(top) + 1);
@@ -560,14 +562,15 @@ static void show_practice(void)
     lv_obj_set_style_pad_column(g, 6, 0);
     /* LVGL flex: o co flex_grow duoc tinh 0 px khi xet xuong dong (ROW_WRAP) -> ca 4 o nam 1 hang. Dung rong co dinh = nua vung chua. */
     lv_obj_update_layout(s_body);
-    int32_t cw = (lv_obj_get_content_width(g) - 6) / 2;
+    int32_t cw = col ? lv_obj_get_content_width(g) : (lv_obj_get_content_width(g) - 6) / 2;
     if (cw < 40) cw = 40;
     for (int cell = 0; cell < 4; cell++) {
         /* 4.1.8: mot mau dong nhat + nhan A/B/C/D (TL A, TR B, BL C, BR D); nut 1..4 -> A..D */
         lv_obj_t *l;
         lv_obj_t *b = ui_abcd_cell(g, cell, q->choice[cell], &l);   /* 4.1.9: khong cham tron */
-        lv_obj_set_size(b, cw, por ? 64 : 48);   /* 2 o/hang: rong = (rong luoi - khe 6) / 2 */
-        if (por && l) lv_obj_set_height(l, 60);   /* doc: toi da 3 dong Noto 14, qua thi "..." */
+        lv_obj_set_size(b, cw, col ? 44 : por ? 64 : 48);   /* 2 o/hang: rong = (rong luoi - khe 6) / 2; cot doc: ca hang */
+        if (l && col) lv_obj_set_height(l, 40);   /* cot doc: toi da 2 dong Noto 14 */
+        else if (por && l) lv_obj_set_height(l, 60);   /* doc: toi da 3 dong Noto 14, qua thi "..." */
         if (l) lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
         s_ans[cell] = b;
         s_lbl[cell] = l;
