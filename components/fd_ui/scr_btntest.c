@@ -58,7 +58,7 @@ static void flash_end_cb(lv_timer_t *t)
 static bool on_button(const fd_evt_button_t *b)
 {
     if (!b || b->index < 0 || b->index >= 4) return true;
-    if (done_count() == 4 && b->index == 0 && b->action == FD_BTN_LONG_PRESS) return false;   /* da du: giu Nut 1 (IO21) = quay lai */
+    if (done_count() == 4 && ui_btn_user_pos(b->index) == 0 && b->action == FD_BTN_LONG_PRESS) return false;   /* da du: giu Nut 1 = quay lai */
     int i = b->index;
     s_done |= 1u << i;
     style_cell(i, true);
@@ -131,7 +131,7 @@ static void build(lv_obj_t *scr)
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     for (int p = 0; p < 4; p++) {   /* p = vi tri trai -> phai; i = chi so nut co GPIO do */
-        int i = board_btn_at_pos(p);
+        int i = ui_btn_at_user_pos(p);   /* 4.6.8: vong 1..4 trai -> phai theo goc nhin nguoi dung (0 do dao lai) */
         if (i < 0) i = p;
         lv_obj_t *c = s_cell[i] = lv_obj_create(row);
         lv_obj_remove_style_all(c);
@@ -145,6 +145,7 @@ static void build(lv_obj_t *scr)
         lv_label_set_text_fmt(s_num[i], "%d", p + 1);
         lv_obj_center(s_num[i]);
     }
+    if (ui_btn_on_top()) lv_obj_move_to_index(row, lv_obj_get_index(top) + 1);   /* 4.6.8: 0 do: hang vong len tren, sat nut */
     s_done = 0;
     for (int i = 0; i < 4; i++) style_cell(i, false);
     refresh_status();

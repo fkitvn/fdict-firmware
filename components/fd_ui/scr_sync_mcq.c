@@ -250,6 +250,7 @@ static void show_quiz(void)
     lv_obj_t *g = lv_obj_create(s_body);
     lv_obj_remove_style_all(g);
     lv_obj_set_size(g, lv_pct(100), por ? 2 * 64 + 4 : 2 * 48 + 6);
+    if (ui_btn_on_top()) lv_obj_move_to_index(g, lv_obj_get_index(top) + 1);   /* 4.6.8: 0 do: luoi len tren, sat nut */
     lv_obj_set_flex_flow(g, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_style_pad_row(g, por ? 4 : 6, 0);
     lv_obj_set_style_pad_column(g, 6, 0);

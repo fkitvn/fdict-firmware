@@ -552,7 +552,9 @@ static void show_practice(void)
     /* 23/10: luoi 2x2 A B / C D ca doc lan ngang; doc: o 64 px (chu toi da 3 dong), 2 x 64 + 4 = 132 px. */
     bool por = (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL));
     lv_obj_set_size(g, lv_pct(100), por ? 2 * 64 + 4 : 2 * 48 + 6);
-    if ((fd_display_get_rotation() & 3) == 1) lv_obj_move_to_index(g, 1);   /* 90 do: cum phim phia tren */
+    /* 4.6.8: 0 do cum nut nam TREN man -> luoi dap an len ngay duoi hang tieu de (sat nut). 180/90/270: o duoi (nhu 180).
+     * (Truoc: dua len tren o 90 do theo gia dinh cu ve cum phim 2x2, khong dung voi hang nut hien tai.) */
+    if (ui_btn_on_top()) lv_obj_move_to_index(g, lv_obj_get_index(top) + 1);
     lv_obj_set_flex_flow(g, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_style_pad_row(g, por ? 4 : 6, 0);
     lv_obj_set_style_pad_column(g, 6, 0);
