@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.6.7] - 2026-11-20
+- Bàn phím Nghe có phím thoát và phím xoá dài hơn.
+
 ## [4.6.6] - 2026-11-20
 - Đáp án A B C D theo đúng thứ tự nút như màn Thử nút bấm ở Luyện tập, Phân loại từ và Điền từ. Giữ nút 1 để quay lại, giữ nút 2 để mở bảng điều khiển nhanh.
 - Bàn phím Nghe và Từ điển có phím thoát ở đầu trái hàng dưới, phím xoá chuyển sang đầu phải hàng dưới.

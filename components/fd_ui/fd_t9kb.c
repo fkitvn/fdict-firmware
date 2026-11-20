@@ -358,7 +358,9 @@ void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)
     lv_keyboard_set_mode(c->qwerty, LV_KEYBOARD_MODE_TEXT_LOWER);
 }
 
-/* Nghe: 3 hang; khong cach/OK. 4.6.6: hang duoi = Thoat (dau trai) | Z..M | xoa (dau phai), 9 o rong 1 = hang A. */
+/* Nghe: 3 hang; khong cach/OK. 4.6.6: hang duoi = Thoat (dau trai) | Z..M | xoa (dau phai).
+ * 4.6.7: Thoat va xoa rong 1.5 phim chu (don vi nhan doi: Thoat 3 | 7 chu x 2 | xoa 3 = 20) -> chu Z..M rong 1/10
+ * hang, bang hang Q tren cung (chi hep hon hang A mot chut). */
 static const char *const qw_map_listen[] = {
     "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
     "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
@@ -367,7 +369,7 @@ static const char *const qw_map_listen[] = {
 static const lv_buttonmatrix_ctrl_t qw_ctrl_listen[] = {
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
-    QW_CTRL | 1, QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_CHK | 1
+    QW_CTRL | 3, QW_BTN(2), QW_BTN(2), QW_BTN(2), QW_BTN(2), QW_BTN(2), QW_BTN(2), QW_BTN(2), QW_CHK | 3
 };
 
 void fd_t9kb_set_qwerty_listen(lv_obj_t *kb)
