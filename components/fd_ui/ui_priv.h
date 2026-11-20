@@ -61,7 +61,11 @@ typedef enum { UI_ANS_CORRECT, UI_ANS_WRONG, UI_ANS_OTHER } ui_ans_mark_t;
  * cell 0..3 = TL A, TR B, BL C, BR D; nut vat ly 1..4 -> A..D (ui_abcd_button). */
 lv_obj_t *ui_abcd_cell(lv_obj_t *parent, int cell, const char *text, lv_obj_t **out_label);
 void ui_abcd_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m);
-int ui_abcd_button(int btn_index);   /* chi so driver -> o A..D theo vi tri vat ly (board_btn_pos); -1 neu sai */
+int ui_abcd_button(int btn_index);   /* chi so driver -> o A..D theo thu tu nguoi dung thay (ui_btn_user_pos); -1 neu sai */
+/* 4.6.8: nut theo goc nhin nguoi dung (0 do: dao trai/phai, nut tren man; 180/90/270: nhu 180 do). */
+bool ui_btn_on_top(void);               /* true = cum nut nam phia TREN man (0 do) */
+int ui_btn_user_pos(int btn_index);     /* chi so driver -> Nut 1..4 nguoi dung thay (0..3, trai -> phai); -1 neu sai */
+int ui_btn_at_user_pos(int pos);        /* Nut 0..3 nguoi dung thay -> chi so driver; -1 neu sai */
 void ui_answer_cell_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m, uint32_t glyph_colour);   /* OK/X trong cham mau */
 /* Hien/an overlay vung vuot mep theo che do nha phat trien (goi trong task LVGL). */
 void ui_swipe_overlay_sync(void);

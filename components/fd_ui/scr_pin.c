@@ -377,7 +377,7 @@ static void destroy(void)
     s_lock_shown = s_busy = false;
 }
 
-static bool on_button(const fd_evt_button_t *b) { return s_wake || !(b->index == 0 && b->action == FD_BTN_LONG_PRESS); }
+static bool on_button(const fd_evt_button_t *b) { return s_wake || !(ui_btn_user_pos(b->index) == 0 && b->action == FD_BTN_LONG_PRESS); }
 static bool on_back(void) { return s_wake; }   /* dang khoa sau khi thuc: khong quay lai duoc */
 
 const ui_screen_t g_scr_pin = {

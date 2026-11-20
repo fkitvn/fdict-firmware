@@ -12,6 +12,7 @@
 #include "fd_voice.h"
 #include "ui_priv.h"
 #include "board.h"   /* 4.6.6: board_btn_pos (thu tu vat ly nut) */
+#include "fd_display.h"   /* 4.6.8: huong xoay -> thu tu nut theo goc nhin nguoi dung */
 #include "fd_tts.h"
 
 LV_FONT_DECLARE(fd_font_batt_11);   /* fd_font_batt_11.c: Noto Sans 11 px, chi "0123456789%-" */
@@ -314,7 +315,25 @@ void ui_abcd_mark(lv_obj_t *cell, lv_obj_t *label, ui_ans_mark_t m)
 
 /* 4.6.6: theo THU TU VAT LY (giong man Thu nut bam): Nut 1 IO21 -> A, Nut 2 IO14 -> B, Nut 3 IO3 -> C, Nut 4 IO2 -> D.
  * Truoc 4.6.6 tra thang chi so driver (IO21, IO2, IO3, IO14) -> Nut 2 ra D, Nut 4 ra B. */
-int ui_abcd_button(int btn_index) { return board_btn_pos(btn_index); }
+int ui_abcd_button(int btn_index) { return ui_btn_user_pos(btn_index); }
+
+/* 4.6.8: nut theo GOC NHIN NGUOI DUNG. 180 do (mac dinh, idx 2): nut nam DUOI man, trai -> phai = IO21, IO14, IO3, IO2
+ * (= board_btn_pos). 0 do (idx 0): may lat nguoc, nut nam TREN man va thu tu trai -> phai dao lai = IO2, IO3, IO14, IO21.
+ * 90/270 do: chua xu ly, giu nhu 180 do. Doc huong xoay MOI LAN goi (doi xoay luc chay co hieu luc ngay). */
+bool ui_btn_on_top(void) { return (fd_display_get_rotation() & 3) == 0; }
+
+int ui_btn_user_pos(int btn_index)
+{
+    int p = board_btn_pos(btn_index);
+    if (p < 0) return -1;
+    return ui_btn_on_top() ? 3 - p : p;
+}
+
+int ui_btn_at_user_pos(int pos)
+{
+    if (pos < 0 || pos > 3) return -1;
+    return board_btn_at_pos(ui_btn_on_top() ? 3 - pos : pos);
+}
 
 /* 2.3.5: cong "Dang nhap de tiep tuc" dung chung cho MOI mo-dun hoc: chi kiem tra token cuc bo (buoc dang nhap = ghep thiet bi),
  * da dang nhap thi hoc offline tu kho dong bo. */

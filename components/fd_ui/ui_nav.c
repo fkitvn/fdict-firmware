@@ -526,7 +526,7 @@ static void key_log(const fd_evt_button_t *b)
     int k = ui_key_colour(idx), cell = ui_key_cell(idx);
     const ui_screen_t *s = ui_nav_current();
     ESP_LOGD("fd_key", "gpio=%d idx=%d (B%d) pos=Nut %d evt=%s rot=%d (%d deg) colour=%s -> cell=%s screen=%s%s",
-             (idx >= 0 && idx < 4) ? GPIO[idx] : -1, idx, idx + 1, board_btn_pos(idx) + 1,
+             (idx >= 0 && idx < 4) ? GPIO[idx] : -1, idx, idx + 1, ui_btn_user_pos(idx) + 1,
              ((unsigned)b->action < 3) ? EVT[b->action] : "?", rot, fd_display_rotation_deg(rot),
              ui_key_colour_name(k), (cell >= 0 && cell < 4) ? CELL[cell] : "?",
              (s && s->name) ? s->name : "-", fd_display_is_asleep() ? " (asleep: wake only)" : "");
@@ -539,7 +539,7 @@ static void btn_async(void *p)
     if (!ui_splash_active() && !fd_display_is_asleep()) {
         /* 4.6.6: nut theo vi tri vat ly (Nut 1..4 = pos 0..3, giong man Thu nut bam). Giu = BUTTON_LONG_PRESS_START
          * (800 ms, board_buttons.c); iot_button KHONG phat SINGLE_CLICK sau khi da giu -> giu khong tinh la tra loi. */
-        int pos = board_btn_pos(b->index);
+        int pos = ui_btn_user_pos(b->index);   /* 4.6.8: theo goc nhin nguoi dung (0 do dao trai/phai) */
         bool hold = b->action == FD_BTN_LONG_PRESS;
         if (ui_quick_is_open()) {
             /* bang nhanh dang mo (che man): giu Nut 1 / Nut 2 = dong bang; nut khac nuot, khong lot xuong man duoi */
