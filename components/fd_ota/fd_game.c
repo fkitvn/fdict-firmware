@@ -262,6 +262,7 @@ static bool parse_pkg(const cJSON *j, fd_game_cfg_t *c, bool need_script)
     ucpy(c->min_fw, sizeof(c->min_fw), jstr(j, "min_fw"));
     c->runnable = fw_ok(c->min_fw);
     icon_cpy(c->icon, jstr(j, "icon"));
+    ucpy(c->how, sizeof(c->how), jstr(j, "how"));
     const cJSON *cf = cJSON_GetObjectItemCaseSensitive(j, "config");
     if (cJSON_IsObject(cf)) {
         c->fall_ms = clampi(jint(cf, "fall_ms", c->fall_ms), 800, 15000);
