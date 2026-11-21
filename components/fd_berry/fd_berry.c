@@ -310,16 +310,30 @@ static int f_count(bvm *vm)
     be_return(vm);
 }
 
-static int word_at(bvm *vm, bool en)
+static int word_at(bvm *vm, int which)
 {
     int i = argi(vm, 1, -1);
     if (i < 0 || i >= s_cfg.nwords) be_raise(vm, "index_error", "tu ngoai khoang");
     const fd_berry_word_t *w = &s_cfg.words[i];
-    be_pushstring(vm, en ? w->en : w->vi);
+    const char *t = which == 0 ? w->en : which == 1 ? w->vi : w->ipa;
+    be_pushstring(vm, t ? t : "");
     be_return(vm);
 }
-static int f_en(bvm *vm) { return word_at(vm, true); }
-static int f_vi(bvm *vm) { return word_at(vm, false); }
+static int f_en(bvm *vm) { return word_at(vm, 0); }
+static int f_vi(bvm *vm) { return word_at(vm, 1); }
+static int f_ipa(bvm *vm) { return word_at(vm, 2); }   /* 4.9.6: phien am IPA tu kho tu may ("" neu khong co) */
+
+/* 4.9.6 fd.sub(id, chu): dong phu nho (Noto 14, ve duoc IPA) duoi chu chinh, "" = an */
+static int f_sub(bvm *vm)
+{
+    int id = arg_id(vm);
+    const char *t = be_top(vm) >= 2 ? be_tostring(vm, 2) : "";
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    strlcpy(o->sub, t ? t : "", sizeof(o->sub));
+    UNLOCK();
+    be_return_nil(vm);
+}
 
 /* fd.style(id, vien_px, mau_vien, bo_goc, dem) */
 static int f_style(bvm *vm)
@@ -418,7 +432,7 @@ static void reg_module(bvm *vm)
         {"text", f_text}, {"box", f_box}, {"color", f_color}, {"font", f_font}, {"show", f_show}, {"clear", f_clear},
         {"hud", f_hud}, {"sound", f_sound}, {"say", f_say}, {"over", f_over}, {"rand", f_rand}, {"ms", f_ms},
         {"count", f_count}, {"en", f_en}, {"vi", f_vi}, {"style", f_style}, {"move", f_move}, {"stop", f_stop},
-        {"measure", f_measure}, {"opt", f_opt},
+        {"measure", f_measure}, {"opt", f_opt}, {"ipa", f_ipa}, {"sub", f_sub},
     };
     be_newmodule(vm);
     for (size_t i = 0; i < sizeof(F) / sizeof(F[0]); i++) {

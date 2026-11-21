@@ -345,3 +345,4 @@ en:
   GAME_VERSION_N: 'Version %s'
   GAME_VERSION_OLD: 'Installed %s, update to %s to play'
   GAME_FEW_WORDS_HINT: 'Pick another deck in Deck on the game screen'
+  GAME_NO_LOCAL: 'No games on this device yet. Connect to WiFi to download one.'

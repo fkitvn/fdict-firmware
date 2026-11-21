@@ -18,6 +18,8 @@
  *     toi noi thi goi arrive(id) trong script | fd.stop(id): dung tai cho
  *   fd.opt(ten): "dir" "spd" "rep" (cai dat nguoi choi), "fall_ms" "min_ms" "every" "ramp_pct" "lives" (config goi)
  *   Dong ho fd.ms() va hoat hinh dung khi tam dung (hop thoai, bang nhanh).
+ *   4.9.6: fd.ipa(i) phien am IPA cua tu i (kho tu may, "" neu khong co) | fd.sub(id, chu) dong phu nho duoi chu
+ *     chinh (Noto 14, du glyph IPA). Firmware khong con tro choi dung san: moi tro choi la goi Berry tai tu may chu.
  *   print(...) ra log.
  * Gioi han: bo nho 512 KB (PSRAM), moi lan goi ham script toi da FD_BERRY_FRAME_MS (init FD_BERRY_INIT_MS), qua han
  * -> loi timeout, tro choi dung lai va bao loi. Khong file, mang, os, sys. */
@@ -31,6 +33,7 @@ extern "C" {
 
 #define FD_BERRY_OBJ_MAX   16
 #define FD_BERRY_TXT       96
+#define FD_BERRY_SUB       64
 #define FD_BERRY_MEM_CAP   (512 * 1024)
 #define FD_BERRY_FRAME_MS  40
 #define FD_BERRY_INIT_MS   1500
@@ -39,6 +42,7 @@ extern "C" {
 typedef struct {
     const char *en;
     const char *vi;
+    const char *ipa;            /* 4.9.6, co the rong */
 } fd_berry_word_t;
 
 /* 4.9.5: tuy chon cho script (fd.opt) */
@@ -69,6 +73,7 @@ typedef struct {
     uint8_t bw, radius, pad;    /* 4.9.5: vien (px), bo goc, dem trong */
     int32_t bc;                 /* mau vien */
     char txt[FD_BERRY_TXT];
+    char sub[FD_BERRY_SUB];     /* 4.9.6 dong phu (IPA) */
 } fd_berry_obj_t;
 
 typedef enum { FD_BERRY_IDLE = 0, FD_BERRY_RUNNING, FD_BERRY_OVER, FD_BERRY_ERROR } fd_berry_state_t;

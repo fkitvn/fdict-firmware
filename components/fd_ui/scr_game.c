@@ -12,8 +12,8 @@
  *
  * Tu vung: kho tu da dong bo tren may (fd_sync_build_spell: theo Bo tu dang chon + uu tien hoc, offline 100%),
  * (4.9.4: ca goi tai ve cung vay; truong words cua goi bi bo qua). Khong tai them gi khi choi, khong gui ket qua len may chu (giai doan 1).
- * 4.9.5: MOI tro choi chay bang Berry (components/fd_berry). Luat Hung tu nam o games/catch.be (nhung vao firmware,
- * chay offline); goi type catch dung script do + config goi; goi type berry mang script rieng. Hoat hinh the (fd.move)
+ * 4.9.6: firmware KHONG con tro choi dung san. Moi tro choi (ca Hung tu, Dung hay Sai) la goi Berry tai tu may chu
+ * (web-app server/assets/games), cai vao /data/game (LittleFS). Goi type catch cu khong chay nua (phai cap nhat). Hoat hinh the (fd.move)
  * va ve van la C: lv_timer 30 ms dong bo bang doi tuong, VM chi chay luat khi co su kien (nut, cham, toi dich, dong ho). */
 #include <stdio.h>
 #include <string.h>
@@ -59,7 +59,7 @@ typedef enum { V_HOME, V_MENU, V_MSG, V_OVER, V_BERRY } view_t;
 
 static view_t s_view;
 static lv_obj_t *s_body, *s_dlg;
-static uint8_t s_src, s_dir, s_spd, s_rep;
+static uint8_t s_dir, s_spd, s_rep;
 static bool s_have_pkg;
 static fd_game_cfg_t s_pkg;             /* goi da cai (neu co) */
 
@@ -77,7 +77,7 @@ static bool s_gate_pair;                /* 4.9.0: chua dang nhap -> cong Dang nh
 /* 4.9.0 tro choi Berry (goi type berry) */
 static bool s_berry_on;
 static fd_berry_word_t *s_bwords;       /* tro vao s_words, giu den khi VM dung */
-static lv_obj_t *s_bplay, *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX];
+static lv_obj_t *s_bplay, *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX], *s_bs[FD_BERRY_OBJ_MAX];
 static fd_berry_obj_t s_bcur[FD_BERRY_OBJ_MAX];
 static int s_blives_max;
 
@@ -88,10 +88,6 @@ static fd_game_entry_t *s_entries;      /* PSRAM FD_GAME_LIST_MAX, ban sao danh 
 static int s_nentries, s_dl_idx = -1;
 static uint32_t s_list_at;              /* lv_tick lan tai danh sach thanh cong */
 static fd_game_state_t s_on_seen;
-
-/* 4.9.5: Hung tu dung san = script Berry nhung trong firmware (CMake EMBED_TXTFILES games/catch.be) */
-extern const char s_catch_be_start[] asm("_binary_catch_be_start");
-extern const char s_catch_be_end[] asm("_binary_catch_be_end");
 
 LV_IMAGE_DECLARE(img_game_basket);
 LV_IMAGE_DECLARE(img_game_paw);
@@ -118,8 +114,10 @@ static uint8_t nv_u8(nvs_handle_t h, const char *k, uint8_t def, uint8_t max)
     return v <= max ? v : def;
 }
 
-static bool use_pkg(void) { return s_src == 1 && s_have_pkg; }
+static bool use_pkg(void) { return s_have_pkg; }
 static const char *cur_id(void) { return use_pkg() ? s_pkg.id : ""; }
+/* 4.9.6: goi "catch" (Hung tu) thua ke cai dat + ky luc cua Hung tu dung san cu (id rong) */
+static const char *legacy_id(void) { return use_pkg() && !strcmp(s_pkg.id, "catch") ? "" : NULL; }
 
 static void gm_key(char out[12], char kind, const char *id)
 {
@@ -138,7 +136,13 @@ static void set_load(void)
     gm_key(k, 's', cur_id());
     gm_set_t g;
     size_t n = sizeof(g);
-    if (nvs_get_blob(h, k, &g, &n) == ESP_OK && n == sizeof(g)) {
+    bool ok = nvs_get_blob(h, k, &g, &n) == ESP_OK && n == sizeof(g);
+    if (!ok && legacy_id()) {
+        gm_key(k, 's', legacy_id());
+        n = sizeof(g);
+        ok = nvs_get_blob(h, k, &g, &n) == ESP_OK && n == sizeof(g);
+    }
+    if (ok) {
         s_dir = g.dir <= 2 ? g.dir : 0;
         s_spd = g.spd <= 2 ? g.spd : 1;
         s_rep = g.rep ? 1 : 0;
@@ -171,10 +175,16 @@ static int rec_load(gm_rec_t out[GM_REC_N])
     char k[12];
     gm_key(k, 'r', cur_id());
     size_t n = sizeof(gm_rec_t) * GM_REC_N;
-    if (nvs_get_blob(h, k, out, &n) != ESP_OK || n != sizeof(gm_rec_t) * GM_REC_N) {
+    bool ok = nvs_get_blob(h, k, out, &n) == ESP_OK && n == sizeof(gm_rec_t) * GM_REC_N;
+    if (!ok && legacy_id()) {
+        gm_key(k, 'r', legacy_id());
+        n = sizeof(gm_rec_t) * GM_REC_N;
+        ok = nvs_get_blob(h, k, out, &n) == ESP_OK && n == sizeof(gm_rec_t) * GM_REC_N;
+    }
+    if (!ok) {
         memset(out, 0, sizeof(gm_rec_t) * GM_REC_N);
         uint32_t v = 0;
-        if (use_pkg()) {
+        if (use_pkg() && !legacy_id()) {
             char id[FD_GAME_ID_LEN] = "";
             size_t m = sizeof(id);
             if (nvs_get_str(h, K_PID, id, &m) == ESP_OK && !strcmp(id, s_pkg.id)) nvs_get_u32(h, K_PBST, &v);
@@ -313,6 +323,7 @@ static void berry_stop(void)
     s_bplay = NULL;
     memset(s_bo, 0, sizeof(s_bo));
     memset(s_bl, 0, sizeof(s_bl));
+    memset(s_bs, 0, sizeof(s_bs));
 }
 
 static void body_reset(void)
@@ -365,15 +376,12 @@ static void start(void);
 static void start_async(void *a) { (void)a; if (s_body && (s_view == V_MENU || s_view == V_OVER || s_view == V_MSG || s_view == V_HOME)) start(); }
 static void begin_cb(lv_event_t *e) { (void)e; lv_async_call(start_async, NULL); }
 
-static const char *cur_name(void) { return use_pkg() ? s_pkg.name : _("GAME_CATCH"); }
-static bool cur_berry(void) { return use_pkg() && s_pkg.berry; }
+static const char *cur_name(void) { return s_pkg.name; }
 
 /* 4.9.5: tuy chon Chieu / Toc do hien khi tro choi dung den (Hung tu dung san, goi catch; goi Berry neu script
  * goi fd.opt("dir") / fd.opt("spd")). */
 static void cur_opts(bool *dir, bool *spd)
 {
-    *dir = *spd = true;
-    if (!cur_berry()) return;
     size_t len = 0;
     char *sc = fd_game_pkg_script(&len);
     *dir = sc && strstr(sc, "fd.opt(\"dir\")");
@@ -395,14 +403,14 @@ static void show_menu(void)
     dlg_close();
     body_reset();
     s_have_pkg = fd_game_installed(&s_pkg);
-    if (s_src == 1 && !s_have_pkg) s_src = 0;
+    if (!s_have_pkg) { show_home(); return; }
     set_load();
     lv_obj_t *sc = ui_setup_begin(s_body, cur_name());
     s_menu_sc = sc;
     lv_obj_t *top = row(sc);
     lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *ic = lv_image_create(top);
-    lv_image_set_src(ic, use_pkg() ? game_icon(s_pkg.icon, s_pkg.berry) : &img_game_basket);
+    lv_image_set_src(ic, game_icon(s_pkg.icon, s_pkg.berry));
     gm_rec_t rec[GM_REC_N];
     int nrec = rec_load(rec);
     char tmp[96];
@@ -499,8 +507,8 @@ static void start(void)
 {
     dlg_close();
     s_have_pkg = fd_game_installed(&s_pkg);
-    if (s_src == 1 && !s_have_pkg) s_src = 0;
-    if (use_pkg() && pkg_outdated()) {   /* 4.9.3: biet co ban moi thi bat buoc cap nhat moi choi */
+    if (!s_have_pkg) { show_home(); return; }
+    if (!s_pkg.berry || pkg_outdated()) {   /* 4.9.3 ban moi bat buoc; 4.9.6 goi type catch cu khong con chay */   /* 4.9.3: biet co ban moi thi bat buoc cap nhat moi choi */
         fd_ui_toast(_("GAME_NEED_UPDATE"));
         show_home();
         return;
@@ -599,13 +607,22 @@ static void berry_apply(int i, const fd_berry_obj_t *o)
         lv_obj_t *b = lv_obj_create(s_bplay);
         lv_obj_remove_style_all(b);
         lv_obj_set_scrollable(b, false);
+        lv_obj_set_flex_flow(b, LV_FLEX_FLOW_COLUMN);   /* chu chinh + dong phu (4.9.6 IPA) */
+        lv_obj_set_flex_align(b, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_clickable(b, true);
         lv_obj_add_event_cb(b, btap_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         lv_obj_t *l = lv_label_create(b);
         lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_clickable(l, false);
+        lv_obj_t *sl = lv_label_create(b);
+        lv_obj_set_style_text_font(sl, &fd_font_noto_14, 0);   /* Noto co du glyph IPA */
+        lv_obj_set_style_text_align(sl, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_opa(sl, LV_OPA_70, 0);
+        lv_obj_set_clickable(sl, false);
+        lv_obj_set_hidden(sl, true);
         s_bo[i] = b;
         s_bl[i] = l;
+        s_bs[i] = sl;
         memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
         s_bcur[i].font = 0xFF;   /* buoc ap dung lan dau */
     }
@@ -642,6 +659,16 @@ static void berry_apply(int i, const fd_berry_obj_t *o)
     if (c->pad != o->pad || c->font == 0xFF) lv_obj_set_style_pad_all(b, o->pad, 0);
     if (c->fg != o->fg || c->font == 0xFF) lv_obj_set_style_text_color(l, lv_color_hex((uint32_t)o->fg), 0);
     if (strcmp(c->txt, o->txt) != 0 || c->font == 0xFF) lv_label_set_text(l, o->txt);
+    lv_obj_t *sl = s_bs[i];
+    if (c->w != o->w || c->font == 0xFF) {
+        lv_obj_set_width(sl, o->w > 0 ? lv_pct(100) : LV_SIZE_CONTENT);
+        lv_label_set_long_mode(sl, o->w > 0 ? LV_LABEL_LONG_WRAP : LV_LABEL_LONG_CLIP);
+    }
+    if (c->fg != o->fg || c->font == 0xFF) lv_obj_set_style_text_color(sl, lv_color_hex((uint32_t)o->fg), 0);
+    if (strcmp(c->sub, o->sub) != 0 || c->font == 0xFF) {
+        lv_label_set_text(sl, o->sub);
+        lv_obj_set_hidden(sl, !o->sub[0]);
+    }
     *c = *o;
 }
 
@@ -700,20 +727,6 @@ static void berry_err_async(void *a)
     show_msg(_("GAME_SCRIPT_ERR"), hint);
 }
 
-/* Script cua tro choi dang chon: goi berry -> script trong goi; Hung tu dung san va goi type catch -> games/catch.be
- * nhung trong firmware (ban sao PSRAM vi VM giai phong ma nguon sau khi bien dich). */
-static char *game_script(size_t *len)
-{
-    if (cur_berry()) return fd_game_pkg_script(len);
-    size_t n = (size_t)(s_catch_be_end - s_catch_be_start);
-    while (n > 0 && s_catch_be_start[n - 1] == 0) n--;   /* EMBED_TXTFILES them NUL */
-    char *p = ps_alloc(n + 1);
-    if (!p) return NULL;
-    memcpy(p, s_catch_be_start, n);
-    *len = n;
-    return p;
-}
-
 /* fd.measure: chay trong task VM nen phai khoa LVGL; khoa that bai (dang ban) -> fd_berry uoc luong */
 static bool berry_measure(const char *txt, int font, int maxw, int *w, int *h)
 {
@@ -729,13 +742,17 @@ static bool berry_measure(const char *txt, int font, int maxw, int *w, int *h)
 static void show_berry(void)
 {
     size_t len = 0;
-    char *script = game_script(&len);
-    if (!script) { show_msg(cur_berry() ? _("GAME_INSTALL_FAIL") : _("MEMORY_ERROR"), NULL); return; }
+    char *script = fd_game_pkg_script(&len);
+    if (!script) { show_msg(_("GAME_INSTALL_FAIL"), NULL); return; }
     s_view = V_BERRY;
     body_reset();
     s_bwords = malloc(sizeof(fd_berry_word_t) * (size_t)s_nw);
     if (!s_bwords) { free(script); show_msg(_("MEMORY_ERROR"), NULL); return; }
-    for (int i = 0; i < s_nw; i++) { s_bwords[i].en = s_words[i].en; s_bwords[i].vi = s_words[i].vi; }
+    for (int i = 0; i < s_nw; i++) {
+        s_bwords[i].en = s_words[i].en;
+        s_bwords[i].vi = s_words[i].vi;
+        s_bwords[i].ipa = s_words[i].ipa;   /* 4.9.6 fd.ipa */
+    }
     lv_obj_set_style_pad_all(s_body, 0, 0);
     lv_obj_set_layout(s_body, LV_LAYOUT_NONE);
     int32_t W = lv_display_get_horizontal_resolution(NULL), H = lv_display_get_vertical_resolution(NULL);
@@ -756,9 +773,7 @@ static void show_berry(void)
         .measure = berry_measure,
     };
     /* fd.opt: cai dat nguoi choi + config goi (goi catch / berry) hoac mac dinh Hung tu dung san */
-    fd_game_cfg_t gc;
-    if (use_pkg()) gc = s_pkg;
-    else fd_game_cfg_default(&gc);
+    fd_game_cfg_t gc = s_pkg;
     cfg.opts = (fd_berry_opts_t){
         .dir = s_dir, .spd = s_spd, .rep = s_rep, .fall_ms = gc.fall_ms, .min_ms = gc.min_ms,
         .every = gc.every, .ramp_pct = gc.ramp_pct, .lives = gc.lives,
@@ -814,14 +829,13 @@ static void show_over(void)
 }
 
 /* ---------- LUOI TRO CHOI (kieu Home) ----------
- * O dau: Hung tu dung san (tu vung tren may). Sau do moi tro choi trong danh sach may chu (icon theo goi).
+ * 4.9.6: chi cac tro choi trong danh sach may chu + goi dang cai (khong con tro choi dung san).
  * Chua tai (hoac khac ban dang cai) = o mo; cham = tai ve (tien do hien tren o) roi vao choi ngay.
  * Da tai = cham mo man rieng cua tro choi (Bat dau, Cai dat, Ky luc). Chi 1 goi cai: cai game khac thi game cu mo lai.
- * Khong mang: van hien o Hung tu + goi dang cai. */
+ * Khong mang: chi hien goi dang cai; chua cai goi nao thi bao ro can mang de tai. */
 #define GT_H_PORT 84
 #define GT_GAP_COL 8
 #define GT_GAP_ROW 12
-#define GT_NATIVE  (-1)
 #define GT_PKG     (-2)   /* goi dang cai nhung khong co trong danh sach (khong mang) */
 #define LIST_TTL_MS 60000
 
@@ -831,7 +845,6 @@ static void play_new_async(void *a)
 {
     (void)a;
     if (!s_body || s_view != V_HOME) return;
-    s_src = 1;
     start();   /* 4.9.1: tai xong choi ngay */
 }
 
@@ -843,8 +856,7 @@ static void tile_cb(lv_event_t *e)
     fd_game_status_t st;
     fd_game_get(&st);
     if (st.state == FD_GAME_DOWNLOADING) return;   /* dang tai mot tro choi */
-    if (i == GT_NATIVE) { s_src = 0; lv_async_call(open_menu_async, NULL); return; }
-    if (i == GT_PKG) { s_src = 1; lv_async_call(open_menu_async, NULL); return; }
+    if (i == GT_PKG) { lv_async_call(open_menu_async, NULL); return; }
     if (i < 0 || i >= s_nentries) return;
     const fd_game_entry_t *g = &s_entries[i];
     if (!g->supported) {
@@ -853,7 +865,7 @@ static void tile_cb(lv_event_t *e)
         fd_ui_toast(t);
         return;
     }
-    if (entry_state(g) == G_OK) { s_src = 1; lv_async_call(open_menu_async, NULL); return; }
+    if (entry_state(g) == G_OK) { lv_async_call(open_menu_async, NULL); return; }
     /* chua cai hoac ban cu (G_OLD): tai ban moi, cai de len slot; cai dat + ky luc giu theo id */
     if (!fd_game_install(g)) { fd_ui_toast(_("GAME_INSTALL_FAIL")); return; }
     s_dl_idx = i;
@@ -910,7 +922,6 @@ static void grid_build(void)
     s_have_pkg = fd_game_installed(&s_pkg);
     int32_t gw = lv_display_get_horizontal_resolution(NULL) - 12;
     int32_t tw = (gw - 2 * GT_GAP_COL) / 3;
-    tile(s_grid, tw, &img_game_basket, _("GAME_CATCH"), false, GT_NATIVE);
     bool pkg_listed = false, any_dim = false;
     for (int i = 0; i < s_nentries; i++) {
         const fd_game_entry_t *g = &s_entries[i];
@@ -933,7 +944,8 @@ static void grid_build(void)
         lv_obj_t *l = tile(s_grid, tw, game_icon(g->icon, g->berry), nm, !inst, i);
         if (i == s_dl_idx) s_dl_lbl = l;
     }
-    if (s_have_pkg && !pkg_listed) tile(s_grid, tw, game_icon(s_pkg.icon, s_pkg.berry), s_pkg.name, false, GT_PKG);
+    if (s_have_pkg && !pkg_listed) tile(s_grid, tw, game_icon(s_pkg.icon, s_pkg.berry), s_pkg.berry ? s_pkg.name : _("GAME_NEED_UPDATE"), !s_pkg.berry, GT_PKG);
+    lv_obj_set_hidden(s_grid, !s_have_pkg && s_nentries == 0);
     if (s_on_status && any_dim && s_dl_idx < 0) lv_label_set_text(s_on_status, _("GAME_TAP_HINT"));
 }
 
@@ -987,7 +999,11 @@ static void on_render(void)
                 s_dl_idx = -1;
                 grid_build();
             }
-            if (!strcmp(st.err, "none") || !strcmp(st.err, "no_wifi") || !strcmp(st.err, "unpaired")) lv_label_set_text(s_on_status, m);
+            if (!st.install && !s_have_pkg && s_nentries == 0) {
+                /* 4.9.6: khong mang va chua cai tro choi nao */
+                snprintf(t, sizeof(t), "%s\n%s", _("GAME_NO_LOCAL"), m);
+                lv_label_set_text(s_on_status, t);
+            } else if (!strcmp(st.err, "none") || !strcmp(st.err, "no_wifi") || !strcmp(st.err, "unpaired")) lv_label_set_text(s_on_status, m);
             else { snprintf(t, sizeof(t), "%s (%s)", m, st.err); lv_label_set_text(s_on_status, t); }
         }
         break;
@@ -1049,8 +1065,8 @@ static void build(lv_obj_t *scr)
     s_body = ui_page_create(scr);
     s_gate_pair = !fd_ota_is_paired();   /* 4.9.0: nhu Luyen tap va cac mo-dun hoc: chua dang nhap thi khong choi */
     if (s_gate_pair) { s_view = V_HOME; s_left_from = V_HOME; ui_pair_gate(s_body); return; }
-    if (s_left_from == V_MENU) show_menu();   /* s_src giu nguyen (bien tinh) */
-    else { s_src = 0; show_home(); }
+    if (s_left_from == V_MENU) show_menu();
+    else show_home();
     s_left_from = V_HOME;
 }
 

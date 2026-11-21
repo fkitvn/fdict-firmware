@@ -393,7 +393,7 @@ static void list_task(void *arg)
                 for (int k = 0; k < 64; k++) e->sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
                 e->sha256[64] = 0;
                 e->size = clampi(jint(it, "size", 0), 0, FD_GAME_PKG_MAX + 1);
-                e->supported = (!strcmp(jstr(it, "type"), "catch") || !strcmp(jstr(it, "type"), "berry")) && fw_ok(e->min_fw) && e->size <= FD_GAME_PKG_MAX;
+                e->supported = !strcmp(jstr(it, "type"), "berry") && fw_ok(e->min_fw) && e->size <= FD_GAME_PKG_MAX;
                 e->installed = have && !strcmp(inst.id, e->id) && !strcmp(inst.version, e->version);
             }
         }
