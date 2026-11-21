@@ -330,21 +330,21 @@ static void qw_create(t9_ctx_t *c)
     c->qwerty = k;
 }
 
-/* Ban QWERTY tinh gon (chi chu a-z, xoa, cach, OK): Tu dien - chi nhap text thuong. Wi-Fi van dung ban day du.
- * 4.6.6: hang duoi = Thoat (dau trai) | cach | OK | xoa (dau phai). Hang Z giu 2 o an hai ben (rong 1) de phim chu
+/* Ban QWERTY tinh gon (chi chu a-z, xoa, cach; 4.9.9 bo OK, tra bang nut tim): Tu dien - chi nhap text thuong. Wi-Fi van dung ban day du.
+ * 4.6.6: hang duoi = Thoat (dau trai) | cach | xoa (dau phai) (4.9.9 bo OK). Hang Z giu 2 o an hai ben (rong 1) de phim chu
  * Z..M rong bang hang A (9 don vi) va can giua nhu ban phim that. */
 #define QW_GAP (LV_BUTTONMATRIX_CTRL_HIDDEN | 1)
 static const char *const qw_map_plain[] = {
     "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "\n",
     "a", "s", "d", "f", "g", "h", "j", "k", "l", "\n",
     " ", "z", "x", "c", "v", "b", "n", "m", " ", "\n",
-    LV_SYMBOL_LEFT, " ", LV_SYMBOL_OK, LV_SYMBOL_BACKSPACE, ""
+    LV_SYMBOL_LEFT, " ", LV_SYMBOL_BACKSPACE, ""
 };
 static const lv_buttonmatrix_ctrl_t qw_ctrl_plain[] = {
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1),
     QW_GAP, QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_BTN(1), QW_GAP,
-    QW_CTRL | 2, 3, QW_CTRL | 2, QW_CHK | 2   /* 4.6.6: Thoat | cach | OK | xoa */
+    QW_CTRL | 2, 5, QW_CHK | 2   /* 4.9.9: Thoat | cach (rong them phan cua OK) | xoa; tra tu bang nut kinh lup */
 };
 
 void fd_t9kb_set_qwerty_plain(lv_obj_t *kb)

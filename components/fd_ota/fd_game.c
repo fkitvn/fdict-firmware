@@ -445,6 +445,19 @@ char *fd_game_script(const char *id, size_t *len)
     return out;
 }
 
+/* 4.9.9: xoa slot mot game (goi hong / khong doc duoc script) de cham lai la tai lai */
+void fd_game_remove(const char *id)
+{
+    if (!id || !safe_id(id)) return;
+    ensure_init();
+    char dir[64];
+    snprintf(dir, sizeof(dir), GROOT "/%s", id);
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    rm_tree1(dir);
+    xSemaphoreGive(s_mx);
+    ESP_LOGW(TAG, "da xoa slot hong %s", id);
+}
+
 void fd_game_reset(void)
 {
     ensure_init();

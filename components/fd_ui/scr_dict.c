@@ -647,7 +647,7 @@ static void show_home(void)
     lv_obj_set_style_transform_rotation(handle, 450, 0);
     lv_obj_add_event_cb(tg, search_cb, LV_EVENT_CLICKED, NULL);
     s_kb = fd_t9kb_create(s_body, s_ta, t9_done_cb, NULL);
-    if (s_kb) fd_t9kb_set_qwerty_plain(s_kb);   /* chi chu thuong + xoa/cach/OK */
+    if (s_kb) fd_t9kb_set_qwerty_plain(s_kb);   /* chi chu thuong + xoa/cach; tra tu bang nut kinh lup (search_cb) */
     lv_obj_add_event_cb(s_ta, ta_insert_cb, LV_EVENT_INSERT, NULL);
     lv_obj_add_event_cb(s_ta, kb_open_cb, LV_EVENT_CLICKED, NULL);
     kb_set_open(false);
