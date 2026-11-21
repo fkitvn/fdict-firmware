@@ -34,7 +34,8 @@ static const char *TAG = "fd_audio";
 
 /* ===== 4.6.10: CHUAN HOA AM LUONG CHUNG (moi am ra loa di qua write_mono -> lvl_sample) =====
  * Muc chung FD_AUDIO_TARGET_RMS_DBFS / FD_AUDIO_PEAK_CEIL_DBFS (fd_audio.h), chuan theo giong doc Pico (do tren host:
- * RMS doan co tieng ~ -17 dBFS, dinh trung vi -4.4 dBFS). Am luong nguoi dung + tran codec 0 dB ap dung SAU buoc nay.
+ * RMS doan co tieng ~ -17 dBFS, dinh trung vi -4.4 dBFS; 4.7.0 muc chung nang len -14 dBFS). Am luong nguoi dung + tran
+ * codec 0 dB ap dung SAU buoc nay.
  * - Biet ca doan (PCM, TTS, file/doan <= LVL_BUF_MAX, WAV ghi am): 1 gain tinh tu RMS cac khung 20 ms co tieng
  *   (khung < -50 dBFS bo qua -> khong keo nhieu nen len), kep [LVL_GAIN_MIN, gmax]. Khong bom/nhay am trong 1 doan.
  * - File dai hon LVL_BUF_MAX (doc theo khoi): AGC theo bao RMS (attack 10 ms / release 400 ms), gain giam 5 ms /
