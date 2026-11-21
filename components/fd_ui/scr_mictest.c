@@ -1,6 +1,6 @@
 /* 2.1.8 Cai dat > Thu micro: ghi am 5 s tu mic tren may (ES8311, tu dung), luu /data/mictest.wav (1 file, ghi de),
  * hien thoi luong + thanh muc am khi ghi; [Ghi am/Dung] [Nghe lai] [Xoa]. Kiem tra dung luong trong truoc khi ghi.
- * Nghe lai qua fd_audio_play_wav (am luong > 60% giam ve ~60% de tranh re).
+ * Nghe lai qua fd_audio_play_wav (4.6.10: fd_audio chuan hoa ve muc chung FD_AUDIO_TARGET_RMS_DBFS).
  * 2.2.3: chuyen vao Che do nha phat trien, doi ten "Thu loa & micro"; thu loa: [Am 1 kHz] / [Quet tan so] theo am luong
  * he thong (DAC toi da 0 dB do fd_audio gioi han). 2.2.7: xem ghi chu "Thu loa" ben duoi. */
 #include <stdio.h>
@@ -23,7 +23,7 @@ static bool s_was_rec;
 
 /* Speaker diagnostics use persistent PSRAM PCM, queued through fd_audio_play_pcm. */
 #define SPK_RATE   16000
-#define SPK_AMP    4000.0f            /* ~ -18 dBFS */
+#define SPK_AMP    4000.0f            /* bien do tong hop; khi phat fd_audio chuan hoa ve muc chung (4.6.10) */
 #define SPK_FADE   480                /* 30 ms vao/ra */
 #define SPK_TONE_N (SPK_RATE * 3 / 2)  /* 1,5 s: 3 bip 0,3 s, nghi 0,2 s */
 #define SPK_SWEEP_N (SPK_RATE * 3)     /* 3 s: 200 Hz -> 4 kHz */

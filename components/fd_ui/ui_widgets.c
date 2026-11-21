@@ -40,7 +40,8 @@ lv_obj_t *ui_screen_title(lv_obj_t *parent, const char *txt)
     return hdr;
 }
 
-/* 'bip bip' doi am luong: PCM 16 kHz mono tao 1 lan (bo dem tinh, ton tai suot khi phat). Am luong do codec ap dung. */
+/* 'bip bip' doi am luong: PCM 16 kHz mono tao 1 lan (bo dem tinh, ton tai suot khi phat). fd_audio chuan hoa ve muc
+ * chung (4.6.10), am luong do codec ap dung. */
 #define VB_RATE   16000
 #define VB_TONE   (VB_RATE * 70 / 1000)
 #define VB_GAP    (VB_RATE * 60 / 1000)

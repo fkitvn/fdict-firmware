@@ -14,7 +14,7 @@ extern "C" {
 esp_err_t fd_audio_feedback(bool correct);
 /* Chuong 2 not ngan (~300 ms), dung khi khong co am tu. */
 esp_err_t fd_audio_beep(void);
-/* Phat PCM 16-bit mono 16 kHz. Bo dem phai ton tai den khi phat xong (vd du lieu const). */
+/* Phat PCM 16-bit mono 16 kHz (chuan hoa ve muc chung khi phat, khong sua bo dem). Bo dem phai ton tai den khi phat xong. */
 esp_err_t fd_audio_play_pcm(const int16_t *samples, size_t count);
 /* Doc tu tieng Anh bang TTS tren may (Pico) trong task am thanh; loi tong hop -> chuong. text < 40 ky tu. */
 esp_err_t fd_audio_say(const char *text);
@@ -31,7 +31,14 @@ void fd_audio_set_miss_cb(void (*cb)(const char *text));
 /* Tra am trong bo tu offline truoc cache (goi tu task am thanh): true -> phat path[off, off+len). */
 void fd_audio_set_lookup_cb(bool (*cb)(const char *word, char *path, size_t plen, uint32_t *off, uint32_t *len));
 
-/* Am luong 0..100 (0 = tat tieng: khong phat, PA tat). Luu NVS fd/vol, mac dinh 70. */
+/* 4.6.10: MUC AM CHUNG cho moi am ra loa (giong doc Pico, am tu, chuong, phan hoi dung/sai, bip am luong, thu loa,
+ * nghe lai ghi am). Chuan theo giong doc Pico (RMS doan co tieng ~ -17 dBFS). fd_audio tu chuan hoa moi nguon ve
+ * FD_AUDIO_TARGET_RMS_DBFS, qua bo gioi han mem tran FD_AUDIO_PEAK_CEIL_DBFS (khong cat cung). Am luong nguoi dung va
+ * tran codec 0 dB ap dung SAU. Muon ca may to/nho hon: doi 1 hang so nay (vd -14 = +3 dB, bo gioi han do dinh). */
+#define FD_AUDIO_TARGET_RMS_DBFS (-17.0f)
+#define FD_AUDIO_PEAK_CEIL_DBFS  (-1.0f)
+
+/* Am luong 0..100 (0 = tat tieng: khong phat, PA tat). Luu NVS fd/vol, mac dinh 100 (4.1.3). */
 void fd_audio_set_volume(int vol);
 int fd_audio_get_volume(void);
 /* true khi dang phat (vd: khong cho man hinh ngu). */
@@ -52,7 +59,7 @@ bool fd_audio_rec_active(void);
 uint32_t fd_audio_rec_ms(void);
 int fd_audio_rec_level(void);
 esp_err_t fd_audio_rec_result(void);
-/* Phat file WAV do fd_audio_rec_start ghi (xep hang nhu phat am, theo am luong he thong). */
+/* Phat file WAV do fd_audio_rec_start ghi (xep hang nhu phat am, chuan hoa ve muc chung, theo am luong he thong). */
 esp_err_t fd_audio_play_wav(const char *path);
 
 
