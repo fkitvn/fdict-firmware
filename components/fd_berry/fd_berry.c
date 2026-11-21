@@ -1,4 +1,5 @@
 /* 4.9.0 May ao Berry cho tro choi tai ve. Xem include/fd_berry.h. */
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include "berry.h"
@@ -19,7 +20,7 @@ static const char *TAG = "fd_berry";
 #define HDR 8   /* dau moi khoi: kich thuoc (giu canh 8 byte) */
 
 /* ---------- bo nho: PSRAM, co tran ---------- */
-static size_t s_mem;
+static size_t s_mem, s_mem_peak;
 
 void *fd_berry_malloc(size_t n)
 {
@@ -29,6 +30,7 @@ void *fd_berry_malloc(size_t n)
     if (!p) return NULL;
     *(size_t *)p = n;
     s_mem += n + HDR;
+    if (s_mem > s_mem_peak) s_mem_peak = s_mem;
     return p + HDR;
 }
 
@@ -51,6 +53,7 @@ void *fd_berry_realloc(void *ptr, size_t n)
     if (!q) return NULL;
     *(size_t *)q = n;
     s_mem = s_mem - old + n;
+    if (s_mem > s_mem_peak) s_mem_peak = s_mem;
     return q + HDR;
 }
 
@@ -87,11 +90,48 @@ static fd_berry_cfg_t s_cfg;
 static volatile bool s_stop, s_paused, s_running;
 static volatile int64_t s_deadline;
 static int64_t s_t0;
+/* 4.9.5 dong ho tro choi (khong dem luc tam dung) + hoat hinh fd.move (tinh trong C) */
+static int64_t s_pause_acc, s_pause_at;
+typedef struct { bool on; int16_t x0, y0, x1, y1; int64_t t0; int32_t dur; } anim_t;
+static anim_t s_anim[FD_BERRY_OBJ_MAX];
+static uint32_t s_arrived;   /* bit: doi tuong vua toi dich, cho goi arrive(id) */
+static uint32_t s_calls, s_max_us;
+static uint64_t s_sum_us;
 
 typedef struct { uint8_t type; int16_t arg; } ev_t;
 
 #define LOCK() xSemaphoreTake(s_mx, portMAX_DELAY)
 #define UNLOCK() xSemaphoreGive(s_mx)
+
+/* goi khi da LOCK */
+static int64_t gclock_us(void)
+{
+    int64_t now = esp_timer_get_time();
+    return now - s_t0 - s_pause_acc - (s_pause_at ? now - s_pause_at : 0);
+}
+
+/* Cap nhat vi tri cac doi tuong dang chay (goi khi da LOCK). */
+static void anim_step(void)
+{
+    int64_t t = gclock_us();
+    for (int i = 0; i < FD_BERRY_OBJ_MAX; i++) {
+        anim_t *a = &s_anim[i];
+        if (!a->on) continue;
+        int64_t el = t - a->t0;
+        fd_berry_obj_t *o = &s_obj[i];
+        if (el >= (int64_t)a->dur * 1000 || a->dur <= 0) {
+            o->x = a->x1;
+            o->y = a->y1;
+            a->on = false;
+            s_arrived |= 1u << i;
+        } else {
+            int64_t d = (int64_t)a->dur * 1000;
+            o->x = (int16_t)(a->x0 + (int64_t)(a->x1 - a->x0) * el / d);
+            o->y = (int16_t)(a->y0 + (int64_t)(a->y1 - a->y0) * el / d);
+        }
+        s_dirty |= 1u << i;
+    }
+}
 
 static void set_err(const char *a, const char *b)
 {
@@ -130,6 +170,8 @@ static fd_berry_obj_t *touch(int id)
         o->bg = 0xFFFFFF;
         o->fg = 0x111827;
         o->font = 18;
+        o->radius = 10;
+        o->pad = 4;
     }
     s_dirty |= 1u << id;
     return o;
@@ -153,6 +195,8 @@ static int f_box(bvm *vm)
     int id = arg_id(vm);
     int x = argi(vm, 2, 0), y = argi(vm, 3, 0), w = argi(vm, 4, 0), h = argi(vm, 5, 0);
     LOCK();
+    s_anim[id].on = false;
+    s_arrived &= ~(1u << id);
     fd_berry_obj_t *o = touch(id);
     o->x = (int16_t)clampv(x, -1000, 2000);
     o->y = (int16_t)clampv(y, -1000, 2000);
@@ -209,6 +253,7 @@ static int f_hud(bvm *vm)
     s_misc.score = argi(vm, 1, 0);
     s_misc.lives = clampv(argi(vm, 2, -1), -1, 9);
     s_misc.level = argi(vm, 3, 0);
+    s_misc.combo = argi(vm, 4, 0);
     s_misc.hud_dirty = true;
     UNLOCK();
     be_return_nil(vm);
@@ -235,6 +280,8 @@ static int f_over(bvm *vm)
 {
     LOCK();
     s_misc.over_score = argi(vm, 1, s_misc.score);
+    s_misc.over_right = argi(vm, 2, -1);
+    s_misc.over_level = argi(vm, 3, s_misc.level);
     if (s_misc.state == FD_BERRY_RUNNING) s_misc.state = FD_BERRY_OVER;
     UNLOCK();
     s_stop = true;
@@ -250,7 +297,10 @@ static int f_rand(bvm *vm)
 
 static int f_ms(bvm *vm)
 {
-    be_pushint(vm, (bint)((esp_timer_get_time() - s_t0) / 1000));
+    LOCK();
+    int64_t t = gclock_us();
+    UNLOCK();
+    be_pushint(vm, (bint)(t / 1000));
     be_return(vm);
 }
 
@@ -271,12 +321,104 @@ static int word_at(bvm *vm, bool en)
 static int f_en(bvm *vm) { return word_at(vm, true); }
 static int f_vi(bvm *vm) { return word_at(vm, false); }
 
+/* fd.style(id, vien_px, mau_vien, bo_goc, dem) */
+static int f_style(bvm *vm)
+{
+    int id = arg_id(vm);
+    int bw = argi(vm, 2, 0), bc = argi(vm, 3, 0xCBD5E1), r = argi(vm, 4, 10), pad = argi(vm, 5, 4);
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    o->bw = (uint8_t)clampv(bw, 0, 8);
+    o->bc = bc & 0xFFFFFF;
+    o->radius = (uint8_t)clampv(r, 0, 40);
+    o->pad = (uint8_t)clampv(pad, 0, 20);
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.move(id, x, y, ms) */
+static int f_move(bvm *vm)
+{
+    int id = arg_id(vm);
+    int x = clampv(argi(vm, 2, 0), -1000, 2000), y = clampv(argi(vm, 3, 0), -1000, 2000);
+    int ms = clampv(argi(vm, 4, 0), 0, 600000);
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    if (s_anim[id].on) anim_step();   /* lay vi tri hien tai */
+    anim_t *a = &s_anim[id];
+    a->x0 = o->x;
+    a->y0 = o->y;
+    a->x1 = (int16_t)x;
+    a->y1 = (int16_t)y;
+    a->dur = ms;
+    a->t0 = gclock_us();
+    a->on = true;
+    s_arrived &= ~(1u << id);
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+static int f_stop(bvm *vm)
+{
+    int id = arg_id(vm);
+    LOCK();
+    if (s_anim[id].on) {
+        anim_step();
+        s_anim[id].on = false;
+    }
+    s_arrived &= ~(1u << id);
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.measure(chu, font, rong_toi_da) -> [w, h] */
+static int f_measure(bvm *vm)
+{
+    const char *t = be_top(vm) >= 1 ? be_tostring(vm, 1) : "";
+    int font = argi(vm, 2, 18), maxw = clampv(argi(vm, 3, 200), 10, 640);
+    int w = 0, h = 0;
+    if (!s_cfg.measure || !s_cfg.measure(t ? t : "", font, maxw, &w, &h)) {
+        /* khong khoa duoc LVGL: uoc luong (chu trung binh ~0.55 co chu) */
+        int px = font >= 32 ? 32 : font >= 18 ? 18 : 14, lh = px + px / 3;
+        int tw = (int)strlen(t ? t : "") * px * 55 / 100;
+        int lines = tw / maxw + 1;
+        w = tw > maxw ? maxw : tw;
+        h = lines * lh;
+    }
+    be_newobject(vm, "list");
+    be_pushint(vm, w);
+    be_data_push(vm, -2);
+    be_pop(vm, 1);
+    be_pushint(vm, h);
+    be_data_push(vm, -2);
+    be_pop(vm, 1);
+    be_pop(vm, 1);
+    be_return(vm);
+}
+
+/* fd.opt(ten) */
+static int f_opt(bvm *vm)
+{
+    const char *k = be_top(vm) >= 1 ? be_tostring(vm, 1) : "";
+    const fd_berry_opts_t *o = &s_cfg.opts;
+    static const struct { const char *k; size_t off; } T[] = {
+        {"dir", offsetof(fd_berry_opts_t, dir)}, {"spd", offsetof(fd_berry_opts_t, spd)},
+        {"rep", offsetof(fd_berry_opts_t, rep)}, {"fall_ms", offsetof(fd_berry_opts_t, fall_ms)},
+        {"min_ms", offsetof(fd_berry_opts_t, min_ms)}, {"every", offsetof(fd_berry_opts_t, every)},
+        {"ramp_pct", offsetof(fd_berry_opts_t, ramp_pct)}, {"lives", offsetof(fd_berry_opts_t, lives)},
+    };
+    for (size_t i = 0; i < sizeof(T) / sizeof(T[0]); i++)
+        if (k && !strcmp(k, T[i].k)) { be_pushint(vm, *(const int *)((const char *)o + T[i].off)); be_return(vm); }
+    be_return_nil(vm);
+}
+
 static void reg_module(bvm *vm)
 {
     static const struct { const char *name; bntvfunc f; } F[] = {
         {"text", f_text}, {"box", f_box}, {"color", f_color}, {"font", f_font}, {"show", f_show}, {"clear", f_clear},
         {"hud", f_hud}, {"sound", f_sound}, {"say", f_say}, {"over", f_over}, {"rand", f_rand}, {"ms", f_ms},
-        {"count", f_count}, {"en", f_en}, {"vi", f_vi},
+        {"count", f_count}, {"en", f_en}, {"vi", f_vi}, {"style", f_style}, {"move", f_move}, {"stop", f_stop},
+        {"measure", f_measure}, {"opt", f_opt},
     };
     be_newmodule(vm);
     for (size_t i = 0; i < sizeof(F) / sizeof(F[0]); i++) {
@@ -312,8 +454,13 @@ static bool call_fn(bvm *vm, const char *name, int argc, int a0, int64_t budget_
     if (!be_getglobal(vm, name)) { be_pop(vm, 1); return true; }   /* khong dinh nghia: bo qua */
     if (!be_isfunction(vm, -1)) { be_pop(vm, 1); return true; }
     if (argc > 0) be_pushint(vm, a0);
-    s_deadline = esp_timer_get_time() + budget_ms * 1000;
+    int64_t c0 = esp_timer_get_time();
+    s_deadline = c0 + budget_ms * 1000;
     int r = be_pcall(vm, argc);
+    uint32_t us = (uint32_t)(esp_timer_get_time() - c0);
+    s_calls++;
+    s_sum_us += us;
+    if (us > s_max_us) s_max_us = us;
     if (r != BE_OK) {
         if (!s_stop || s_misc.state == FD_BERRY_RUNNING) {
             bool exc = (r == BE_EXCEPTION && be_top(vm) >= 2);
@@ -334,6 +481,10 @@ static bool call_fn(bvm *vm, const char *name, int argc, int a0, int64_t budget_
 static void run_game(void)
 {
     s_t0 = esp_timer_get_time();
+    s_calls = 0;
+    s_sum_us = 0;
+    s_max_us = 0;
+    s_mem_peak = s_mem;
     bvm *vm = be_vm_new();
     if (!vm) { set_err("memory_error", "khong tao duoc may ao"); goto out; }
     be_set_obs_hook(vm, obs_hook);
@@ -362,6 +513,19 @@ static void run_game(void)
             const char *fn = ev.type == FD_BERRY_EV_BUTTON ? "button" : "tap";
             if (!call_fn(vm, fn, 1, ev.arg, FD_BERRY_FRAME_MS)) goto out;
         }
+        /* hoat hinh toi dich -> arrive(id) */
+        if (!s_paused) {
+            LOCK();
+            anim_step();
+            uint32_t arr = s_arrived;
+            s_arrived = 0;
+            UNLOCK();
+            for (int i = 0; i < FD_BERRY_OBJ_MAX && arr && !s_stop; i++)
+                if (arr & (1u << i)) {
+                    arr &= ~(1u << i);
+                    if (!call_fn(vm, "arrive", 1, i, FD_BERRY_FRAME_MS)) goto out;
+                }
+        }
         int64_t now = esp_timer_get_time();
         int dt = (int)((now - last) / 1000);
         last = now;
@@ -374,7 +538,9 @@ out:
     if (vm) be_vm_delete(vm);
     free(s_cfg.script);
     s_cfg.script = NULL;
-    ESP_LOGI(TAG, "dung (bo nho con %u B)", (unsigned)s_mem);
+    ESP_LOGI(TAG, "dung: %u lan goi script, trung binh %u us, lau nhat %u us, bo nho dinh %u B (con %u B)",
+             (unsigned)s_calls, (unsigned)(s_calls ? s_sum_us / s_calls : 0), (unsigned)s_max_us,
+             (unsigned)s_mem_peak, (unsigned)s_mem);
 }
 
 static void worker(void *arg)
@@ -408,6 +574,11 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
     memset(s_obj, 0, sizeof(s_obj));
     s_dirty = 0;
     memset(&s_misc, 0, sizeof(s_misc));
+    memset(s_anim, 0, sizeof(s_anim));
+    s_arrived = 0;
+    s_pause_acc = 0;
+    s_pause_at = 0;
+    s_misc.over_right = -1;
     s_misc.state = FD_BERRY_RUNNING;
     s_misc.sound = -1;
     s_misc.lives = -1;
@@ -436,7 +607,25 @@ void fd_berry_event(fd_berry_ev_t type, int arg)
     xQueueSend(s_q, &ev, 0);
 }
 
-void fd_berry_pause(bool paused) { s_paused = paused; }
+void fd_berry_pause(bool paused)
+{
+    if (!s_mx || paused == s_paused) return;
+    LOCK();
+    int64_t now = esp_timer_get_time();
+    if (paused) s_pause_at = now;
+    else if (s_pause_at) { s_pause_acc += now - s_pause_at; s_pause_at = 0; }
+    s_paused = paused;
+    UNLOCK();
+}
+
+void fd_berry_perf(fd_berry_perf_t *out)
+{
+    if (!out) return;
+    out->calls = s_calls;
+    out->max_us = s_max_us;
+    out->avg_us = s_calls ? (uint32_t)(s_sum_us / s_calls) : 0;
+    out->peak_mem = s_mem_peak;
+}
 
 uint32_t fd_berry_sync(fd_berry_obj_t *out, fd_berry_misc_t *misc)
 {
@@ -445,6 +634,7 @@ uint32_t fd_berry_sync(fd_berry_obj_t *out, fd_berry_misc_t *misc)
         return 0;
     }
     LOCK();
+    if (!s_paused && s_running) anim_step();   /* vi tri muot theo tung khung man hinh */
     uint32_t d = s_dirty;
     for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
         if (d & (1u << i)) out[i] = s_obj[i];
