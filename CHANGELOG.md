@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.9.6] - 2026-11-21
+- Trò chơi hiện phiên âm IPA cạnh từ tiếng Anh, mọi trò chơi đều tải về từ máy chủ, máy không còn trò chơi cài sẵn.
+
 ## [4.9.5] - 2026-11-21
 - Mọi trò chơi chạy bằng Berry, kể cả Hứng từ có sẵn trong máy, chơi được khi không có mạng.
 
