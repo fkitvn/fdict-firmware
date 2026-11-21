@@ -431,6 +431,7 @@ static lv_obj_t *section(lv_obj_t *sc, const char *t)
     return l;
 }
 
+static void del_cb(lv_event_t *e);
 static void show_menu(void)
 {
     s_view = V_MENU;
@@ -506,6 +507,24 @@ static void show_menu(void)
     lv_obj_t *sr = row(sc);
     lv_obj_set_style_pad_ver(sr, 6, 0);
     ui_setup_start(sr, begin_cb);
+    /* 5.0.1: Xoa tro choi (chi khi da cai): nut vien do nho duoi Bat dau, phu; chi cham (giong o luoi) */
+    if (s_have_pkg) {
+        lv_obj_t *dr = row(sc);
+        lv_obj_set_flex_align(dr, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_set_style_pad_bottom(dr, 6, 0);
+        lv_obj_t *db = lv_button_create(dr);
+        lv_obj_set_size(db, LV_PCT(50), 30);
+        lv_obj_set_style_radius(db, 10, 0);
+        lv_obj_set_style_shadow_width(db, 0, 0);
+        lv_obj_set_style_bg_opa(db, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_bg_color(db, lv_color_hex(C_BAD), LV_STATE_PRESSED);
+        lv_obj_set_style_bg_opa(db, LV_OPA_10, LV_STATE_PRESSED);
+        lv_obj_set_style_border_width(db, 1, 0);
+        lv_obj_set_style_border_color(db, lv_color_hex(C_BAD), 0);
+        lv_obj_t *dl = ui_label_create(db, _("GAME_DEL"), &fd_font_noto_14, C_BAD);
+        lv_obj_center(dl);
+        lv_obj_add_event_cb(db, del_cb, LV_EVENT_CLICKED, NULL);
+    }
     if (s_menu_y > 0) {
         lv_obj_update_layout(sc);
         lv_obj_scroll_to_y(sc, s_menu_y, LV_ANIM_OFF);
@@ -1150,6 +1169,7 @@ static void on_render(void)
         if (first && !st.install && s_pend_id[0]) pend_run();   /* lam moi loi: van thu tai bang danh sach dang co */
         if (first) {
             const char *m = err_text(st.err, st.install);
+            if (!strcmp(st.err, "reset")) { s_dl_id[0] = 0; grid_build(); break; }   /* 5.0.1: huy do xoa / dat lai */
             if (st.install) {
                 dl_fail_toast(st.err);
                 s_dl_id[0] = 0;
@@ -1269,6 +1289,83 @@ static void reset_open(void)
 
 static void reset_cb(lv_event_t *e) { (void)e; if (s_view == V_HOME) reset_open(); }
 
+/* ---------- 5.0.1 XOA MOT TRO CHOI ---------- */
+static bool s_del_dlg;
+static void nvs_erase_keys(const char *const *keys, int n)
+{
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) return;
+    for (int i = 0; i < n; i++) nvs_erase_key(h, keys[i]);   /* ESP_ERR_NVS_NOT_FOUND = khong co, bo qua */
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+/* cai dat + ky luc rieng cua id (gs/gr); "catch" con ke thua khoa cua Hung tu dung san (id rong, gm_best); goi cu gm_pbest */
+static void nvs_game_erase(const char *id)
+{
+    char ks[12], kr[12], ls[12], lr[12];
+    gm_key(ks, 's', id);
+    gm_key(kr, 'r', id);
+    const char *keys[6] = {ks, kr};
+    int n = 2;
+    if (!strcmp(id, "catch")) {
+        gm_key(ls, 's', "");
+        gm_key(lr, 'r', "");
+        keys[n++] = ls;
+        keys[n++] = lr;
+        keys[n++] = K_BEST;
+    }
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) {
+        char pid[FD_GAME_ID_LEN] = "";
+        size_t m = sizeof(pid);
+        bool mine = nvs_get_str(h, K_PID, pid, &m) == ESP_OK && !strcmp(pid, id);
+        nvs_close(h);
+        if (mine) keys[n++] = K_PBST;
+    }
+    nvs_erase_keys(keys, n);
+    ESP_LOGI(TAG, "xoa NVS tro choi %s: %d khoa", id, n);
+}
+
+static void del_do_async(void *a)
+{
+    (void)a;
+    if (!s_cur[0]) return;
+    char id[FD_GAME_ID_LEN];
+    strlcpy(id, s_cur, sizeof(id));
+    if (!strcmp(s_dl_id, id)) s_dl_id[0] = 0;
+    if (!strcmp(s_pend_id, id)) s_pend_id[0] = 0;
+    bool ok = fd_game_remove(id);
+    nvs_game_erase(id);
+    s_cur[0] = 0;
+    s_have_pkg = false;
+    s_menu_y = 0;
+    fd_ui_toast(ok ? _("GAME_DEL_DONE") : _("GAME_RESET_PART"));
+    if (s_body) show_home();   /* ve luoi: o game nay mo lai (inst_reload) */
+}
+
+static void del_cancel_cb(lv_event_t *e) { (void)e; s_del_dlg = false; dlg_close(); }
+static void del_ok_cb(lv_event_t *e)
+{
+    (void)e;
+    s_del_dlg = false;
+    dlg_close();
+    lv_async_call(del_do_async, NULL);
+}
+
+static void del_cb(lv_event_t *e)
+{
+    (void)e;
+    if (s_dlg || s_view != V_MENU || !s_have_pkg) return;
+    s_dlg = ui_dialog_open();
+    s_del_dlg = true;
+    lv_obj_t *box = ui_dialog_box(s_dlg);
+    ui_dialog_title(box, _("GAME_DEL_Q"));
+    lv_obj_t *r = ui_dialog_btns(box);
+    ui_dialog_btn(r, _("CANCEL"), true, del_cancel_cb, NULL);   /* mac dinh = Huy */
+    ui_dialog_btn(r, _("GAME_DEL_OK"), false, del_ok_cb, NULL);
+}
+
 static void on_timer_cb(lv_timer_t *t) { (void)t; if (s_view == V_HOME) on_render(); }
 
 static void show_home(void)
@@ -1352,6 +1449,7 @@ static void destroy(void)
     s_dl_id[0] = 0;
     s_pend_id[0] = 0;
     s_reset_dlg = false;
+    s_del_dlg = false;
     free(s_inst);
     s_inst = NULL;
     s_ninst = 0;
@@ -1372,6 +1470,10 @@ static bool on_button(const fd_evt_button_t *b)
             s_reset_dlg = false;
             dlg_close();
             if (pos == 3) lv_async_call(reset_do_async, NULL);
+        } else if (s_del_dlg && pos >= 0) {   /* 5.0.1 giong Dat lai: Nut 4 = Xoa, nut khac = Huy */
+            s_del_dlg = false;
+            dlg_close();
+            if (pos == 3) lv_async_call(del_do_async, NULL);
         }
         return true;
     }
@@ -1397,7 +1499,7 @@ static bool on_button(const fd_evt_button_t *b)
 static bool on_back(void)
 {
     if (s_gate_pair) return false;
-    if (s_dlg) { s_reset_dlg = false; dlg_close(); return true; }
+    if (s_dlg) { s_reset_dlg = false; s_del_dlg = false; dlg_close(); return true; }
     if (s_view == V_BERRY) { quit_open(); return true; }
     if (s_view == V_MENU) { s_menu_y = 0; show_home(); return true; }
     if (s_view != V_HOME) { show_menu(); return true; }

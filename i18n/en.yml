@@ -353,3 +353,7 @@ en:
   GAME_RESET_OK: 'Delete all'
   GAME_RESET_DONE: 'All games deleted'
   GAME_RESET_PART: 'Not everything was deleted, try again'
+  GAME_DEL: 'Delete game'
+  GAME_DEL_Q: 'Delete this game?'
+  GAME_DEL_OK: 'Delete'
+  GAME_DEL_DONE: 'Game deleted'

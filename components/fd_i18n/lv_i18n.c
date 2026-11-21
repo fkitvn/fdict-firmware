@@ -372,6 +372,10 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"GAME_RESET_OK", "Delete all"},
     {"GAME_RESET_DONE", "All games deleted"},
     {"GAME_RESET_PART", "Not everything was deleted, try again"},
+    {"GAME_DEL", "Delete game"},
+    {"GAME_DEL_Q", "Delete this game?"},
+    {"GAME_DEL_OK", "Delete"},
+    {"GAME_DEL_DONE", "Game deleted"},
     {NULL, NULL} // End mark
 };
 
@@ -749,6 +753,10 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"GAME_RESET_OK", "Xóa hết"},
     {"GAME_RESET_DONE", "Đã xóa mọi trò chơi"},
     {"GAME_RESET_PART", "Chưa xóa hết, thử lại"},
+    {"GAME_DEL", "Xóa trò chơi"},
+    {"GAME_DEL_Q", "Xóa trò chơi này?"},
+    {"GAME_DEL_OK", "Xóa"},
+    {"GAME_DEL_DONE", "Đã xóa trò chơi"},
     {NULL, NULL} // End mark
 };
 
