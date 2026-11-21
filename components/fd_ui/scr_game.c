@@ -11,7 +11,7 @@
  *   Cham vao cong cung chon cong do. Giu Nut 1 = quay lai (tam dung + hoi thoat), giu Nut 2 = bang nhanh (tam dung).
  *
  * Tu vung: kho tu da dong bo tren may (fd_sync_build_spell: theo Bo tu dang chon + uu tien hoc, offline 100%),
- * hoac tu kem trong goi tro choi da cai (fd_game). Khong tai them gi khi choi, khong gui ket qua len may chu (giai doan 1).
+ * (4.9.4: ca goi tai ve cung vay; truong words cua goi bi bo qua). Khong tai them gi khi choi, khong gui ket qua len may chu (giai doan 1).
  * Nhe: 1 lv_timer 30 ms chi doi vi tri 1 doi tuong (the) -> LVGL chi ve lai 2 vung nho moi khung. */
 #include <stdio.h>
 #include <string.h>
@@ -54,7 +54,7 @@ typedef struct { uint8_t ver, dir, spd, rep; } gm_set_t;
 typedef struct { uint32_t score, when; } gm_rec_t;   /* when = epoch giay, 0 = chua co gio */
 
 /* V_HOME: luoi o tro choi kieu Home. V_MENU: man rieng mot tro choi (Bat dau, Cai dat, Ky luc). */
-typedef enum { V_HOME, V_MENU, V_SET, V_REC, V_MSG, V_PLAY, V_OVER, V_BERRY } view_t;
+typedef enum { V_HOME, V_MENU, V_MSG, V_PLAY, V_OVER, V_BERRY } view_t;
 typedef enum { P_RUN, P_FEED } phase_t;
 
 static view_t s_view;
@@ -76,7 +76,7 @@ static int32_t s_x0, s_y0, s_x1, s_y1;  /* vi tri dau / cuoi cua the */
 static int32_t s_gx, s_gy, s_gw, s_gh;  /* hinh chu nhat cong 0 (cong 1 cung kich thuoc) */
 static int s_score, s_lives, s_combo, s_right, s_level, s_fall_ms, s_best, s_ans, s_cur;
 static bool s_new_best;
-static view_t s_left_from;             /* 4.9.2: roi man tu Cai dat (vd mo man Bo tu) -> quay lai Cai dat */
+static view_t s_left_from;             /* roi man tu man rieng game (vd mo man Bo tu) -> quay lai dung man do */
 static bool s_gate_pair;                /* 4.9.0: chua dang nhap -> cong Dang nhap chung (nhu cac mo-dun hoc) */
 
 /* 4.9.0 tro choi Berry (goi type berry) */
@@ -98,6 +98,7 @@ LV_IMAGE_DECLARE(img_game_basket);
 LV_IMAGE_DECLARE(img_game_paw);
 LV_IMAGE_DECLARE(img_game_check);
 LV_IMAGE_DECLARE(img_game_joystick);
+LV_IMAGE_DECLARE(img_game_zap);
 
 static void show_menu(void);
 static void show_home(void);
@@ -226,6 +227,7 @@ static const lv_image_dsc_t *game_icon(const char *icon, bool berry)
     if (icon && !strcmp(icon, "check")) return &img_game_check;
     if (icon && !strcmp(icon, "basket")) return &img_game_basket;
     if (icon && !strcmp(icon, "joystick")) return &img_game_joystick;
+    if (icon && !strcmp(icon, "zap")) return &img_game_zap;
     return berry ? &img_game_joystick : &img_game_basket;
 }
 
@@ -337,14 +339,20 @@ static void dlg_close(void)
     ui_dialog_close(&s_dlg);
 }
 
-/* ---------- MAN RIENG MOT TRO CHOI: Bat dau, Cai dat, Ky luc ---------- */
-static void show_settings(void);
-static void show_records(void);
-static void menu_async(void *a) { (void)a; if (s_body) show_menu(); }
-static void go_menu_async(void *a) { (void)a; if (s_body) show_menu(); }
-static void set_async(void *a) { (void)a; if (s_body && s_view == V_SET) show_settings(); }
-static void set_open_async(void *a) { (void)a; if (s_body) show_settings(); }
-static void settings_cb(lv_event_t *e) { (void)e; lv_async_call(set_open_async, NULL); }
+/* ---------- MAN RIENG MOT TRO CHOI (4.9.4: mot trang cuon) ----------
+ * Tieu de, icon + ky luc cao nhat, phien ban, cach choi, Cai dat ngay tren trang (Bo tu neu dung kho tu may, chieu,
+ * toc do, doc tu; game Berry chi doc tu), bang ky luc top GM_REC_N, nut Bat dau ghim day man.
+ * Doi tuy chon: luu NVS roi dung lai trang va giu vi tri cuon. */
+static lv_obj_t *s_menu_sc;
+static int32_t s_menu_y;                /* vi tri cuon can khoi phuc sau khi dung lai */
+static void go_menu_async(void *a) { (void)a; if (s_body) { s_menu_y = 0; show_menu(); } }
+static void menu_keep_async(void *a)
+{
+    (void)a;
+    if (!s_body || s_view != V_MENU) return;
+    s_menu_y = s_menu_sc ? lv_obj_get_scroll_y(s_menu_sc) : 0;
+    show_menu();
+}
 enum { OPT_DIR, OPT_SPD, OPT_REP };
 
 static void opt_cb(lv_event_t *e)
@@ -355,19 +363,23 @@ static void opt_cb(lv_event_t *e)
     else if (grp == OPT_SPD) s_spd = (uint8_t)(v <= 2 ? v : 1);
     else if (grp == OPT_REP) s_rep = v ? 1 : 0;
     set_save();
-    lv_async_call(set_async, NULL);
+    lv_async_call(menu_keep_async, NULL);
 }
 
 static void start(void);
 static void start_async(void *a) { (void)a; if (s_body && (s_view == V_MENU || s_view == V_OVER || s_view == V_MSG || s_view == V_HOME)) start(); }
 static void begin_cb(lv_event_t *e) { (void)e; lv_async_call(start_async, NULL); }
-static void rec_async(void *a) { (void)a; if (s_body) show_records(); }
-static void records_cb(lv_event_t *e) { (void)e; lv_async_call(rec_async, NULL); }
-static void back_menu_cb(lv_event_t *e) { (void)e; lv_async_call(menu_async, NULL); }
 
 static const char *cur_name(void) { return use_pkg() ? s_pkg.name : _("GAME_CATCH"); }
 static bool cur_berry(void) { return use_pkg() && s_pkg.berry; }
-static bool cur_deck_words(void) { return !(use_pkg() && s_pkg.nwords >= 4); }   /* dung kho tu cua may */
+
+static lv_obj_t *section(lv_obj_t *sc, const char *t)
+{
+    lv_obj_t *l = label(sc, t, &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_set_style_pad_top(l, 4, 0);
+    return l;
+}
 
 static void show_menu(void)
 {
@@ -378,13 +390,15 @@ static void show_menu(void)
     if (s_src == 1 && !s_have_pkg) s_src = 0;
     set_load();
     lv_obj_t *sc = ui_setup_begin(s_body, cur_name());
+    s_menu_sc = sc;
     lv_obj_t *top = row(sc);
     lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *ic = lv_image_create(top);
     lv_image_set_src(ic, use_pkg() ? game_icon(s_pkg.icon, s_pkg.berry) : &img_game_basket);
-    char tmp[64];
-    int best = best_load();
-    if (best > 0) snprintf(tmp, sizeof(tmp), _("GAME_BEST_N"), best);
+    gm_rec_t rec[GM_REC_N];
+    int nrec = rec_load(rec);
+    char tmp[96];
+    if (nrec > 0) snprintf(tmp, sizeof(tmp), _("GAME_BEST_N"), (int)rec[0].score);
     else strlcpy(tmp, _("GAME_NO_RECORDS"), sizeof(tmp));
     lv_obj_t *b = ui_label_create(top, tmp, &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
     lv_obj_set_flex_grow(b, 1);
@@ -392,74 +406,54 @@ static void show_menu(void)
     if (use_pkg()) {
         const fd_game_entry_t *lg = listed_pkg();
         bool old = lg && entry_state(lg) == G_OLD;
-        char vt[80];
-        if (old) snprintf(vt, sizeof(vt), _("GAME_VERSION_OLD"), s_pkg.version, lg->version);
-        else snprintf(vt, sizeof(vt), _("GAME_VERSION_N"), s_pkg.version);
-        lv_obj_t *vl = label(sc, vt, &fd_font_noto_14, old ? C_BAD : FD_COLOR_TEXT_MUTED);
+        if (old) snprintf(tmp, sizeof(tmp), _("GAME_VERSION_OLD"), s_pkg.version, lg->version);
+        else snprintf(tmp, sizeof(tmp), _("GAME_VERSION_N"), s_pkg.version);
+        lv_obj_t *vl = label(sc, tmp, &fd_font_noto_14, old ? C_BAD : FD_COLOR_TEXT_MUTED);
         lv_obj_set_style_text_align(vl, LV_TEXT_ALIGN_LEFT, 0);
     }
     lv_obj_t *h = label(sc, cur_berry() ? _("GAME_BERRY_HOW") : ui_btn_vertical() ? _("GAME_HOW_V") : _("GAME_HOW_H"),
                         &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_t *r = row(sc);
-    ui_gate_btn(r, _("SETTINGS"), false, settings_cb);
-    ui_gate_btn(r, _("GAME_RECORDS"), false, records_cb);
-    ui_setup_start(s_body, begin_cb);
-}
 
-/* Cai dat rieng tro choi: Hung tu (dung san hoac goi catch) = bo tu (neu dung kho tu may), chieu, toc do, doc tu;
- * goi Berry = doc tu (fd.say) - chieu va toc do do script tu quyet. */
-static void show_settings(void)
-{
-    s_view = V_SET;
-    dlg_close();
-    body_reset();
-    s_have_pkg = fd_game_installed(&s_pkg);
-    if (s_src == 1 && !s_have_pkg) s_src = 0;
-    set_load();
-    char t[80];
-    snprintf(t, sizeof(t), "%s - %s", _("SETTINGS"), cur_name());
-    lv_obj_t *sc = ui_setup_begin(s_body, t);
+    /* Cai dat ngay tren trang */
+    section(sc, _("SETTINGS"));
     static const char *const DIR[] = {"SPELL_BUILD_EN", "SPELL_BUILD_VI", "SPELL_DIR_MIX"};
     static const char *const SPD[] = {"GAME_SLOW", "GAME_NORMAL", "GAME_FAST"};
     static const char *const RP[] = {"OFF", "ON"};
-    if (cur_deck_words()) ui_setup_deck(sc, set_async);
+    ui_setup_deck(sc, menu_keep_async);   /* 4.9.4: moi tro choi dung Bo tu cua may (chung voi cac muc hoc) */
     if (!cur_berry()) {
         ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 3, s_dir, opt_cb, OPT_DIR, UI_OPT_WRAP);
         ui_setup_opt_row(sc, _("GAME_SPEED"), SPD, 3, s_spd, opt_cb, OPT_SPD, 0);
     }
     ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_rep, opt_cb, OPT_REP, UI_OPT_WIDE);
-    lv_obj_t *r = row(s_body);
-    ui_gate_btn(r, _("BACK"), false, back_menu_cb);
-}
 
-static void show_records(void)
-{
-    s_view = V_REC;
-    dlg_close();
-    body_reset();
-    char t[96];
-    snprintf(t, sizeof(t), "%s - %s", _("GAME_RECORDS"), cur_name());
-    lv_obj_t *sc = ui_setup_begin(s_body, t);
-    gm_rec_t r[GM_REC_N];
-    int n = rec_load(r);
-    if (n == 0) label(sc, _("GAME_NO_RECORDS"), &fd_font_noto_18, FD_COLOR_TEXT_MUTED);
-    for (int i = 0; i < n; i++) {
+    /* Bang ky luc */
+    section(sc, _("GAME_RECORDS"));
+    if (nrec == 0) {
+        lv_obj_t *nl = label(sc, _("GAME_NO_RECORDS"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+        lv_obj_set_style_text_align(nl, LV_TEXT_ALIGN_LEFT, 0);
+    }
+    for (int i = 0; i < nrec; i++) {
         lv_obj_t *ln = row(sc);
         lv_obj_set_flex_align(ln, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        snprintf(t, sizeof(t), "%d.  %lu", i + 1, (unsigned long)r[i].score);
-        ui_label_create(ln, t, &fd_font_noto_18, i == 0 ? C_OK : FD_COLOR_TEXT);
-        t[0] = 0;
-        if (r[i].when) {
-            time_t w = (time_t)r[i].when;
+        lv_obj_set_style_pad_hor(ln, 4, 0);
+        snprintf(tmp, sizeof(tmp), "%d.  %lu", i + 1, (unsigned long)rec[i].score);
+        ui_label_create(ln, tmp, &fd_font_noto_14, i == 0 ? C_OK : FD_COLOR_TEXT);
+        tmp[0] = 0;
+        if (rec[i].when) {
+            time_t w = (time_t)rec[i].when;
             struct tm lt;
             localtime_r(&w, &lt);
-            strftime(t, sizeof(t), "%d/%m/%Y", &lt);
+            strftime(tmp, sizeof(tmp), "%d/%m/%Y", &lt);
         }
-        ui_label_create(ln, t, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+        ui_label_create(ln, tmp, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     }
-    lv_obj_t *rr = row(s_body);
-    ui_gate_btn(rr, _("BACK"), false, back_menu_cb);
+    ui_setup_start(s_body, begin_cb);
+    if (s_menu_y > 0) {
+        lv_obj_update_layout(sc);
+        lv_obj_scroll_to_y(sc, s_menu_y, LV_ANIM_OFF);
+    }
+    s_menu_y = 0;
 }
 
 static void msg_back_cb(lv_event_t *e) { (void)e; lv_async_call(go_menu_async, NULL); }
@@ -481,7 +475,9 @@ static int load_words(void)
 {
     if (!s_words) s_words = ps_alloc(GM_MAX * sizeof(fd_spell_word_t));
     if (!s_words) return -1;
-    int got = (use_pkg() && s_pkg.nwords >= 4) ? fd_game_pkg_words(s_words, GM_MAX) : fd_sync_build_spell(s_words, GM_MAX);
+    /* 4.9.4: moi tro choi (dung san, goi catch, goi Berry) lay tu kho tu da dong bo theo Bo tu dang chon;
+     * truong words trong goi (neu co) bi bo qua - goi chi mang luat, thong so, giao dien. */
+    int got = fd_sync_build_spell(s_words, GM_MAX);
     int n = 0;
     for (int i = 0; i < got; i++) {
         if (!s_words[i].en[0] || !s_words[i].vi[0]) continue;
@@ -502,18 +498,15 @@ static void start(void)
         return;
     }
     set_load();
-    bool pkg_words = use_pkg() && s_pkg.nwords >= 4;
-    if (!pkg_words) {
-        if (!fd_sync_ready()) {
-            bool paired = fd_ota_is_paired();
-            show_msg(paired ? _("NO_OFFLINE_DATA_YET") : _("PAIR_TO_STUDY"), paired ? _("SYNC_AUTO_HINT") : _("PAIR_HINT"));
-            return;
-        }
-        if (fd_sync_pick_count(0) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); show_menu(); return; }
+    if (!fd_sync_ready()) {
+        bool paired = fd_ota_is_paired();
+        show_msg(paired ? _("NO_OFFLINE_DATA_YET") : _("PAIR_TO_STUDY"), paired ? _("SYNC_AUTO_HINT") : _("PAIR_HINT"));
+        return;
     }
+    if (fd_sync_pick_count(0) <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); show_menu(); return; }
     int n = load_words();
     if (n < 0) { show_msg(_("MEMORY_ERROR"), NULL); return; }
-    if (n < 4) { show_msg(_("GAME_FEW_WORDS"), NULL); return; }
+    if (n < 4) { show_msg(_("GAME_FEW_WORDS"), _("GAME_FEW_WORDS_HINT")); return; }   /* bo tu qua it tu */
     s_nw = n;
     s_wpos = 0;
     if (use_pkg()) s_cfg = s_pkg;
@@ -1283,7 +1276,7 @@ static void build(lv_obj_t *scr)
     s_body = ui_page_create(scr);
     s_gate_pair = !fd_ota_is_paired();   /* 4.9.0: nhu Luyen tap va cac mo-dun hoc: chua dang nhap thi khong choi */
     if (s_gate_pair) { s_view = V_HOME; s_left_from = V_HOME; ui_pair_gate(s_body); return; }
-    if (s_left_from == V_SET) show_settings();   /* s_src giu nguyen (bien tinh) */
+    if (s_left_from == V_MENU) show_menu();   /* s_src giu nguyen (bien tinh) */
     else { s_src = 0; show_home(); }
     s_left_from = V_HOME;
 }
@@ -1291,6 +1284,8 @@ static void build(lv_obj_t *scr)
 static void destroy(void)
 {
     s_left_from = s_body ? s_view : V_HOME;
+    s_menu_y = (s_body && s_view == V_MENU && s_menu_sc) ? lv_obj_get_scroll_y(s_menu_sc) : 0;   /* vd mo Bo tu roi quay lai */
+    s_menu_sc = NULL;
     timers_stop();
     berry_stop();
     dlg_close();
@@ -1329,7 +1324,7 @@ static bool on_back(void)
     if (s_gate_pair) return false;
     if (s_dlg) { dlg_close(); return true; }
     if (s_view == V_PLAY || s_view == V_BERRY) { quit_open(); return true; }
-    if (s_view == V_MENU) { show_home(); return true; }
+    if (s_view == V_MENU) { s_menu_y = 0; show_home(); return true; }
     if (s_view != V_HOME) { show_menu(); return true; }
     return false;
 }

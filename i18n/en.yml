@@ -344,3 +344,4 @@ en:
   GAME_NEED_UPDATE: 'Update needed'
   GAME_VERSION_N: 'Version %s'
   GAME_VERSION_OLD: 'Installed %s, update to %s to play'
+  GAME_FEW_WORDS_HINT: 'Pick another deck in Deck on the game screen'

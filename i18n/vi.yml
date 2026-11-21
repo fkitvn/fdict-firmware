@@ -344,3 +344,4 @@ vi:
   GAME_NEED_UPDATE: 'Cần cập nhật'
   GAME_VERSION_N: 'Phiên bản %s'
   GAME_VERSION_OLD: 'Đã cài bản %s, cần cập nhật lên %s để chơi'
+  GAME_FEW_WORDS_HINT: 'Chọn bộ từ khác ở mục Bộ từ trên màn trò chơi'

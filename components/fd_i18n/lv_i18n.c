@@ -363,6 +363,7 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"GAME_NEED_UPDATE", "Update needed"},
     {"GAME_VERSION_N", "Version %s"},
     {"GAME_VERSION_OLD", "Installed %s, update to %s to play"},
+    {"GAME_FEW_WORDS_HINT", "Pick another deck in Deck on the game screen"},
     {NULL, NULL} // End mark
 };
 
@@ -731,6 +732,7 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"GAME_NEED_UPDATE", "Cần cập nhật"},
     {"GAME_VERSION_N", "Phiên bản %s"},
     {"GAME_VERSION_OLD", "Đã cài bản %s, cần cập nhật lên %s để chơi"},
+    {"GAME_FEW_WORDS_HINT", "Chọn bộ từ khác ở mục Bộ từ trên màn trò chơi"},
     {NULL, NULL} // End mark
 };
 
