@@ -41,6 +41,7 @@ static fd_game_status_t s_st;
 static fd_game_entry_t *s_list;           /* PSRAM, FD_GAME_LIST_MAX */
 static bool s_busy;
 static fd_game_entry_t s_job;             /* muc dang cai (ban sao) */
+static volatile uint32_t s_gen;           /* 5.0.0: tang moi lan Dat lai; task tai/danh sach thay doi thi bo ket qua */
 
 static void ensure_mx(void)
 {
@@ -339,21 +340,43 @@ static bool slot_put(const char *src, cJSON *pkg, const char *id)
     return write_meta(pkg, id);
 }
 
-static void rm_tree1(const char *dir)   /* xoa file trong dir (1 cap) roi dir */
+/* 5.0.0: xoa dir va moi thu ben trong (de quy toi da 3 cap). Gom ten truoc roi moi xoa: xoa trong luc readdir
+ * tren LittleFS co the bo sot muc. Tra true neu dir khong con. */
+static bool rm_tree(const char *dir, int depth)
 {
-    DIR *d = opendir(dir);
-    if (d) {
+    enum { NMAX = 32 };
+    char (*names)[64] = NULL;
+    for (int pass = 0; pass < 8; pass++) {   /* thu muc > NMAX muc: lap lai den khi rong */
+        DIR *d = opendir(dir);
+        if (!d) break;
+        if (!names) names = ps_calloc(sizeof(*names) * NMAX);
+        if (!names) { closedir(d); break; }
+        int n = 0;
         struct dirent *e;
-        char p[128];
-        while ((e = readdir(d)) != NULL) {
+        while (n < NMAX && (e = readdir(d)) != NULL) {
             if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
-            snprintf(p, sizeof(p), "%.63s/%.63s", dir, e->d_name);
-            unlink(p);
+            if (strlen(e->d_name) >= sizeof(names[0])) continue;
+            strlcpy(names[n++], e->d_name, sizeof(names[0]));
         }
         closedir(d);
+        if (n == 0) break;
+        for (int i = 0; i < n; i++) {
+            char p[160];
+            snprintf(p, sizeof(p), "%.80s/%.63s", dir, names[i]);
+            struct stat sb;
+            if (stat(p, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+                if (depth > 0) rm_tree(p, depth - 1);
+            } else if (unlink(p) != 0) {
+                ESP_LOGW(TAG, "khong xoa duoc %s (errno %d)", p, errno);
+            }
+        }
     }
+    free(names);
     rmdir(dir);
+    struct stat sb;
+    return stat(dir, &sb) != 0;
 }
+static void rm_tree1(const char *dir) { rm_tree(dir, 2); }
 
 /* 4.9.7: chuyen slot cu /data/game/game.json (neu la goi Berry hop le) sang /data/games/<id>/, xoa slot cu. */
 static bool s_inited;
@@ -458,33 +481,34 @@ void fd_game_remove(const char *id)
     ESP_LOGW(TAG, "da xoa slot hong %s", id);
 }
 
-void fd_game_reset(void)
+bool fd_game_reset(void)
 {
     ensure_init();
     xSemaphoreTake(s_mx, portMAX_DELAY);
+    s_gen++;   /* task tai / danh sach dang chay se bo ket qua */
+    bool ok = rm_tree(GROOT, 3);   /* moi slot <id>/ (game.json, meta.json, game.old, .tmp) + list.json */
+    ok = rm_tree(LEGACY_DIR, 2) && ok;
+    unlink(DL_TMP);
+    unlink(LIST_TMP);
+    mkdir(GROOT, 0775);
+    if (s_list) memset(s_list, 0, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+    /* kiem lai: GROOT phai rong */
+    int left = 0;
     DIR *d = opendir(GROOT);
     if (d) {
         struct dirent *e;
-        char p[96];
-        while ((e = readdir(d)) != NULL) {
-            if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
-            snprintf(p, sizeof(p), GROOT "/%.63s", e->d_name);
-            struct stat sb;
-            if (stat(p, &sb) == 0 && S_ISDIR(sb.st_mode)) rm_tree1(p);
-            else unlink(p);
-        }
+        while ((e = readdir(d)) != NULL) if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) left++;
         closedir(d);
     }
-    rm_tree1(LEGACY_DIR);
-    unlink(DL_TMP);
-    unlink(LIST_TMP);
-    if (s_list) memset(s_list, 0, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+    struct stat sb;
+    if (stat(LEGACY_DIR, &sb) == 0) left++;
     xSemaphoreGive(s_mx);
     taskENTER_CRITICAL(&s_mux);
     s_st.n = 0;
     if (!s_busy) { s_st.state = FD_GAME_IDLE; s_st.err[0] = 0; }
     taskEXIT_CRITICAL(&s_mux);
-    ESP_LOGI(TAG, "reset: da xoa moi tro choi va cache danh sach");
+    ESP_LOGI(TAG, "reset: xoa moi tro choi + cache: %s (con %d muc)", ok && left == 0 ? "ok" : "loi", left);
+    return ok && left == 0;
 }
 
 /* ---------- danh sach ---------- */
@@ -536,6 +560,7 @@ static void list_task(void *arg)
     (void)arg;
     ensure_init();
     char fw[16], path[112], err[24] = "", did[24] = "";
+    uint32_t gen = s_gen;
     fw_semver(fw, sizeof(fw));
     fd_ota_get_device_id(did, sizeof(did));
     snprintf(path, sizeof(path), "/api/devices/games?hw=" HW "&fw=%s&device_id=%s", fw, did);
@@ -554,15 +579,19 @@ static void list_task(void *arg)
         free(buf);
         if (n < 0) { n = 0; strlcpy(err, "format", sizeof(err)); }
     }
-    /* 4.9.7: giu ban moi nhat lam cache (mo man Tro choi hien ngay, khong mang van co danh sach) */
-    if (!err[0]) {
+    /* 4.9.7: giu ban moi nhat lam cache (mo man Tro choi hien ngay, khong mang van co danh sach).
+     * 5.0.0: ghi cache trong s_mx va chi khi khong co Dat lai trong luc tai (tranh cache song lai sau khi xoa). */
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (!err[0] && gen == s_gen) {
+        mkdir(GROOT, 0775);
         unlink(LIST_CACHE);
         if (rename(LIST_TMP, LIST_CACHE) != 0) ESP_LOGW(TAG, "khong luu duoc cache danh sach");
     }
     unlink(LIST_TMP);
-    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (gen != s_gen && !err[0]) strlcpy(err, "reset", sizeof(err));   /* Dat lai trong luc tai: bo danh sach */
     if (!s_list) s_list = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
-    if (s_list && tmp) memcpy(s_list, tmp, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+    if (err[0]) { /* giu nguyen */ }
+    else if (s_list && tmp) memcpy(s_list, tmp, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
     else if (!err[0]) strlcpy(err, "nomem", sizeof(err));
     xSemaphoreGive(s_mx);
     free(tmp);
@@ -633,6 +662,7 @@ static void install_task(void *arg)
     const fd_game_entry_t *e = &s_job;
     char err[24] = "", sha[65] = "";
     cJSON *j = NULL;
+    uint32_t gen = s_gen;
     unlink(DL_TMP);
     int code = fd_ota_api_get_file_q(e->path, DL_TMP, FD_GAME_PKG_MAX, prog_cb, NULL);
     ESP_LOGI(TAG, "install %s %s: HTTP %d", e->id, e->version, code);
@@ -657,7 +687,10 @@ static void install_task(void *arg)
     /* 4.9.7: chi thay slot cua game nay (/data/games/<id>/), cac game khac giu nguyen */
     if (!err[0]) {
         ensure_init();
-        if (!slot_put(DL_TMP, j, e->id)) strlcpy(err, "fs", sizeof(err));
+        xSemaphoreTake(s_mx, portMAX_DELAY);
+        if (gen != s_gen) strlcpy(err, "reset", sizeof(err));   /* 5.0.0: Dat lai trong luc tai -> bo goi */
+        else if (!slot_put(DL_TMP, j, e->id)) strlcpy(err, "fs", sizeof(err));
+        xSemaphoreGive(s_mx);
     }
     cJSON_Delete(j);
     unlink(DL_TMP);

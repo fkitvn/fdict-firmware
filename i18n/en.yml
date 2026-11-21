@@ -352,4 +352,4 @@ en:
   GAME_RESET_Q: 'Delete all downloaded games?'
   GAME_RESET_OK: 'Delete all'
   GAME_RESET_DONE: 'All games deleted'
-  GAME_RESET_BUSY: 'Please wait for the download to finish'
+  GAME_RESET_PART: 'Not everything was deleted, try again'
