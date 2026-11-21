@@ -10,6 +10,7 @@
  *      {"format":1,"id","name","version","type":"berry","min_fw","icon","config":{...},"script":"<Berry>"}
  *    Tai ve /data/game.dl -> kiem size + sha256 + min_fw + JSON hop le + id trung -> slot /data/games/<id>/.
  *    Chay trong may ao co gioi han (components/fd_berry).
+ *  - 5.1.0: truong "how" tuy chon (chuoi cach choi, toi da 239 byte UTF-8), rong = cau chung.
  *  - 4.9.2: truong "icon" tuy chon (danh sach va goi): ten icon dung san trong firmware, chi [a-z0-9_-].
  *  - Thong so ngoai khoang hop le bi kep lai (khong tin du lieu tai ve). */
 #include <stdbool.h>
@@ -26,6 +27,7 @@ extern "C" {
 #define FD_GAME_LIST_MAX  12
 #define FD_GAME_PKG_MAX   (128 * 1024)
 #define FD_GAME_SCRIPT_MAX (64 * 1024)
+#define FD_GAME_HOW_LEN   240  /* 5.1.0 */
 #define FD_GAME_ICON_LEN  16   /* 4.9.2: ten icon dung san (paw, check, basket, joystick...), rong = theo type */
 
 typedef struct {
@@ -54,6 +56,7 @@ typedef struct {
     int ramp_pct;    /* len cap: thoi gian *= ramp_pct / 100 */
     int lives;
     char icon[FD_GAME_ICON_LEN];   /* 4.9.2 */
+    char how[FD_GAME_HOW_LEN];     /* 5.1.0: "how" tuy chon, cach choi hien tren man rieng game */
 } fd_game_cfg_t;
 
 typedef enum {

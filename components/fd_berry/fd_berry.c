@@ -1,4 +1,5 @@
 /* 4.9.0 May ao Berry cho tro choi tai ve. Xem include/fd_berry.h. */
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -95,6 +96,11 @@ static int64_t s_pause_acc, s_pause_at;
 typedef struct { bool on; int16_t x0, y0, x1, y1; int64_t t0; int32_t dur; } anim_t;
 static anim_t s_anim[FD_BERRY_OBJ_MAX];
 static uint32_t s_arrived;   /* bit: doi tuong vua toi dich, cho goi arrive(id) */
+/* 5.1.0 hieu ung (fd.fx) va lac (fd.sway), tinh theo dong ho tro choi */
+typedef struct { uint8_t kind; int64_t t0; int32_t dur; } fx_t;
+typedef struct { int16_t amp; int32_t period; } sway_t;
+static fx_t s_fx[FD_BERRY_OBJ_MAX];
+static sway_t s_sway[FD_BERRY_OBJ_MAX];
 static uint32_t s_calls, s_max_us;
 static uint64_t s_sum_us;
 
@@ -110,10 +116,51 @@ static int64_t gclock_us(void)
     return now - s_t0 - s_pause_acc - (s_pause_at ? now - s_pause_at : 0);
 }
 
+static void fx_reset(int i)
+{
+    s_fx[i].kind = 0;
+    s_obj[i].scale = 256;
+    s_obj[i].opa_now = s_obj[i].opa;
+}
+
+/* 5.1.0: hieu ung + lac cua doi tuong i tai thoi diem t (goi khi da LOCK) */
+static void fx_step(int i, int64_t t)
+{
+    fd_berry_obj_t *o = &s_obj[i];
+    fx_t *f = &s_fx[i];
+    sway_t *w = &s_sway[i];
+    if (!f->kind && !w->amp) return;
+    int ox = 0;
+    if (w->amp && w->period > 0) {
+        float ph = (float)(t % ((int64_t)w->period * 1000)) / ((float)w->period * 1000.0f);
+        ox = (int)lroundf((float)w->amp * sinf(6.2831853f * ph + (float)i * 1.7f));
+    }
+    if (f->kind) {
+        float p = f->dur > 0 ? (float)(t - f->t0) / ((float)f->dur * 1000.0f) : 1.0f;
+        if (p < 0) p = 0;
+        if (p >= 1.0f) {
+            if (f->kind == 1 || f->kind == 2) o->vis = false;   /* no / mo dan: an khi xong */
+            fx_reset(i);
+        } else {
+            switch (f->kind) {
+            case 1: o->scale = (uint16_t)(256 + 160 * p); o->opa_now = (uint8_t)(o->opa * (1.0f - p)); break;
+            case 2: o->opa_now = (uint8_t)(o->opa * (1.0f - p)); break;
+            case 3: o->opa_now = (uint8_t)(o->opa * p); break;
+            case 4: ox += (int)lroundf(7.0f * sinf(p * 18.849556f) * (1.0f - p)); break;
+            case 5: o->scale = (uint16_t)(256 + 48 * sinf(p * 3.1415927f)); break;
+            default: fx_reset(i); break;
+            }
+        }
+    }
+    o->ox = (int16_t)ox;
+    s_dirty |= 1u << i;
+}
+
 /* Cap nhat vi tri cac doi tuong dang chay (goi khi da LOCK). */
 static void anim_step(void)
 {
     int64_t t = gclock_us();
+    for (int i = 0; i < FD_BERRY_OBJ_MAX; i++) if (s_obj[i].used) fx_step(i, t);
     for (int i = 0; i < FD_BERRY_OBJ_MAX; i++) {
         anim_t *a = &s_anim[i];
         if (!a->on) continue;
@@ -146,9 +193,9 @@ static void set_err(const char *a, const char *b)
 /* ---------- API fd (chay trong task VM) ---------- */
 static int arg_id(bvm *vm)
 {
-    if (be_top(vm) < 1 || !be_isint(vm, 1)) be_raise(vm, "type_error", "id phai la so 0..15");
+    if (be_top(vm) < 1 || !be_isint(vm, 1)) be_raise(vm, "type_error", "id phai la so 0..31");
     int id = (int)be_toint(vm, 1);
-    if (id < 0 || id >= FD_BERRY_OBJ_MAX) be_raise(vm, "value_error", "id phai trong 0..15");
+    if (id < 0 || id >= FD_BERRY_OBJ_MAX) be_raise(vm, "value_error", "id phai trong 0..31");
     return id;
 }
 
@@ -172,6 +219,11 @@ static fd_berry_obj_t *touch(int id)
         o->font = 18;
         o->radius = 10;
         o->pad = 4;
+        o->opa = 255;
+        o->opa_now = 255;
+        o->scale = 256;
+        s_fx[id].kind = 0;
+        s_sway[id].amp = 0;
     }
     s_dirty |= 1u << id;
     return o;
@@ -198,6 +250,7 @@ static int f_box(bvm *vm)
     s_anim[id].on = false;
     s_arrived &= ~(1u << id);
     fd_berry_obj_t *o = touch(id);
+    fx_reset(id);   /* 5.1.0: dat lai vi tri = bat dau lai (huy hieu ung no / mo dang chay) */
     o->x = (int16_t)clampv(x, -1000, 2000);
     o->y = (int16_t)clampv(y, -1000, 2000);
     o->w = (int16_t)clampv(w, 0, 640);
@@ -242,7 +295,7 @@ static int f_clear(bvm *vm)
 {
     LOCK();
     for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
-        if (s_obj[i].used) { s_obj[i].vis = false; s_dirty |= 1u << i; }
+        if (s_obj[i].used) { s_obj[i].vis = false; fx_reset(i); s_sway[i].amp = 0; s_obj[i].ox = 0; s_dirty |= 1u << i; }
     UNLOCK();
     be_return_nil(vm);
 }
@@ -344,7 +397,7 @@ static int f_style(bvm *vm)
     fd_berry_obj_t *o = touch(id);
     o->bw = (uint8_t)clampv(bw, 0, 8);
     o->bc = bc & 0xFFFFFF;
-    o->radius = (uint8_t)clampv(r, 0, 40);
+    o->radius = (uint8_t)clampv(r, 0, 255);   /* 5.1.0: 255 = tron */
     o->pad = (uint8_t)clampv(pad, 0, 20);
     UNLOCK();
     be_return_nil(vm);
@@ -410,6 +463,112 @@ static int f_measure(bvm *vm)
     be_return(vm);
 }
 
+/* 5.1.0 fd.pos(id) -> [x, y] vi tri hien tai (ke ca dang fd.move), de no hat dung cho */
+static int f_pos(bvm *vm)
+{
+    int id = arg_id(vm);
+    LOCK();
+    anim_step();
+    int x = s_obj[id].x, y = s_obj[id].y;
+    UNLOCK();
+    be_newobject(vm, "list");
+    be_pushint(vm, x);
+    be_data_push(vm, -2);
+    be_pop(vm, 1);
+    be_pushint(vm, y);
+    be_data_push(vm, -2);
+    be_pop(vm, 1);
+    be_pop(vm, 1);
+    be_return(vm);
+}
+
+/* ---------- 5.1.0 do hoa ---------- */
+/* fd.grad(id, mau2[, huong]) */
+static int f_grad(bvm *vm)
+{
+    int id = arg_id(vm);
+    int c2 = argi(vm, 2, 0xFFFFFF), dir = argi(vm, 3, 1);
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    o->bg2 = c2 & 0xFFFFFF;
+    o->grad = (uint8_t)clampv(dir, 0, 2);
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.opa(id, 0..255) */
+static int f_opa(bvm *vm)
+{
+    int id = arg_id(vm);
+    int a = clampv(argi(vm, 2, 255), 0, 255);
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    o->opa = (uint8_t)a;
+    if (!s_fx[id].kind) o->opa_now = (uint8_t)a;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.fx(id, kieu, ms) */
+static int f_fx(bvm *vm)
+{
+    int id = arg_id(vm);
+    int k = clampv(argi(vm, 2, 0), 0, 5), ms = clampv(argi(vm, 3, 300), 0, 10000);
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    fx_reset(id);
+    if (k) {
+        s_fx[id].kind = (uint8_t)k;
+        s_fx[id].t0 = gclock_us();
+        s_fx[id].dur = ms;
+        if (k == 3) { o->vis = true; o->opa_now = 0; }
+    }
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.sway(id, bien_do, chu_ky_ms) */
+static int f_sway(bvm *vm)
+{
+    int id = arg_id(vm);
+    int amp = clampv(argi(vm, 2, 0), 0, 40), per = clampv(argi(vm, 3, 2000), 200, 20000);
+    LOCK();
+    fd_berry_obj_t *o = touch(id);
+    s_sway[id].amp = (int16_t)amp;
+    s_sway[id].period = per;
+    if (!amp) o->ox = 0;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.deco(id, mat_na) */
+static int f_deco(bvm *vm)
+{
+    int id = arg_id(vm);
+    int m = clampv(argi(vm, 2, 0), 0, 7);
+    LOCK();
+    touch(id)->deco = (uint8_t)m;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.burst(x, y, mau[, so_hat]) */
+static int f_burst(bvm *vm)
+{
+    int x = clampv(argi(vm, 1, 0), -100, 1000), y = clampv(argi(vm, 2, 0), -100, 1000);
+    int c = argi(vm, 3, 0xF59E0B), n = clampv(argi(vm, 4, 10), 1, 16);
+    LOCK();
+    if (s_misc.nburst < FD_BERRY_BURST_Q) {
+        fd_berry_burst_t *b = &s_misc.burst[s_misc.nburst++];
+        b->x = (int16_t)x;
+        b->y = (int16_t)y;
+        b->color = c & 0xFFFFFF;
+        b->n = (uint8_t)n;
+    }
+    UNLOCK();
+    be_return_nil(vm);
+}
+
 /* fd.opt(ten) */
 static int f_opt(bvm *vm)
 {
@@ -433,6 +592,7 @@ static void reg_module(bvm *vm)
         {"hud", f_hud}, {"sound", f_sound}, {"say", f_say}, {"over", f_over}, {"rand", f_rand}, {"ms", f_ms},
         {"count", f_count}, {"en", f_en}, {"vi", f_vi}, {"style", f_style}, {"move", f_move}, {"stop", f_stop},
         {"measure", f_measure}, {"opt", f_opt}, {"ipa", f_ipa}, {"sub", f_sub},
+        {"grad", f_grad}, {"opa", f_opa}, {"fx", f_fx}, {"sway", f_sway}, {"deco", f_deco}, {"burst", f_burst}, {"pos", f_pos},
     };
     be_newmodule(vm);
     for (size_t i = 0; i < sizeof(F) / sizeof(F[0]); i++) {
@@ -589,6 +749,8 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
     s_dirty = 0;
     memset(&s_misc, 0, sizeof(s_misc));
     memset(s_anim, 0, sizeof(s_anim));
+    memset(s_fx, 0, sizeof(s_fx));
+    memset(s_sway, 0, sizeof(s_sway));
     s_arrived = 0;
     s_pause_acc = 0;
     s_pause_at = 0;
@@ -657,6 +819,7 @@ uint32_t fd_berry_sync(fd_berry_obj_t *out, fd_berry_misc_t *misc)
     s_misc.hud_dirty = false;
     s_misc.sound = -1;
     s_misc.say[0] = 0;
+    s_misc.nburst = 0;
     UNLOCK();
     return d;
 }

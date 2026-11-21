@@ -17,6 +17,7 @@
  * hien ngay roi tai ngam; game da cai choi duoc khi offline; nut Dat lai xoa slot + cache + NVS gs/gr; nut Bat dau o cuoi trang.
  * Hoat hinh the (fd.move)
  * va ve van la C: lv_timer 30 ms dong bo bang doi tuong, VM chi chay luat khi co su kien (nut, cham, toi dich, dong ho). */
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
@@ -88,6 +89,12 @@ static bool s_berry_on;
 static fd_berry_word_t *s_bwords;       /* tro vao s_words, giu den khi VM dung */
 static lv_obj_t *s_bplay, *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX], *s_bs[FD_BERRY_OBJ_MAX];
 static fd_berry_obj_t s_bcur[FD_BERRY_OBJ_MAX];
+/* 5.1.0 fd.deco (vet sang, day, nut) va hat fd.burst */
+static lv_obj_t *s_bdeco[FD_BERRY_OBJ_MAX][3];
+#define PART_N 32
+typedef struct { lv_obj_t *o; float x, y, vx, vy; int16_t life, ttl; } part_t;
+static part_t s_part[PART_N];
+static lv_obj_t *s_bfx;   /* lop hat, nam tren s_bplay */
 static int s_blives_max;
 
 /* luoi tro choi (V_HOME) */
@@ -355,6 +362,9 @@ static void berry_stop(void)
     free(s_bwords);
     s_bwords = NULL;
     s_bplay = NULL;
+    s_bfx = NULL;
+    memset(s_part, 0, sizeof(s_part));
+    memset(s_bdeco, 0, sizeof(s_bdeco));
     memset(s_bo, 0, sizeof(s_bo));
     memset(s_bl, 0, sizeof(s_bl));
     memset(s_bs, 0, sizeof(s_bs));
@@ -459,7 +469,7 @@ static void show_menu(void)
     }
     bool o_dir, o_spd;
     cur_opts(&o_dir, &o_spd);
-    lv_obj_t *h = label(sc, !o_dir ? _("GAME_BERRY_HOW") : ui_btn_vertical() ? _("GAME_HOW_V") : _("GAME_HOW_H"),
+    lv_obj_t *h = label(sc, s_pkg.how[0] ? s_pkg.how : !o_dir ? _("GAME_BERRY_HOW") : ui_btn_vertical() ? _("GAME_HOW_V") : _("GAME_HOW_H"),
                         &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_LEFT, 0);
 
@@ -672,6 +682,96 @@ static const lv_font_t *bfont(uint8_t f)
     return f >= 32 ? &fd_font_mont_32 : f >= 18 ? &fd_font_noto_18 : &fd_font_noto_14;
 }
 
+/* 5.1.0 fd.deco: 1 vet sang (elip trang mo goc tren trai), 2 day treo, 4 nut that (mau nen) duoi doi tuong */
+static void berry_deco(int i, const fd_berry_obj_t *o)
+{
+    lv_obj_t *b = s_bo[i];
+    int w = o->w > 0 ? o->w : 40, h = o->h > 0 ? o->h : 40;
+    lv_obj_set_overflow_visible(b, o->deco & 6);
+    for (int k = 0; k < 3; k++) {
+        bool on = o->deco & (1 << k);
+        lv_obj_t *d = s_bdeco[i][k];
+        if (!on) { if (d) lv_obj_set_hidden(d, true); continue; }
+        if (!d) {
+            d = lv_obj_create(b);
+            lv_obj_remove_style_all(d);
+            lv_obj_set_ignore_layout(d, true);
+            lv_obj_set_clickable(d, false);
+            lv_obj_set_scrollable(d, false);
+            s_bdeco[i][k] = d;
+            if (k == 0) lv_obj_move_to_index(d, 0);   /* vet sang nam duoi chu */
+        }
+        lv_obj_set_hidden(d, false);
+        lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
+        if (k == 0) {
+            lv_obj_set_size(d, w / 4 > 4 ? w / 4 : 4, h / 5 > 4 ? h / 5 : 4);
+            lv_obj_set_pos(d, w / 5 - o->pad, h / 8 - o->pad);
+            lv_obj_set_style_radius(d, LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_color(d, lv_color_white(), 0);
+            lv_obj_set_style_bg_opa(d, LV_OPA_50, 0);
+        } else if (k == 1) {
+            lv_obj_set_size(d, 1, h / 2 > 12 ? h / 2 : 12);
+            lv_obj_set_pos(d, w / 2 - o->pad, h + 3 - o->pad);
+            lv_obj_set_style_bg_color(d, lv_color_hex(0x64748B), 0);
+        } else {
+            lv_obj_set_size(d, 8, 6);
+            lv_obj_set_pos(d, w / 2 - 4 - o->pad, h - 2 - o->pad);
+            lv_obj_set_style_radius(d, 2, 0);
+            lv_obj_set_style_bg_color(d, lv_color_hex(o->grad ? (uint32_t)o->bg2 : o->bg >= 0 ? (uint32_t)o->bg : 0x94A3B8), 0);
+        }
+    }
+}
+
+/* 5.1.0 fd.burst: hat bay toa (vat ly don gian, cap nhat moi khung trong timer man hinh) */
+static void part_burst(const fd_berry_burst_t *bu)
+{
+    if (!s_bfx) return;
+    uint32_t c2 = (uint32_t)bu->color;
+    uint32_t light = ((((c2 >> 16) & 0xFF) + 0xFF) / 2 << 16) | ((((c2 >> 8) & 0xFF) + 0xFF) / 2 << 8) | (((c2 & 0xFF) + 0xFF) / 2);
+    int made = 0;
+    for (int k = 0; k < PART_N && made < bu->n; k++) {
+        part_t *p = &s_part[k];
+        if (p->life > 0) continue;
+        if (!p->o) {
+            p->o = lv_obj_create(s_bfx);
+            lv_obj_remove_style_all(p->o);
+            lv_obj_set_clickable(p->o, false);
+            lv_obj_set_scrollable(p->o, false);
+            lv_obj_set_style_radius(p->o, LV_RADIUS_CIRCLE, 0);
+            lv_obj_set_style_bg_opa(p->o, LV_OPA_COVER, 0);
+        }
+        float a = (float)(esp_random() % 6283) / 1000.0f, sp = 90.0f + (float)(esp_random() % 130);
+        int sz = 4 + (int)(esp_random() % 5);
+        p->x = bu->x;
+        p->y = bu->y;
+        p->vx = cosf(a) * sp;
+        p->vy = sinf(a) * sp - 60.0f;
+        p->ttl = p->life = (int16_t)(450 + esp_random() % 300);
+        lv_obj_set_size(p->o, sz, sz);
+        lv_obj_set_style_bg_color(p->o, lv_color_hex(made % 3 == 2 ? 0xFFFFFF : made % 3 == 1 ? light : c2), 0);
+        lv_obj_set_style_opa(p->o, LV_OPA_COVER, 0);
+        lv_obj_set_pos(p->o, (int32_t)p->x, (int32_t)p->y);
+        lv_obj_set_hidden(p->o, false);
+        made++;
+    }
+}
+
+static void part_step(int dt)
+{
+    float s = (float)dt / 1000.0f;
+    for (int k = 0; k < PART_N; k++) {
+        part_t *p = &s_part[k];
+        if (p->life <= 0 || !p->o) continue;
+        p->life -= dt;
+        if (p->life <= 0) { lv_obj_set_hidden(p->o, true); continue; }
+        p->vy += 420.0f * s;
+        p->x += p->vx * s;
+        p->y += p->vy * s;
+        lv_obj_set_pos(p->o, (int32_t)p->x, (int32_t)p->y);
+        lv_obj_set_style_opa(p->o, (lv_opa_t)(255 * p->life / (p->ttl > 0 ? p->ttl : 1)), 0);
+    }
+}
+
 static void berry_apply(int i, const fd_berry_obj_t *o)
 {
     if (!s_bplay) return;
@@ -697,11 +797,28 @@ static void berry_apply(int i, const fd_berry_obj_t *o)
         s_bs[i] = sl;
         memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
         s_bcur[i].font = 0xFF;   /* buoc ap dung lan dau */
+        s_bcur[i].opa_now = 255;
+        s_bcur[i].scale = 256;
+        /* 5.1.0: thu tu ve = thu tu id (id lon nam tren), bat ke doi tuong nao duoc tao truoc */
+        int idx = 0;
+        for (int j = 0; j < i; j++) if (s_bo[j]) idx++;
+        lv_obj_move_to_index(b, idx);
+        lv_obj_set_style_transform_pivot_x(b, LV_PCT(50), 0);
+        lv_obj_set_style_transform_pivot_y(b, LV_PCT(50), 0);
     }
     lv_obj_t *b = s_bo[i], *l = s_bl[i];
     fd_berry_obj_t *c = &s_bcur[i];
     lv_obj_set_hidden(b, !o->used || !o->vis);
-    if (c->x != o->x || c->y != o->y) lv_obj_set_pos(b, o->x, o->y);
+    if (c->x != o->x || c->y != o->y || c->ox != o->ox) lv_obj_set_pos(b, o->x + o->ox, o->y);
+    /* 5.1.0 chuyen mau, do dac, phong to, trang tri */
+    bool first = c->font == 0xFF;
+    if (first || c->grad != o->grad || c->bg2 != o->bg2) {
+        lv_obj_set_style_bg_grad_dir(b, o->grad == 1 ? LV_GRAD_DIR_VER : o->grad == 2 ? LV_GRAD_DIR_HOR : LV_GRAD_DIR_NONE, 0);
+        if (o->grad) lv_obj_set_style_bg_grad_color(b, lv_color_hex((uint32_t)o->bg2), 0);
+    }
+    if (first || c->opa_now != o->opa_now) lv_obj_set_style_opa(b, o->opa_now, 0);
+    if (first || c->scale != o->scale) lv_obj_set_style_transform_scale(b, o->scale ? o->scale : 256, 0);
+    if (first || c->deco != o->deco || c->w != o->w || c->h != o->h || c->bg != o->bg) berry_deco(i, o);
     if (c->font != o->font) {
         lv_obj_set_style_text_font(l, bfont(o->font), 0);
     }
@@ -760,6 +877,8 @@ static void berry_tick_cb(lv_timer_t *t)
     uint32_t d = fd_berry_sync(objs, &m);
     for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
         if (d & (1u << i)) berry_apply(i, &objs[i]);
+    for (int k = 0; k < m.nburst && k < FD_BERRY_BURST_Q; k++) part_burst(&m.burst[k]);
+    if (!p) part_step(GM_TICK_MS);
     if (m.hud_dirty) {
         if (m.lives > s_blives_max) s_blives_max = m.lives > GM_LIVES ? GM_LIVES : m.lives;
         s_score = m.score;
@@ -844,6 +963,14 @@ static void show_berry(void)
     lv_obj_set_size(s_bplay, W, H - GM_HUD);
     lv_obj_set_scrollable(s_bplay, false);
     lv_obj_set_clickable(s_bplay, false);
+    s_bfx = lv_obj_create(s_body);   /* 5.1.0 lop hat tren cung, khong nhan cham */
+    lv_obj_remove_style_all(s_bfx);
+    lv_obj_set_pos(s_bfx, 0, top ? 0 : GM_HUD);
+    lv_obj_set_size(s_bfx, W, H - GM_HUD);
+    lv_obj_set_scrollable(s_bfx, false);
+    lv_obj_set_clickable(s_bfx, false);
+    memset(s_part, 0, sizeof(s_part));
+    memset(s_bdeco, 0, sizeof(s_bdeco));
     static const char *const SIDE[] = {"top", "right", "bottom", "left"};
     int si = side == UI_BTN_TOP ? 0 : side == UI_BTN_RIGHT ? 1 : side == UI_BTN_BOTTOM ? 2 : 3;
     fd_berry_cfg_t cfg = {
