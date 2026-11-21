@@ -22,6 +22,7 @@
 #include <strings.h>
 #include <time.h>
 #include "esp_heap_caps.h"
+#include "esp_log.h"
 #include "esp_random.h"
 #include "fd_audio.h"
 #include "fd_berry.h"
@@ -33,6 +34,8 @@
 #include "fd_sync.h"
 #include "nvs.h"
 #include "ui_priv.h"
+
+static const char *TAG = "scr_game";
 
 #define C_OK       0x16A34A
 #define C_BAD      0xDC2626
@@ -1176,48 +1179,71 @@ static void on_render(void)
 /* ---------- 4.9.7 DAT LAI ---------- */
 static bool s_reset_dlg;
 /* Xoa cai dat + ky luc moi tro choi trong NVS fd: "gs"/"gr" + 8 hex va khoa cu gm_* (khong dung khoa module khac). */
-static void nvs_games_erase(void)
+static bool nvs_game_key(const char *k)
 {
-    nvs_handle_t h;
-    if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) return;
+    if (strlen(k) == 10 && k[0] == 'g' && (k[1] == 's' || k[1] == 'r') && strspn(k + 2, "0123456789abcdef") == 8) return true;
+    return !strcmp(k, K_DIR) || !strcmp(k, K_SPD) || !strcmp(k, K_REP) || !strcmp(k, K_BEST) || !strcmp(k, K_PBST) ||
+           !strcmp(k, K_PID);
+}
+
+/* 5.0.0: gom khoa roi xoa, lap den khi khong con khoa game (khong gioi han so game); tra so khoa con lai (0 = sach). */
+static int nvs_games_erase(void)
+{
     enum { KMAX = 48 };
     char (*keys)[NVS_KEY_NAME_MAX_SIZE] = ps_alloc(sizeof(*keys) * KMAX);
-    int n = 0;
+    if (!keys) return -1;
+    int total = 0, n;
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) { free(keys); return -1; }
+    for (int pass = 0; pass < 8; pass++) {
+        n = 0;
+        nvs_iterator_t it = NULL;
+        esp_err_t r = nvs_entry_find(NVS_DEFAULT_PART_NAME, "fd", NVS_TYPE_ANY, &it);
+        while (r == ESP_OK && n < KMAX) {
+            nvs_entry_info_t info;
+            nvs_entry_info(it, &info);
+            if (nvs_game_key(info.key)) strlcpy(keys[n++], info.key, NVS_KEY_NAME_MAX_SIZE);
+            r = nvs_entry_next(&it);
+        }
+        nvs_release_iterator(it);
+        if (n == 0) break;
+        for (int i = 0; i < n; i++) if (nvs_erase_key(h, keys[i]) == ESP_OK) total++;
+        nvs_commit(h);
+    }
+    nvs_close(h);
+    /* kiem lai */
+    int left = 0;
     nvs_iterator_t it = NULL;
-    esp_err_t r = keys ? nvs_entry_find(NVS_DEFAULT_PART_NAME, "fd", NVS_TYPE_ANY, &it) : ESP_FAIL;
-    while (r == ESP_OK && n < KMAX) {
+    esp_err_t r = nvs_entry_find(NVS_DEFAULT_PART_NAME, "fd", NVS_TYPE_ANY, &it);
+    while (r == ESP_OK) {
         nvs_entry_info_t info;
         nvs_entry_info(it, &info);
-        const char *k = info.key;
-        bool game = (strlen(k) == 10 && k[0] == 'g' && (k[1] == 's' || k[1] == 'r') && strspn(k + 2, "0123456789abcdef") == 8) ||
-                    !strcmp(k, K_DIR) || !strcmp(k, K_SPD) || !strcmp(k, K_REP) || !strcmp(k, K_BEST) ||
-                    !strcmp(k, K_PBST) || !strcmp(k, K_PID);
-        if (game) strlcpy(keys[n++], k, NVS_KEY_NAME_MAX_SIZE);
+        if (nvs_game_key(info.key)) left++;
         r = nvs_entry_next(&it);
     }
     nvs_release_iterator(it);
-    for (int i = 0; i < n; i++) nvs_erase_key(h, keys[i]);
-    nvs_commit(h);
-    nvs_close(h);
     free(keys);
+    ESP_LOGI(TAG, "reset NVS: xoa %d khoa game, con %d", total, left);
+    return left;
 }
 
+/* 5.0.0: xoa ca khi danh sach dang lam moi / dang tai (task tu bo ket qua), xong ve Home kem toast. */
 static void reset_do_async(void *a)
 {
     (void)a;
-    fd_game_status_t st;
-    fd_game_get(&st);
-    if (st.state == FD_GAME_DOWNLOADING || st.state == FD_GAME_LISTING) { fd_ui_toast(_("GAME_RESET_BUSY")); return; }
-    fd_game_reset();
-    nvs_games_erase();
     s_pend_id[0] = 0;
     s_dl_id[0] = 0;
+    bool fs_ok = fd_game_reset();
+    int left = nvs_games_erase();
     s_cur[0] = 0;
     s_have_pkg = false;
     s_nentries = 0;
+    s_ninst = 0;
     s_list_fresh = false;
-    fd_ui_toast(_("GAME_RESET_DONE"));
-    if (s_body && s_view == V_HOME) show_home();   /* moi o mo, tai lai danh sach ngam */
+    s_list_at = 0;
+    bool ok = fs_ok && left == 0;
+    ui_nav_home();
+    fd_ui_toast(ok ? _("GAME_RESET_DONE") : _("GAME_RESET_PART"));
 }
 
 static void reset_cancel_cb(lv_event_t *e) { (void)e; s_reset_dlg = false; dlg_close(); }

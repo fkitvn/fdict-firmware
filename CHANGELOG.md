@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.0.0] - 2026-11-21
+- Nút Đặt lại trò chơi xóa sạch mọi trò chơi đã tải cùng kỷ lục và cài đặt rồi quay về màn hình chính.
+
 ## [4.9.9] - 2026-11-21
 - Chạm trò chơi đã tải là chơi ngay kể cả khi không có mạng, báo lỗi tải ngắn gọn, hộp xác nhận đặt lại gọn hơn, bàn phím Từ điển bỏ phím Xong và phím cách rộng hơn.
 

@@ -84,7 +84,7 @@ char *fd_game_script(const char *id, size_t *len);
 /* Danh sach may chu lan tai thanh cong gan nhat (cache LittleFS), dung khi vua mo man hoac khong mang. */
 int fd_game_list_cached(fd_game_entry_t *out, int cap);
 /* Xoa moi goi da tai, slot cu va cache danh sach. */
-void fd_game_reset(void);
+bool fd_game_reset(void);   /* 5.0.0: true = da xoa het (kiem lai thu muc rong) */
 /* 4.9.9: xoa slot /data/games/<id>/ (goi hong) */
 void fd_game_remove(const char *id);
 /* Tai danh sach (khong chan; ket qua qua fd_game_get / fd_game_list). */
