@@ -35,6 +35,7 @@ typedef enum {
     FD_SCR_DECK,        /* 4.3.3 man chon bo tu dung chung 5 module hoc */
     FD_SCR_LISTEN,      /* Nghe cau AI, nhap chu cai dau */
     FD_SCR_SPELL,       /* 4.5.3 Chinh ta: ghep tu tu ky tu da xao */
+    FD_SCR_GAMES,       /* 4.8.0 Tro choi (Hung tu + goi tai tu may chu) */
     FD_SCR_COUNT,
 } fd_scr_t;
 

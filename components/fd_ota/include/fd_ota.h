@@ -104,6 +104,10 @@ int fd_ota_api_get_file(const char *path, const char *dst, int max_bytes);
  * etag_in -> If-None-Match (304). etag_out = ETag phan hoi. prog(got,total,ctx) goi tu task goi. */
 int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,
                            char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx);
+/* 4.8.0: nhu fd_ota_api_get_file + prog, nhung loi HTTP KHONG hien hop thong bao may chu chung (man goi tu bao loi,
+ * vd Tro choi: 404 = may chu chua co danh sach). Van xoa token khi 401. */
+int fd_ota_api_get_file_q(const char *path, const char *dst, int max_bytes, void (*prog)(int got, int total, void *ctx),
+                          void *ctx);
 /* device_id = MAC goc eFuse, 12 hex thuong */
 void fd_ota_get_device_id(char *out, size_t len);
 

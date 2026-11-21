@@ -4,8 +4,8 @@
  *   luoi 3 cot (Fluent Emoji 3D 48px + nhan Noto 14):
  *     Chinh ta   | Phan loai tu | Luyen tap      (4.5.3: khoi tu vung len dau)
  *     Dien tu    | Sap xep      | Nghe
- *     Lat tu     | Tu dien      | Dong bo
- *     Thong ke   | Cai dat
+ *     Lat tu     | Tu dien      | Tro choi       (4.8.0: Tro choi sau Tu dien)
+ *     Dong bo    | Thong ke     | Cai dat
  * 20/10: trang Home CUON DOC (khong con vua khit 228 px).
  */
 #include <stdio.h>
@@ -41,6 +41,7 @@ LV_IMAGE_DECLARE(img_tile_cloze);      /* 2.3.6 Fluent "Pencil" - Dien tu */
 LV_IMAGE_DECLARE(img_tile_dict);       /* 2.3.6 Fluent "Open book" - Tu dien */
 LV_IMAGE_DECLARE(img_tile_listen);     /* Fluent "Speaker high volume" - Nghe */
 LV_IMAGE_DECLARE(img_tile_spell);      /* 4.5.3 Fluent "Input latin letters" - Chinh ta */
+LV_IMAGE_DECLARE(img_tile_game);       /* 4.8.0 Fluent "Video game" - Tro choi */
 
 static const struct {
     const lv_image_dsc_t *icon;
@@ -55,6 +56,7 @@ static const struct {
     {&img_tile_listen, "LISTEN", FD_SCR_LISTEN},
     {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
     {&img_tile_dict, "DICTIONARY", FD_SCR_DICT},
+    {&img_tile_game, "GAMES", FD_SCR_GAMES},
     {&img_tile_sync, "SYNC", FD_SCR_SYNC},
     {&img_tile_stats, "STATISTICS", FD_SCR_STATS},
     {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},

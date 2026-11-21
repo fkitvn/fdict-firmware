@@ -29,6 +29,7 @@ TILES = [
     ("img_tile_sentence", "Puzzle piece", "puzzle_piece_3d.png", "Sắp xếp câu", None),
     ("img_tile_listen", "Speaker high volume", "speaker_high_volume_3d.png", "Nghe", None),
     ("img_tile_spell", "Input latin letters", "input_latin_letters_3d.png", "Chính tả", None),
+    ("img_tile_game", "Video game", "video_game_3d.png", "Trò chơi", None),
     ("img_tile_settings", "Gear", "gear_3d.png", "Cài đặt", "slate"),
 ]
 TILE_PX = 48
