@@ -354,6 +354,8 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"GAME_INSTALL_FAIL", "Could not install the game"},
     {"GAME_INSTALLED_TAG", "Installed"},
     {"GAME_NEED_FW", "Needs firmware %s"},
+    {"GAME_BERRY_HOW", "Downloaded game. Follow the on-screen hints, use buttons 1 to 4 or tap the screen."},
+    {"GAME_SCRIPT_ERR", "The game hit an error and stopped"},
     {NULL, NULL} // End mark
 };
 
@@ -713,6 +715,8 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"GAME_INSTALL_FAIL", "Không cài được trò chơi"},
     {"GAME_INSTALLED_TAG", "Đã cài"},
     {"GAME_NEED_FW", "Cần firmware %s"},
+    {"GAME_BERRY_HOW", "Trò chơi tải về. Làm theo hướng dẫn trên màn hình, dùng nút 1 đến 4 hoặc chạm vào màn hình."},
+    {"GAME_SCRIPT_ERR", "Trò chơi gặp lỗi và đã dừng"},
     {NULL, NULL} // End mark
 };
 
