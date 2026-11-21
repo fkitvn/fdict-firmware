@@ -10,6 +10,7 @@
  *    Tai ve /data/game.dl -> kiem size + sha256 + min_fw + JSON hop le + id trung -> thay /data/game/game.json.
  *  - 4.9.0: type "berry" = tro choi viet bang Berry: them "script" (ma nguon Berry, <= FD_GAME_SCRIPT_MAX), "words" tuy chon.
  *    Chay trong may ao co gioi han (components/fd_berry). Goi berry phai co min_fw >= 4.9.0 (may chu kiem khi tai len).
+ *  - 4.9.2: truong "icon" tuy chon (danh sach va goi): ten icon dung san trong firmware, chi [a-z0-9_-].
  *  - Thong so ngoai khoang hop le bi kep lai (khong tin du lieu tai ve). */
 #include <stdbool.h>
 #include <stddef.h>
@@ -27,6 +28,7 @@ extern "C" {
 #define FD_GAME_PKG_MAX   (128 * 1024)
 #define FD_GAME_WORDS_MAX 500
 #define FD_GAME_SCRIPT_MAX (64 * 1024)
+#define FD_GAME_ICON_LEN  16   /* 4.9.2: ten icon dung san (paw, check, basket, joystick...), rong = theo type */
 
 typedef struct {
     char id[FD_GAME_ID_LEN];
@@ -38,6 +40,8 @@ typedef struct {
     int size;            /* byte, 0 = khong biet */
     bool supported;      /* type firmware nay chay duoc va firmware >= min_fw */
     bool installed;      /* trung id + version voi goi dang cai */
+    bool berry;          /* 4.9.2: type berry */
+    char icon[FD_GAME_ICON_LEN];
 } fd_game_entry_t;
 
 /* Thong so tro choi Hung tu (mac dinh trong firmware hoac tu goi da cai). */
@@ -52,6 +56,7 @@ typedef struct {
     int lives;
     int nwords;      /* so tu kem trong goi (0 = dung kho tu cua may) */
     bool berry;      /* 4.9.0: goi type berry (co script) */
+    char icon[FD_GAME_ICON_LEN];   /* 4.9.2 */
 } fd_game_cfg_t;
 
 typedef enum {

@@ -356,6 +356,10 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"GAME_NEED_FW", "Needs firmware %s"},
     {"GAME_BERRY_HOW", "Downloaded game. Follow the on-screen hints, use buttons 1 to 4 or tap the screen."},
     {"GAME_SCRIPT_ERR", "The game hit an error and stopped"},
+    {"GAME_RECORDS", "Records"},
+    {"GAME_NO_RECORDS", "No records yet"},
+    {"GAME_DL_PCT", "Downloading %d%%"},
+    {"GAME_TAP_HINT", "Faded games are not downloaded yet, tap to download and play"},
     {NULL, NULL} // End mark
 };
 
@@ -717,6 +721,10 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"GAME_NEED_FW", "Cần firmware %s"},
     {"GAME_BERRY_HOW", "Trò chơi tải về. Làm theo hướng dẫn trên màn hình, dùng nút 1 đến 4 hoặc chạm vào màn hình."},
     {"GAME_SCRIPT_ERR", "Trò chơi gặp lỗi và đã dừng"},
+    {"GAME_RECORDS", "Kỷ lục"},
+    {"GAME_NO_RECORDS", "Chưa có kỷ lục"},
+    {"GAME_DL_PCT", "Đang tải %d%%"},
+    {"GAME_TAP_HINT", "Trò chơi mờ là chưa tải, chạm để tải và chơi"},
     {NULL, NULL} // End mark
 };
 
