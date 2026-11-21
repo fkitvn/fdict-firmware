@@ -360,6 +360,9 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"GAME_NO_RECORDS", "No records yet"},
     {"GAME_DL_PCT", "Downloading %d%%"},
     {"GAME_TAP_HINT", "Faded games are not downloaded yet, tap to download and play"},
+    {"GAME_NEED_UPDATE", "Update needed"},
+    {"GAME_VERSION_N", "Version %s"},
+    {"GAME_VERSION_OLD", "Installed %s, update to %s to play"},
     {NULL, NULL} // End mark
 };
 
@@ -725,6 +728,9 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"GAME_NO_RECORDS", "Chưa có kỷ lục"},
     {"GAME_DL_PCT", "Đang tải %d%%"},
     {"GAME_TAP_HINT", "Trò chơi mờ là chưa tải, chạm để tải và chơi"},
+    {"GAME_NEED_UPDATE", "Cần cập nhật"},
+    {"GAME_VERSION_N", "Phiên bản %s"},
+    {"GAME_VERSION_OLD", "Đã cài bản %s, cần cập nhật lên %s để chơi"},
     {NULL, NULL} // End mark
 };
 

@@ -341,3 +341,6 @@ en:
   GAME_NO_RECORDS: 'No records yet'
   GAME_DL_PCT: 'Downloading %d%%'
   GAME_TAP_HINT: 'Faded games are not downloaded yet, tap to download and play'
+  GAME_NEED_UPDATE: 'Update needed'
+  GAME_VERSION_N: 'Version %s'
+  GAME_VERSION_OLD: 'Installed %s, update to %s to play'
