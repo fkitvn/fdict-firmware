@@ -231,7 +231,15 @@ static bool parse_pkg(const cJSON *j, fd_game_cfg_t *c)
 {
     fd_game_cfg_default(c);
     if (!cJSON_IsObject(j) || jint(j, "format", 0) != 1) return false;
-    if (strcmp(jstr(j, "type"), "catch") != 0) return false;
+    const char *type = jstr(j, "type");
+    bool berry = !strcmp(type, "berry");
+    if (strcmp(type, "catch") != 0 && !berry) return false;
+    if (berry) {
+        const char *sc = jstr(j, "script");
+        size_t sl = strlen(sc);
+        if (sl == 0 || sl > FD_GAME_SCRIPT_MAX) return false;
+    }
+    c->berry = berry;
     const char *id = jstr(j, "id");
     if (!safe_id(id) || !fw_ok(jstr(j, "min_fw"))) return false;
     ucpy(c->id, sizeof(c->id), id);
@@ -256,6 +264,27 @@ static bool parse_pkg(const cJSON *j, fd_game_cfg_t *c)
     }
     c->nwords = n;
     return true;
+}
+
+static cJSON *load_pkg_json(void);
+
+char *fd_game_pkg_script(size_t *len)
+{
+    if (len) *len = 0;
+    cJSON *j = load_pkg_json();
+    fd_game_cfg_t c;
+    char *out = NULL;
+    if (j && parse_pkg(j, &c) && c.berry) {
+        const char *sc = jstr(j, "script");
+        size_t n = strlen(sc);
+        out = ps_calloc(n + 1);
+        if (out) {
+            memcpy(out, sc, n);
+            if (len) *len = n;
+        }
+    }
+    cJSON_Delete(j);
+    return out;
 }
 
 static cJSON *load_pkg_json(void)
@@ -311,9 +340,10 @@ int fd_game_pkg_words(fd_spell_word_t *out, int cap)
 static void list_task(void *arg)
 {
     (void)arg;
-    char fw[16], path[96], err[24] = "";
+    char fw[16], path[112], err[24] = "", did[24] = "";
     fw_semver(fw, sizeof(fw));
-    snprintf(path, sizeof(path), "/api/devices/games?hw=" HW "&fw=%s", fw);
+    fd_ota_get_device_id(did, sizeof(did));
+    snprintf(path, sizeof(path), "/api/devices/games?hw=" HW "&fw=%s&device_id=%s", fw, did);
     int code = fd_ota_api_get_file_q(path, LIST_TMP, LIST_MAX, NULL, NULL);
     ESP_LOGI(TAG, "list: HTTP %d", code);
     fd_game_cfg_t inst;
@@ -347,7 +377,7 @@ static void list_task(void *arg)
                 for (int k = 0; k < 64; k++) e->sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
                 e->sha256[64] = 0;
                 e->size = clampi(jint(it, "size", 0), 0, FD_GAME_PKG_MAX + 1);
-                e->supported = !strcmp(jstr(it, "type"), "catch") && fw_ok(e->min_fw) && e->size <= FD_GAME_PKG_MAX;
+                e->supported = (!strcmp(jstr(it, "type"), "catch") || !strcmp(jstr(it, "type"), "berry")) && fw_ok(e->min_fw) && e->size <= FD_GAME_PKG_MAX;
                 e->installed = have && !strcmp(inst.id, e->id) && !strcmp(inst.version, e->version);
             }
         }

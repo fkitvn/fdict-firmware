@@ -19,6 +19,7 @@
 #include "esp_heap_caps.h"
 #include "esp_random.h"
 #include "fd_audio.h"
+#include "fd_berry.h"
 #include "fd_fonts.h"
 #include "fd_game.h"
 #include "fd_ota.h"
@@ -45,7 +46,7 @@
 #define K_PBST "gm_pbest"       /* ky luc goi da cai */
 #define K_PID  "gm_pid"         /* id goi cua gm_pbest */
 
-typedef enum { V_MENU, V_MSG, V_PLAY, V_OVER, V_ONLINE } view_t;
+typedef enum { V_MENU, V_MSG, V_PLAY, V_OVER, V_ONLINE, V_BERRY } view_t;
 typedef enum { P_RUN, P_FEED } phase_t;
 
 static view_t s_view;
@@ -67,6 +68,14 @@ static int32_t s_x0, s_y0, s_x1, s_y1;  /* vi tri dau / cuoi cua the */
 static int32_t s_gx, s_gy, s_gw, s_gh;  /* hinh chu nhat cong 0 (cong 1 cung kich thuoc) */
 static int s_score, s_lives, s_combo, s_right, s_level, s_fall_ms, s_best, s_ans, s_cur;
 static bool s_new_best;
+static bool s_gate_pair;                /* 4.9.0: chua dang nhap -> cong Dang nhap chung (nhu cac mo-dun hoc) */
+
+/* 4.9.0 tro choi Berry (goi type berry) */
+static bool s_berry_on;
+static fd_berry_word_t *s_bwords;       /* tro vao s_words, giu den khi VM dung */
+static lv_obj_t *s_bplay, *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX];
+static fd_berry_obj_t s_bcur[FD_BERRY_OBJ_MAX];
+static int s_blives_max;
 
 /* tro choi online */
 static lv_obj_t *s_on_status, *s_on_list;
@@ -80,6 +89,7 @@ static void show_play(void);
 static void show_over(void);
 static void show_online(void);
 static void next_card(void);
+static void show_berry(void);
 
 static void *ps_alloc(size_t n)
 {
@@ -177,9 +187,23 @@ static void timers_stop(void)
     if (s_on_timer) { lv_timer_delete(s_on_timer); s_on_timer = NULL; }
 }
 
+static void berry_stop(void)
+{
+    if (s_berry_on) {
+        fd_berry_stop();
+        s_berry_on = false;
+    }
+    free(s_bwords);
+    s_bwords = NULL;
+    s_bplay = NULL;
+    memset(s_bo, 0, sizeof(s_bo));
+    memset(s_bl, 0, sizeof(s_bl));
+}
+
 static void body_reset(void)
 {
     timers_stop();
+    berry_stop();
     lv_obj_clean(s_body);
     s_card = s_card_lbl = s_score_lbl = s_level_lbl = s_on_status = s_on_list = NULL;
     memset(s_gate, 0, sizeof(s_gate));
@@ -237,14 +261,18 @@ static void show_menu(void)
     static const char *const DIR[] = {"SPELL_BUILD_EN", "SPELL_BUILD_VI", "SPELL_DIR_MIX"};
     static const char *const SPD[] = {"GAME_SLOW", "GAME_NORMAL", "GAME_FAST"};
     static const char *const RP[] = {"OFF", "ON"};
-    ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 3, s_dir, opt_cb, OPT_DIR, UI_OPT_WRAP);
-    ui_setup_opt_row(sc, _("GAME_SPEED"), SPD, 3, s_spd, opt_cb, OPT_SPD, 0);
+    bool berry = use_pkg() && s_pkg.berry;
+    if (!berry) {
+        ui_setup_opt_row(sc, _("SEN_DIR"), DIR, 3, s_dir, opt_cb, OPT_DIR, UI_OPT_WRAP);
+        ui_setup_opt_row(sc, _("GAME_SPEED"), SPD, 3, s_spd, opt_cb, OPT_SPD, 0);
+    }
     ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_rep, opt_cb, OPT_REP, UI_OPT_WIDE);
     char tmp[64];
     snprintf(tmp, sizeof(tmp), _("GAME_BEST_N"), best_load());
     lv_obj_t *b = label(sc, tmp, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
     lv_obj_set_style_text_align(b, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_t *h = label(sc, ui_btn_vertical() ? _("GAME_HOW_V") : _("GAME_HOW_H"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *h = label(sc, berry ? _("GAME_BERRY_HOW") : ui_btn_vertical() ? _("GAME_HOW_V") : _("GAME_HOW_H"),
+                        &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_t *r = row(sc);
     lv_obj_set_flex_align(r, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -311,7 +339,8 @@ static void start(void)
     s_lives = s_cfg.lives < 1 ? 1 : s_cfg.lives > GM_LIVES ? GM_LIVES : s_cfg.lives;
     s_best = best_load();
     s_new_best = false;
-    show_play();
+    if (use_pkg() && s_pkg.berry) show_berry();
+    else show_play();
 }
 
 /* ---------- CHOI ---------- */
@@ -618,6 +647,183 @@ static void show_play(void)
     s_timer = lv_timer_create(tick_cb, GM_TICK_MS, NULL);
 }
 
+/* ---------- TRO CHOI BERRY (4.9.0) ---------- */
+static void btap_cb(lv_event_t *e)
+{
+    if (s_view != V_BERRY || paused()) return;
+    fd_berry_event(FD_BERRY_EV_TAP, (int)(intptr_t)lv_event_get_user_data(e));
+}
+
+static void berry_hud(const fd_berry_misc_t *m)
+{
+    char t[48];
+    if (s_score_lbl) {
+        snprintf(t, sizeof(t), _("GAME_SCORE_N"), m->score);
+        lv_label_set_text(s_score_lbl, t);
+    }
+    if (s_level_lbl) {
+        if (m->level > 0) snprintf(t, sizeof(t), _("GAME_LEVEL_N"), m->level);
+        else t[0] = 0;
+        lv_label_set_text(s_level_lbl, t);
+    }
+    for (int i = 0; i < GM_LIVES; i++) {
+        if (!s_life[i]) continue;
+        lv_obj_set_hidden(s_life[i], m->lives < 0 || i >= s_blives_max);
+        lv_obj_set_style_bg_color(s_life[i], lv_color_hex(i < m->lives ? C_BAD : C_GATE), 0);
+    }
+}
+
+static const lv_font_t *bfont(uint8_t f)
+{
+    return f >= 32 ? &fd_font_mont_32 : f >= 18 ? &fd_font_noto_18 : &fd_font_noto_14;
+}
+
+static void berry_apply(int i, const fd_berry_obj_t *o)
+{
+    if (!s_bplay) return;
+    if (!s_bo[i]) {
+        lv_obj_t *b = lv_obj_create(s_bplay);
+        lv_obj_remove_style_all(b);
+        lv_obj_set_style_radius(b, 10, 0);
+        lv_obj_set_style_pad_all(b, 4, 0);
+        lv_obj_set_scrollable(b, false);
+        lv_obj_set_clickable(b, true);
+        lv_obj_add_event_cb(b, btap_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        lv_obj_t *l = lv_label_create(b);
+        lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_clickable(l, false);
+        s_bo[i] = b;
+        s_bl[i] = l;
+        memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
+        s_bcur[i].font = 0xFF;   /* buoc ap dung lan dau */
+    }
+    lv_obj_t *b = s_bo[i], *l = s_bl[i];
+    fd_berry_obj_t *c = &s_bcur[i];
+    lv_obj_set_hidden(b, !o->used || !o->vis);
+    if (c->x != o->x || c->y != o->y) lv_obj_set_pos(b, o->x, o->y);
+    if (c->font != o->font) {
+        lv_obj_set_style_text_font(l, bfont(o->font), 0);
+    }
+    if (c->w != o->w || c->font == 0xFF) {
+        if (o->w > 0) {
+            lv_obj_set_width(b, o->w);
+            lv_obj_set_width(l, lv_pct(100));
+            lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+        } else {
+            lv_obj_set_width(b, LV_SIZE_CONTENT);
+            lv_obj_set_width(l, LV_SIZE_CONTENT);
+        }
+    }
+    if (c->h != o->h || c->font == 0xFF) {
+        lv_obj_set_height(b, o->h > 0 ? o->h : LV_SIZE_CONTENT);
+        lv_obj_center(l);
+    }
+    if (c->bg != o->bg || c->font == 0xFF) {
+        lv_obj_set_style_bg_opa(b, o->bg < 0 ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
+        if (o->bg >= 0) lv_obj_set_style_bg_color(b, lv_color_hex((uint32_t)o->bg), 0);
+    }
+    if (c->fg != o->fg || c->font == 0xFF) lv_obj_set_style_text_color(l, lv_color_hex((uint32_t)o->fg), 0);
+    if (strcmp(c->txt, o->txt) != 0 || c->font == 0xFF) lv_label_set_text(l, o->txt);
+    *c = *o;
+}
+
+static void berry_err_async(void *a);
+static void berry_over_async(void *a);
+static char s_berr[96];
+
+static void berry_tick_cb(lv_timer_t *t)
+{
+    (void)t;
+    if (s_view != V_BERRY || !s_berry_on) return;
+    bool p = paused();
+    fd_berry_pause(p);
+    if (!p) lv_display_trigger_activity(NULL);
+    static fd_berry_obj_t objs[FD_BERRY_OBJ_MAX];
+    fd_berry_misc_t m;
+    uint32_t d = fd_berry_sync(objs, &m);
+    for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
+        if (d & (1u << i)) berry_apply(i, &objs[i]);
+    if (m.hud_dirty) {
+        if (m.lives > s_blives_max) s_blives_max = m.lives > GM_LIVES ? GM_LIVES : m.lives;
+        s_score = m.score;
+        s_level = m.level;
+        berry_hud(&m);
+    }
+    if (m.say[0]) {
+        if (s_rep) {
+            const fd_pron_cfg_t pc = {FD_PRON_PICO_ONLY, 1, false};
+            ui_pron_say_cfg(m.say, &pc);
+        } else {
+            fd_audio_feedback(true);
+        }
+    } else if (m.sound >= 0) {
+        fd_audio_feedback(m.sound == 1);
+    }
+    if (m.state == FD_BERRY_OVER) {
+        s_score = m.over_score;
+        lv_timer_pause(s_timer);
+        lv_async_call(berry_over_async, NULL);
+    } else if (m.state == FD_BERRY_ERROR) {
+        strlcpy(s_berr, m.err, sizeof(s_berr));
+        lv_timer_pause(s_timer);
+        lv_async_call(berry_err_async, NULL);
+    }
+}
+
+static void berry_over_async(void *a) { (void)a; if (s_body && s_view == V_BERRY) show_over(); }
+static void berry_err_async(void *a)
+{
+    (void)a;
+    if (!s_body || s_view != V_BERRY) return;
+    char hint[96];
+    strlcpy(hint, s_berr, sizeof(hint));
+    show_msg(_("GAME_SCRIPT_ERR"), hint);
+}
+
+static void show_berry(void)
+{
+    size_t len = 0;
+    char *script = fd_game_pkg_script(&len);
+    if (!script) { show_msg(_("GAME_INSTALL_FAIL"), NULL); return; }
+    s_view = V_BERRY;
+    body_reset();
+    s_bwords = malloc(sizeof(fd_berry_word_t) * (size_t)s_nw);
+    if (!s_bwords) { free(script); show_msg(_("MEMORY_ERROR"), NULL); return; }
+    for (int i = 0; i < s_nw; i++) { s_bwords[i].en = s_words[i].en; s_bwords[i].vi = s_words[i].vi; }
+    lv_obj_set_style_pad_all(s_body, 0, 0);
+    lv_obj_set_layout(s_body, LV_LAYOUT_NONE);
+    int32_t W = lv_display_get_horizontal_resolution(NULL), H = lv_display_get_vertical_resolution(NULL);
+    ui_btn_side_t side = ui_btn_side();
+    bool top = side == UI_BTN_TOP;
+    s_lives = GM_LIVES;   /* mk_hud tao du cham, berry_hud an bot */
+    s_blives_max = 0;
+    mk_hud(top ? H - GM_HUD : 0, W);
+    for (int i = 0; i < GM_LIVES; i++) if (s_life[i]) lv_obj_set_hidden(s_life[i], true);
+    s_bplay = lv_obj_create(s_body);
+    lv_obj_remove_style_all(s_bplay);
+    lv_obj_set_pos(s_bplay, 0, top ? 0 : GM_HUD);
+    lv_obj_set_size(s_bplay, W, H - GM_HUD);
+    lv_obj_set_scrollable(s_bplay, false);
+    lv_obj_set_clickable(s_bplay, false);
+    static const char *const SIDE[] = {"top", "right", "bottom", "left"};
+    int si = side == UI_BTN_TOP ? 0 : side == UI_BTN_RIGHT ? 1 : side == UI_BTN_BOTTOM ? 2 : 3;
+    fd_berry_cfg_t cfg = {
+        .script = script, .len = len, .words = s_bwords, .nwords = s_nw, .w = W, .h = H - GM_HUD, .side = SIDE[si],
+    };
+    s_score = 0;
+    s_level = 0;
+    s_right = -1;
+    if (!fd_berry_start(&cfg)) {
+        free(script);
+        show_msg(_("MEMORY_ERROR"), NULL);
+        return;
+    }
+    s_berry_on = true;
+    fd_berry_misc_t m = {.score = 0, .lives = -1, .level = 0};
+    berry_hud(&m);
+    s_timer = lv_timer_create(berry_tick_cb, GM_TICK_MS, NULL);
+}
+
 /* ---------- KET THUC ---------- */
 static void again_cb(lv_event_t *e) { (void)e; lv_async_call(start_async, NULL); }
 
@@ -645,8 +851,10 @@ static void show_over(void)
         snprintf(t, sizeof(t), _("GAME_BEST_N"), s_best);
         label(s_body, t, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     }
-    snprintf(t, sizeof(t), _("GAME_RIGHT_N"), s_right, s_level);
-    label(s_body, t, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    if (s_right >= 0) {
+        snprintf(t, sizeof(t), _("GAME_RIGHT_N"), s_right, s_level);
+        label(s_body, t, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    }
     lv_obj_t *r = row(s_body);
     ui_gate_btn(r, _("BACK"), false, msg_back_cb);
     ui_gate_btn(r, _("SEN_AGAIN"), true, again_cb);
@@ -819,6 +1027,8 @@ static void quit_open(void)
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
+    s_gate_pair = !fd_ota_is_paired();   /* 4.9.0: nhu Luyen tap va cac mo-dun hoc: chua dang nhap thi khong choi */
+    if (s_gate_pair) { ui_pair_gate(s_body); return; }
     prefs_load();
     show_menu();
 }
@@ -826,6 +1036,7 @@ static void build(lv_obj_t *scr)
 static void destroy(void)
 {
     timers_stop();
+    berry_stop();
     dlg_close();
     s_body = NULL;
     s_card = s_card_lbl = s_score_lbl = s_level_lbl = s_on_status = s_on_list = NULL;
@@ -841,12 +1052,14 @@ static void destroy(void)
 
 static bool on_button(const fd_evt_button_t *b)
 {
+    if (s_gate_pair) return false;   /* cong Dang nhap: hanh vi chung nhu cac mo-dun hoc */
     if (b->action == FD_BTN_LONG_PRESS) return false;   /* giu Nut 1 = quay lai, giu Nut 2 = bang nhanh (ui_nav) */
     if (s_dlg) return true;
     int pos = ui_btn_user_pos(b->index);
     if (pos < 0) return true;
     switch (s_view) {
     case V_PLAY: choose(pos < 2 ? 0 : 1); return true;
+    case V_BERRY: if (!paused()) fd_berry_event(FD_BERRY_EV_BUTTON, pos + 1); return true;
     case V_MENU: start(); return true;
     case V_OVER: if (lv_tick_elaps(s_over_at) >= OVER_GUARD_MS) start(); return true;
     case V_MSG: show_menu(); return true;
@@ -856,8 +1069,9 @@ static bool on_button(const fd_evt_button_t *b)
 
 static bool on_back(void)
 {
+    if (s_gate_pair) return false;
     if (s_dlg) { dlg_close(); return true; }
-    if (s_view == V_PLAY) { quit_open(); return true; }
+    if (s_view == V_PLAY || s_view == V_BERRY) { quit_open(); return true; }
     if (s_view != V_MENU) { show_menu(); return true; }
     return false;
 }

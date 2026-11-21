@@ -8,9 +8,11 @@
  *      {"format":1,"id","name","version","type":"catch","min_fw":"4.8.0",
  *       "config":{"fall_ms","min_ms","every","ramp_pct","lives"}, "words":[{"en","vi"}] (tuy chon)}
  *    Tai ve /data/game.dl -> kiem size + sha256 + min_fw + JSON hop le + id trung -> thay /data/game/game.json.
- *    Giai doan 2 (Berry) se them type "berry" (goi co script) - firmware cu tu bo qua (min_fw + type la).
+ *  - 4.9.0: type "berry" = tro choi viet bang Berry: them "script" (ma nguon Berry, <= FD_GAME_SCRIPT_MAX), "words" tuy chon.
+ *    Chay trong may ao co gioi han (components/fd_berry). Goi berry phai co min_fw >= 4.9.0 (may chu kiem khi tai len).
  *  - Thong so ngoai khoang hop le bi kep lai (khong tin du lieu tai ve). */
 #include <stdbool.h>
+#include <stddef.h>
 #include "fd_sync.h"   /* fd_spell_word_t (en, vi) */
 
 #ifdef __cplusplus
@@ -24,6 +26,7 @@ extern "C" {
 #define FD_GAME_LIST_MAX  12
 #define FD_GAME_PKG_MAX   (128 * 1024)
 #define FD_GAME_WORDS_MAX 500
+#define FD_GAME_SCRIPT_MAX (64 * 1024)
 
 typedef struct {
     char id[FD_GAME_ID_LEN];
@@ -48,6 +51,7 @@ typedef struct {
     int ramp_pct;    /* len cap: thoi gian *= ramp_pct / 100 */
     int lives;
     int nwords;      /* so tu kem trong goi (0 = dung kho tu cua may) */
+    bool berry;      /* 4.9.0: goi type berry (co script) */
 } fd_game_cfg_t;
 
 typedef enum {
@@ -72,6 +76,8 @@ void fd_game_cfg_default(fd_game_cfg_t *c);
 bool fd_game_installed(fd_game_cfg_t *out);
 /* Tu kem trong goi dang cai (en + vi), da xao. Tra so tu. */
 int fd_game_pkg_words(fd_spell_word_t *out, int cap);
+/* 4.9.0: ma nguon Berry cua goi dang cai (PSRAM, nguoi goi free). NULL neu khong phai goi berry. */
+char *fd_game_pkg_script(size_t *len);
 /* Tai danh sach (khong chan; ket qua qua fd_game_get / fd_game_list). */
 void fd_game_list_fetch(void);
 void fd_game_get(fd_game_status_t *out);
