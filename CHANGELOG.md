@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.9.3] - 2026-11-21
+- Mỗi trò chơi hiện phiên bản, trò có bản mới phải tải lại mới chơi được.
+
 ## [4.9.2] - 2026-11-21
 - Màn Trò chơi dạng ô như trang chủ, trò chưa tải hiện mờ, mỗi trò có cài đặt và kỷ lục riêng.
 
