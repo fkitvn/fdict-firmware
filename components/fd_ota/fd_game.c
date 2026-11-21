@@ -113,6 +113,19 @@ static bool fw_ok(const char *min_fw)
     return need >= 0 && have >= 0 && have >= need;
 }
 
+/* 4.9.2: ten icon: chi [a-z0-9_-], qua dai hoac ky tu la -> rong (firmware chon icon theo type) */
+static void icon_cpy(char out[FD_GAME_ICON_LEN], const char *v)
+{
+    out[0] = 0;
+    size_t n = strlen(v);
+    if (n == 0 || n >= FD_GAME_ICON_LEN) return;
+    for (size_t i = 0; i < n; i++) {
+        char ch = v[i];
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-')) return;
+    }
+    memcpy(out, v, n + 1);
+}
+
 static bool safe_id(const char *s)
 {
     size_t n = strlen(s);
@@ -245,6 +258,7 @@ static bool parse_pkg(const cJSON *j, fd_game_cfg_t *c)
     ucpy(c->id, sizeof(c->id), id);
     ucpy(c->name, sizeof(c->name), jstr(j, "name")[0] ? jstr(j, "name") : id);
     ucpy(c->version, sizeof(c->version), jstr(j, "version"));
+    icon_cpy(c->icon, jstr(j, "icon"));
     const cJSON *cf = cJSON_GetObjectItemCaseSensitive(j, "config");
     if (cJSON_IsObject(cf)) {
         c->fall_ms = clampi(jint(cf, "fall_ms", c->fall_ms), 800, 15000);
@@ -374,6 +388,8 @@ static void list_task(void *arg)
                 ucpy(e->version, sizeof(e->version), jstr(it, "version"));
                 ucpy(e->min_fw, sizeof(e->min_fw), jstr(it, "min_fw"));
                 ucpy(e->path, sizeof(e->path), pth);
+                icon_cpy(e->icon, jstr(it, "icon"));
+                e->berry = !strcmp(jstr(it, "type"), "berry");
                 for (int k = 0; k < 64; k++) e->sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
                 e->sha256[64] = 0;
                 e->size = clampi(jint(it, "size", 0), 0, FD_GAME_PKG_MAX + 1);

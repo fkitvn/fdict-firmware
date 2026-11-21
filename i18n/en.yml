@@ -337,3 +337,7 @@ en:
   GAME_NEED_FW: 'Needs firmware %s'
   GAME_BERRY_HOW: 'Downloaded game. Follow the on-screen hints, use buttons 1 to 4 or tap the screen.'
   GAME_SCRIPT_ERR: 'The game hit an error and stopped'
+  GAME_RECORDS: 'Records'
+  GAME_NO_RECORDS: 'No records yet'
+  GAME_DL_PCT: 'Downloading %d%%'
+  GAME_TAP_HINT: 'Faded games are not downloaded yet, tap to download and play'

@@ -31,6 +31,11 @@ TILES = [
     ("img_tile_spell", "Input latin letters", "input_latin_letters_3d.png", "Chính tả", None),
     ("img_tile_game", "Video game", "video_game_3d.png", "Trò chơi", None),
     ("img_tile_settings", "Gear", "gear_3d.png", "Cài đặt", "slate"),
+    # 4.9.2 icon o tro choi (man Tro choi kieu Home)
+    ("img_game_basket", "Basket", "basket_3d.png", "Hứng từ", None),
+    ("img_game_paw", "Paw prints", "paw_prints_3d.png", "Động vật", None),
+    ("img_game_check", "Check mark button", "check_mark_button_3d.png", "Đúng hay Sai", None),
+    ("img_game_joystick", "Joystick", "joystick_3d.png", "Trò chơi Berry", None),
 ]
 TILE_PX = 48
 
