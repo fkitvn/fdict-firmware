@@ -81,7 +81,7 @@ static int s_blives_max;
 static lv_obj_t *s_on_status, *s_on_list;
 static lv_timer_t *s_on_timer;
 static fd_game_entry_t *s_entries;      /* PSRAM FD_GAME_LIST_MAX */
-static int s_nentries, s_pick;
+static int s_nentries;
 static fd_game_state_t s_on_seen;
 
 static void show_menu(void);
@@ -863,18 +863,16 @@ static void show_over(void)
 /* ---------- TRO CHOI ONLINE ---------- */
 static void on_render(void);
 
-static void inst_cb(lv_event_t *e)
+/* 4.9.1: cham mot tro choi la tai ve va choi ngay, khong hoi lai. Da cai dung ban thi choi luon. */
+static void play_pkg_async(void *a)
 {
-    (void)e;
-    int i = s_pick;
-    dlg_close();
-    if (i < 0 || i >= s_nentries) return;
-    if (!fd_game_install(&s_entries[i])) fd_ui_toast(_("GAME_INSTALL_FAIL"));
-    s_on_seen = FD_GAME_IDLE;
-    on_render();
+    (void)a;
+    if (!s_body || s_view != V_ONLINE) return;
+    s_src = 1;
+    pref_save(K_SRC, 1);
+    s_view = V_MENU;   /* start() tu xay man choi */
+    start();
 }
-
-static void dlg_cancel_cb(lv_event_t *e) { (void)e; dlg_close(); }
 
 static void entry_cb(lv_event_t *e)
 {
@@ -887,15 +885,13 @@ static void entry_cb(lv_event_t *e)
         fd_ui_toast(t);
         return;
     }
-    s_pick = i;
-    s_dlg = ui_dialog_open();
-    lv_obj_t *box = ui_dialog_box(s_dlg);
-    char t[160];
-    snprintf(t, sizeof(t), _("GAME_INSTALL_Q"), g->name);
-    ui_dialog_title(box, t);
-    lv_obj_t *r = ui_dialog_btns(box);
-    ui_dialog_btn(r, _("CANCEL"), false, dlg_cancel_cb, NULL);
-    ui_dialog_btn(r, _("GAME_INSTALL"), true, inst_cb, NULL);
+    fd_game_status_t st;
+    fd_game_get(&st);
+    if (st.state == FD_GAME_DOWNLOADING) return;   /* dang tai mot tro choi khac */
+    if (g->installed) { lv_async_call(play_pkg_async, NULL); return; }
+    if (!fd_game_install(g)) fd_ui_toast(_("GAME_INSTALL_FAIL"));
+    s_on_seen = FD_GAME_IDLE;
+    on_render();
 }
 
 static void list_build(void)
@@ -962,11 +958,8 @@ static void on_render(void)
         break;
     case FD_GAME_DONE:
         if (s_on_seen != st.state) {
-            fd_ui_toast(_("GAME_INSTALLED"));
-            s_src = 1;
-            pref_save(K_SRC, 1);
             s_on_seen = st.state;
-            lv_async_call(go_menu_async, NULL);
+            lv_async_call(play_pkg_async, NULL);   /* 4.9.1: cai xong choi ngay */
             return;
         }
         break;
@@ -1011,6 +1004,7 @@ static void show_online(void)
 }
 
 /* ---------- thoat giua van ---------- */
+static void dlg_cancel_cb(lv_event_t *e) { (void)e; dlg_close(); }
 static void quit_cb(lv_event_t *e) { (void)e; dlg_close(); lv_async_call(go_menu_async, NULL); }
 
 static void quit_open(void)
