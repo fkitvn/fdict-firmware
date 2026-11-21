@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.7.1] - 2026-11-21
+- Tăng âm lượng chung của cả máy thêm khoảng 2 dB.
+
 ## [4.7.0] - 2026-11-21
 - Tăng âm lượng chung của cả máy thêm khoảng 3 dB, mọi âm thanh vẫn to đều nhau và không bị vỡ tiếng.
 

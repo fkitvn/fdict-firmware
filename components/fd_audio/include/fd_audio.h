@@ -32,11 +32,11 @@ void fd_audio_set_miss_cb(void (*cb)(const char *text));
 void fd_audio_set_lookup_cb(bool (*cb)(const char *word, char *path, size_t plen, uint32_t *off, uint32_t *len));
 
 /* 4.6.10: MUC AM CHUNG cho moi am ra loa (giong doc Pico, am tu, chuong, phan hoi dung/sai, bip am luong, thu loa,
- * nghe lai ghi am). Goc: giong doc Pico (RMS doan co tieng ~ -17 dBFS, 4.6.10); 4.7.0 nang +3 dB len -14 dBFS (bo
- * gioi han mem chi cham ~1-2% mau, dinh TTS giam 0-2.6 dB). fd_audio tu chuan hoa moi nguon ve
+ * nghe lai ghi am). Goc: giong doc Pico (RMS doan co tieng ~ -17 dBFS, 4.6.10); 4.7.0 -14 dBFS; 4.7.1 -12 dBFS (bo
+ * gioi han mem cham ~2-4% mau, dinh TTS giam 0.5-4.6 dB). fd_audio tu chuan hoa moi nguon ve
  * FD_AUDIO_TARGET_RMS_DBFS, qua bo gioi han mem tran FD_AUDIO_PEAK_CEIL_DBFS (khong cat cung). Am luong nguoi dung va
  * tran codec 0 dB ap dung SAU. Muon ca may to/nho hon: doi 1 hang so nay (moi +1 dB = +1 dB moi nguon). */
-#define FD_AUDIO_TARGET_RMS_DBFS (-14.0f)
+#define FD_AUDIO_TARGET_RMS_DBFS (-12.0f)
 #define FD_AUDIO_PEAK_CEIL_DBFS  (-1.0f)
 
 /* Am luong 0..100 (0 = tat tieng: khong phat, PA tat). Luu NVS fd/vol, mac dinh 100 (4.1.3). */
