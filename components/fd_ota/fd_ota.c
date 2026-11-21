@@ -1241,8 +1241,8 @@ static esp_err_t gx_evt(esp_http_client_event_t *e)
  * !resume && etag_in: If-None-Match -> 304 (khong ghi). etag_out: ETag phan hoi. prog(got, total) moi ~16 KB.
  * Tra HTTP status; -1 mang/URL, -2 qua max_bytes, -3 loi file/bo nho. 401 -> xoa token (auth_401).
  * Loi giua chung: giu phan da ghi (de noi tiep) khi resume, nguoc lai xoa dst. */
-int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,
-                           char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx)
+static int get_file_impl(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,
+                         char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx, bool quiet)
 {
     if (etag_out && etag_cap) etag_out[0] = 0;
     if (!path || !dst || max_bytes <= 0 || !fd_net_is_connected()) return -1;
@@ -1317,7 +1317,7 @@ int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, boo
             rx_t erx = {.buf = eb, .cap = sizeof(eb), .json = g.json, .retry_after = g.retry_after};
             if (g.json) { int r = esp_http_client_read(cl, eb, sizeof(eb) - 1); erx.len = r > 0 ? r : 0; }
             eb[erx.len] = 0;
-            srv_error(code, &erx);
+            if (!quiet) srv_error(code, &erx);
         }
     }
     esp_http_client_close(cl);
@@ -1325,6 +1325,18 @@ int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, boo
     ESP_LOGD(TAG, "api GET %s -> %d (tu %ld, +%d B%s)", path, code, off, tot, keep_part ? ", giu phan da tai" : "");
     if (code == 401 && s_mx) auth_401(code);
     return code;
+}
+
+int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,
+                           char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx)
+{
+    return get_file_impl(path, dst, max_bytes, resume, etag_in, etag_out, etag_cap, prog, ctx, false);
+}
+
+int fd_ota_api_get_file_q(const char *path, const char *dst, int max_bytes, void (*prog)(int got, int total, void *ctx),
+                          void *ctx)
+{
+    return get_file_impl(path, dst, max_bytes, false, NULL, NULL, 0, prog, ctx, true);
 }
 
 /* Ban don gian (fd_voice): khong ETag / Range. */

@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.8.0] - 2026-11-21
+- Thêm mục Trò chơi với trò Hứng từ dùng từ vựng đã lưu trên máy, từ rơi nhanh dần, chọn cổng bằng nút theo mọi hướng xoay.
+
 ## [4.7.1] - 2026-11-21
 - Tăng âm lượng chung của cả máy thêm khoảng 2 dB.
 
