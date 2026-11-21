@@ -353,3 +353,7 @@ vi:
   GAME_RESET_OK: 'Xóa hết'
   GAME_RESET_DONE: 'Đã xóa mọi trò chơi'
   GAME_RESET_PART: 'Chưa xóa hết, thử lại'
+  GAME_DEL: 'Xóa trò chơi'
+  GAME_DEL_Q: 'Xóa trò chơi này?'
+  GAME_DEL_OK: 'Xóa'
+  GAME_DEL_DONE: 'Đã xóa trò chơi'

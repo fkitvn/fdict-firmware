@@ -41,6 +41,7 @@ static fd_game_status_t s_st;
 static fd_game_entry_t *s_list;           /* PSRAM, FD_GAME_LIST_MAX */
 static bool s_busy;
 static fd_game_entry_t s_job;             /* muc dang cai (ban sao) */
+static volatile uint32_t s_igen;          /* 5.0.1: tang khi Dat lai hoac xoa game dang tai -> task cai bo goi */
 static volatile uint32_t s_gen;           /* 5.0.0: tang moi lan Dat lai; task tai/danh sach thay doi thi bo ket qua */
 
 static void ensure_mx(void)
@@ -469,16 +470,22 @@ char *fd_game_script(const char *id, size_t *len)
 }
 
 /* 4.9.9: xoa slot mot game (goi hong / khong doc duoc script) de cham lai la tai lai */
-void fd_game_remove(const char *id)
+/* 4.9.9 xoa slot hong; 5.0.1 nut Xoa tro choi. Xoa an toan ca khi dang lam moi danh sach / dang tai:
+ * dang tai chinh game nay thi task cai bo goi (s_igen). Tra true neu slot khong con. */
+bool fd_game_remove(const char *id)
 {
-    if (!id || !safe_id(id)) return;
+    if (!id || !safe_id(id)) return false;
     ensure_init();
     char dir[64];
     snprintf(dir, sizeof(dir), GROOT "/%s", id);
     xSemaphoreTake(s_mx, portMAX_DELAY);
-    rm_tree1(dir);
+    taskENTER_CRITICAL(&s_mux);
+    if (s_busy && s_st.install && !strcmp(s_job.id, id)) s_igen++;
+    taskEXIT_CRITICAL(&s_mux);
+    bool ok = rm_tree(dir, 2);
     xSemaphoreGive(s_mx);
-    ESP_LOGW(TAG, "da xoa slot hong %s", id);
+    ESP_LOGI(TAG, "xoa tro choi %s: %s", id, ok ? "ok" : "loi");
+    return ok;
 }
 
 bool fd_game_reset(void)
@@ -486,6 +493,7 @@ bool fd_game_reset(void)
     ensure_init();
     xSemaphoreTake(s_mx, portMAX_DELAY);
     s_gen++;   /* task tai / danh sach dang chay se bo ket qua */
+    s_igen++;
     bool ok = rm_tree(GROOT, 3);   /* moi slot <id>/ (game.json, meta.json, game.old, .tmp) + list.json */
     ok = rm_tree(LEGACY_DIR, 2) && ok;
     unlink(DL_TMP);
@@ -662,7 +670,7 @@ static void install_task(void *arg)
     const fd_game_entry_t *e = &s_job;
     char err[24] = "", sha[65] = "";
     cJSON *j = NULL;
-    uint32_t gen = s_gen;
+    uint32_t gen = s_gen, igen = s_igen;
     unlink(DL_TMP);
     int code = fd_ota_api_get_file_q(e->path, DL_TMP, FD_GAME_PKG_MAX, prog_cb, NULL);
     ESP_LOGI(TAG, "install %s %s: HTTP %d", e->id, e->version, code);
@@ -688,7 +696,7 @@ static void install_task(void *arg)
     if (!err[0]) {
         ensure_init();
         xSemaphoreTake(s_mx, portMAX_DELAY);
-        if (gen != s_gen) strlcpy(err, "reset", sizeof(err));   /* 5.0.0: Dat lai trong luc tai -> bo goi */
+        if (gen != s_gen || igen != s_igen) strlcpy(err, "reset", sizeof(err));   /* 5.0.0: Dat lai trong luc tai -> bo goi */
         else if (!slot_put(DL_TMP, j, e->id)) strlcpy(err, "fs", sizeof(err));
         xSemaphoreGive(s_mx);
     }

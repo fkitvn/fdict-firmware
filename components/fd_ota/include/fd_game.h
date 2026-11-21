@@ -85,8 +85,8 @@ char *fd_game_script(const char *id, size_t *len);
 int fd_game_list_cached(fd_game_entry_t *out, int cap);
 /* Xoa moi goi da tai, slot cu va cache danh sach. */
 bool fd_game_reset(void);   /* 5.0.0: true = da xoa het (kiem lai thu muc rong) */
-/* 4.9.9: xoa slot /data/games/<id>/ (goi hong) */
-void fd_game_remove(const char *id);
+/* 4.9.9 / 5.0.1: xoa slot /data/games/<id>/ (an toan khi dang tai); true = da xoa */
+bool fd_game_remove(const char *id);
 /* Tai danh sach (khong chan; ket qua qua fd_game_get / fd_game_list). */
 void fd_game_list_fetch(void);
 void fd_game_get(fd_game_status_t *out);
