@@ -101,6 +101,7 @@ LV_IMAGE_DECLARE(img_game_paw);
 LV_IMAGE_DECLARE(img_game_check);
 LV_IMAGE_DECLARE(img_game_joystick);
 LV_IMAGE_DECLARE(img_game_zap);
+LV_IMAGE_DECLARE(img_trophy);   /* 4.9.8 the ky luc */
 
 static void show_menu(void);
 static void show_home(void);
@@ -433,31 +434,56 @@ static void show_menu(void)
     set_load();
     lv_obj_t *sc = ui_setup_begin(s_body, cur_name());
     s_menu_sc = sc;
+    /* dau trang: icon game + phien ban */
     lv_obj_t *top = row(sc);
     lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *ic = lv_image_create(top);
     lv_image_set_src(ic, game_icon(s_pkg.icon));
-    gm_rec_t rec[GM_REC_N];
-    int nrec = rec_load(rec);
     char tmp[96];
-    if (nrec > 0) snprintf(tmp, sizeof(tmp), _("GAME_BEST_N"), (int)rec[0].score);
-    else strlcpy(tmp, _("GAME_NO_RECORDS"), sizeof(tmp));
-    lv_obj_t *b = ui_label_create(top, tmp, &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
-    lv_obj_set_flex_grow(b, 1);
-    lv_label_set_long_mode(b, LV_LABEL_LONG_WRAP);
-    if (use_pkg()) {
+    {
         const fd_game_entry_t *lg = listed_pkg();
         bool old = lg && entry_state(lg) == G_OLD;
         if (old) snprintf(tmp, sizeof(tmp), _("GAME_VERSION_OLD"), s_pkg.version, lg->version);
         else snprintf(tmp, sizeof(tmp), _("GAME_VERSION_N"), s_pkg.version);
-        lv_obj_t *vl = label(sc, tmp, &fd_font_noto_14, old ? C_BAD : FD_COLOR_TEXT_MUTED);
-        lv_obj_set_style_text_align(vl, LV_TEXT_ALIGN_LEFT, 0);
+        lv_obj_t *vl = ui_label_create(top, tmp, &fd_font_noto_14, old ? C_BAD : FD_COLOR_TEXT_MUTED);
+        lv_obj_set_flex_grow(vl, 1);
+        lv_label_set_long_mode(vl, LV_LABEL_LONG_WRAP);
     }
     bool o_dir, o_spd;
     cur_opts(&o_dir, &o_spd);
     lv_obj_t *h = label(sc, !o_dir ? _("GAME_BERRY_HOW") : ui_btn_vertical() ? _("GAME_HOW_V") : _("GAME_HOW_H"),
                         &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_LEFT, 0);
+
+    /* 4.9.8: ky luc = the nho (cup + diem cao nhat) ngay truoc Cai dat; chi diem cao nhat, khong bang top 5 */
+    {
+        int best = best_load();
+        lv_obj_t *cd = lv_obj_create(sc);
+        lv_obj_set_scrollable(cd, false);
+        lv_obj_set_clickable(cd, false);
+        lv_obj_set_size(cd, LV_PCT(100), LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_color(cd, lv_color_hex(FD_COLOR_PRIMARY_TINT), 0);
+        lv_obj_set_style_bg_opa(cd, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_color(cd, lv_color_hex(FD_COLOR_PRIMARY), 0);
+        lv_obj_set_style_border_width(cd, 1, 0);
+        lv_obj_set_style_radius(cd, 12, 0);
+        lv_obj_set_style_pad_hor(cd, 10, 0);
+        lv_obj_set_style_pad_ver(cd, 6, 0);
+        lv_obj_set_style_pad_column(cd, 8, 0);
+        lv_obj_set_style_margin_top(cd, 6, 0);
+        lv_obj_set_flex_flow(cd, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(cd, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+        lv_obj_t *ti = lv_image_create(cd);
+        lv_image_set_src(ti, &img_trophy);
+        lv_obj_t *kl = ui_label_create(cd, _("GAME_RECORDS"), &fd_font_noto_18, FD_COLOR_PRIMARY_TEXT);
+        lv_obj_set_flex_grow(kl, 1);
+        if (best > 0) {
+            snprintf(tmp, sizeof(tmp), "%d", best);
+            ui_label_create(cd, tmp, &fd_font_mont_24, FD_COLOR_ON_PRIMARY);
+        } else {
+            ui_label_create(cd, _("GAME_NO_RECORDS"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+        }
+    }
 
     /* Cai dat ngay tren trang */
     section(sc, _("SETTINGS"));
@@ -469,28 +495,7 @@ static void show_menu(void)
     if (o_spd) ui_setup_opt_row(sc, _("GAME_SPEED"), SPD, 3, s_spd, opt_cb, OPT_SPD, 0);
     ui_setup_opt_row(sc, _("AUTO_PLAY"), RP, 2, s_rep, opt_cb, OPT_REP, UI_OPT_WIDE);
 
-    /* Bang ky luc */
-    section(sc, _("GAME_RECORDS"));
-    if (nrec == 0) {
-        lv_obj_t *nl = label(sc, _("GAME_NO_RECORDS"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
-        lv_obj_set_style_text_align(nl, LV_TEXT_ALIGN_LEFT, 0);
-    }
-    for (int i = 0; i < nrec; i++) {
-        lv_obj_t *ln = row(sc);
-        lv_obj_set_flex_align(ln, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_hor(ln, 4, 0);
-        snprintf(tmp, sizeof(tmp), "%d.  %lu", i + 1, (unsigned long)rec[i].score);
-        ui_label_create(ln, tmp, &fd_font_noto_14, i == 0 ? C_OK : FD_COLOR_TEXT);
-        tmp[0] = 0;
-        if (rec[i].when) {
-            time_t w = (time_t)rec[i].when;
-            struct tm lt;
-            localtime_r(&w, &lt);
-            strftime(tmp, sizeof(tmp), "%d/%m/%Y", &lt);
-        }
-        ui_label_create(ln, tmp, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
-    }
-    /* 4.9.7: nut Bat dau nam CUOI noi dung cuon (sau cach choi, cai dat, ky luc), khong ghim */
+    /* 4.9.7: nut Bat dau nam CUOI noi dung cuon (sau cach choi, ky luc, cai dat), khong ghim */
     lv_obj_t *sr = row(sc);
     lv_obj_set_style_pad_ver(sr, 6, 0);
     ui_setup_start(sr, begin_cb);

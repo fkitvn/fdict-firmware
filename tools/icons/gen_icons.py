@@ -40,6 +40,11 @@ TILES = [
 ]
 TILE_PX = 48
 
+# 4.9.8 icon 3D nho (Fluent, RGB565A8): (ten C, thu muc emoji, file 3D, px, mo ta)
+SMALL3D = [
+    ("img_trophy", "Trophy", "trophy_3d.png", 28, "Kỷ lục (màn riêng trò chơi)"),
+]
+
 # 16 px (bang nhanh) img_target "Bullseye", img_fire "Fire": sinh cung ham resize_premul/emit_rgb565a8 voi TILE_PX=16.
 # (ten C, ten Material Symbol, kich thuoc px, mo ta)
 SMALL = [
@@ -130,8 +135,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(HERE, "..", "..", "components", "fd_ui"))
     ap.add_argument("--preview", default=None, help="PNG contact sheet cua 6 o Home (nen sang)")
+    ap.add_argument("--only", default=None, help="chi sinh mot icon (ten C), vd img_trophy")
     a = ap.parse_args()
     tiles = []
+    for name, folder, fname, px, desc in SMALL3D:
+        if a.only and a.only != name:
+            continue
+        url = FLUENT + urllib.parse.quote(f"{folder}/3D/{fname}")
+        im = resize_premul(Image.open(io.BytesIO(fetch(url, fname))).convert("RGBA"), px)
+        hdr = (f"/* Icon \"{desc}\" - Microsoft Fluent Emoji 3D \"{folder}\", (c) Microsoft, MIT License.\n"
+               f" * https://github.com/microsoft/fluentui-emoji  - {px}x{px} RGB565A8.\n"
+               " * Sinh tu dong boi tools/icons/gen_icons.py - khong sua tay. */")
+        emit_rgb565a8(name, im, hdr, a.out)
+    if a.only:
+        return
     for name, folder, fname, label, fix in TILES:
         url = FLUENT + urllib.parse.quote(f"{folder}/3D/{fname}")
         im = Image.open(io.BytesIO(fetch(url, fname))).convert("RGBA")
