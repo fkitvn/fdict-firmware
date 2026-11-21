@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [4.9.8] - 2026-11-21
+- Màn riêng trò chơi hiện kỷ lục cao nhất trong thẻ nhỏ có cúp ngay trên phần cài đặt.
+
 ## [4.9.7] - 2026-11-21
 - Giữ mọi trò chơi đã tải và chơi được khi không có mạng, danh sách trò chơi hiện ngay, thêm nút Đặt lại, nút Bắt đầu nằm cuối trang hướng dẫn.
 
