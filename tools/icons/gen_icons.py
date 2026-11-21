@@ -36,6 +36,7 @@ TILES = [
     ("img_game_paw", "Paw prints", "paw_prints_3d.png", "Động vật", None),
     ("img_game_check", "Check mark button", "check_mark_button_3d.png", "Đúng hay Sai", None),
     ("img_game_joystick", "Joystick", "joystick_3d.png", "Trò chơi Berry", None),
+    ("img_game_zap", "High voltage", "high_voltage_3d.png", "Siêu tốc", None),
 ]
 TILE_PX = 48
 
