@@ -13,7 +13,9 @@
  * Tu vung: kho tu da dong bo tren may (fd_sync_build_spell: theo Bo tu dang chon + uu tien hoc, offline 100%),
  * (4.9.4: ca goi tai ve cung vay; truong words cua goi bi bo qua). Khong tai them gi khi choi, khong gui ket qua len may chu (giai doan 1).
  * 4.9.6: firmware KHONG con tro choi dung san. Moi tro choi (ca Hung tu, Dung hay Sai) la goi Berry tai tu may chu
- * (web-app server/assets/games), cai vao /data/game (LittleFS). Goi type catch cu khong chay nua (phai cap nhat). Hoat hinh the (fd.move)
+ * (web-app server/assets/games/<id>/). 4.9.7: moi game mot slot /data/games/<id>/ (LittleFS), danh sach cache /data/games/list.json
+ * hien ngay roi tai ngam; game da cai choi duoc khi offline; nut Dat lai xoa slot + cache + NVS gs/gr; nut Bat dau o cuoi trang.
+ * Hoat hinh the (fd.move)
  * va ve van la C: lv_timer 30 ms dong bo bang doi tuong, VM chi chay luat khi co su kien (nut, cham, toi dich, dong ho). */
 #include <stdio.h>
 #include <string.h>
@@ -61,7 +63,10 @@ static view_t s_view;
 static lv_obj_t *s_body, *s_dlg;
 static uint8_t s_dir, s_spd, s_rep;
 static bool s_have_pkg;
-static fd_game_cfg_t s_pkg;             /* goi da cai (neu co) */
+static fd_game_cfg_t s_pkg;             /* game dang chon (s_cur) da nap */
+static char s_cur[FD_GAME_ID_LEN];      /* 4.9.7: id game dang chon */
+static fd_game_cfg_t *s_inst;           /* PSRAM FD_GAME_INST_MAX: moi goi da cai (LittleFS /data/games) */
+static int s_ninst;
 
 /* van choi */
 static fd_spell_word_t *s_words;        /* PSRAM GM_MAX */
@@ -85,8 +90,10 @@ static int s_blives_max;
 static lv_obj_t *s_on_status, *s_grid, *s_dl_lbl;
 static lv_timer_t *s_on_timer;
 static fd_game_entry_t *s_entries;      /* PSRAM FD_GAME_LIST_MAX, ban sao danh sach may chu */
-static int s_nentries, s_dl_idx = -1;
+static int s_nentries;
+static char s_dl_id[FD_GAME_ID_LEN];   /* game dang tai (rong = khong) */
 static uint32_t s_list_at;              /* lv_tick lan tai danh sach thanh cong */
+static bool s_list_fresh;               /* 4.9.7: s_entries la ban moi tai (false = cache LittleFS) */
 static fd_game_state_t s_on_seen;
 
 LV_IMAGE_DECLARE(img_game_basket);
@@ -115,6 +122,11 @@ static uint8_t nv_u8(nvs_handle_t h, const char *k, uint8_t def, uint8_t max)
 }
 
 static bool use_pkg(void) { return s_have_pkg; }
+static void select_game(const char *id)
+{
+    strlcpy(s_cur, id ? id : "", sizeof(s_cur));
+    s_have_pkg = s_cur[0] && fd_game_load(s_cur, &s_pkg);
+}
 static const char *cur_id(void) { return use_pkg() ? s_pkg.id : ""; }
 /* 4.9.6: goi "catch" (Hung tu) thua ke cai dat + ky luc cua Hung tu dung san cu (id rong) */
 static const char *legacy_id(void) { return use_pkg() && !strcmp(s_pkg.id, "catch") ? "" : NULL; }
@@ -227,15 +239,15 @@ static void rec_add(int score)
     nvs_close(h);
 }
 
-/* Icon o: truong "icon" cua goi, khong co thi theo type (catch = gio, berry = can dieu khien). */
-static const lv_image_dsc_t *game_icon(const char *icon, bool berry)
+/* Icon o: truong "icon" cua goi, khong co thi can dieu khien. */
+static const lv_image_dsc_t *game_icon(const char *icon)
 {
     if (icon && !strcmp(icon, "paw")) return &img_game_paw;
     if (icon && !strcmp(icon, "check")) return &img_game_check;
     if (icon && !strcmp(icon, "basket")) return &img_game_basket;
     if (icon && !strcmp(icon, "joystick")) return &img_game_joystick;
     if (icon && !strcmp(icon, "zap")) return &img_game_zap;
-    return berry ? &img_game_joystick : &img_game_basket;
+    return &img_game_joystick;
 }
 
 /* 4.9.3 so sanh phien ban goi: tung phan cach dau cham, so truoc (1.10 > 1.9), phan chu con lai so theo strcmp. */
@@ -265,10 +277,24 @@ static int ver_cmp(const char *a, const char *b)
 /* Trang thai goi so voi danh sach may chu: G_NONE chua cai, G_OK da cai ban moi nhat (hoac moi hon), G_OLD da cai ban cu.
  * Chua co danh sach (khong mang) thi khong biet ban moi -> goi dang cai van choi duoc. */
 typedef enum { G_NONE, G_OK, G_OLD } gstate_t;
+static int inst_find(const char *id)
+{
+    for (int i = 0; s_inst && i < s_ninst; i++) if (!strcmp(s_inst[i].id, id)) return i;
+    return -1;
+}
+
+static void inst_reload(void)
+{
+    if (!s_inst) s_inst = ps_alloc(sizeof(fd_game_cfg_t) * FD_GAME_INST_MAX);
+    s_ninst = s_inst ? fd_game_installed_list(s_inst, FD_GAME_INST_MAX) : 0;
+}
+
+/* 4.9.7: so ban da cai CUA CHINH game do voi ban trong danh sach */
 static gstate_t entry_state(const fd_game_entry_t *g)
 {
-    if (!s_have_pkg || strcmp(s_pkg.id, g->id) != 0) return G_NONE;
-    return ver_cmp(s_pkg.version, g->version) >= 0 ? G_OK : G_OLD;
+    int i = inst_find(g->id);
+    if (i < 0) return G_NONE;
+    return ver_cmp(s_inst[i].version, g->version) >= 0 ? G_OK : G_OLD;
 }
 
 static const fd_game_entry_t *listed_pkg(void)
@@ -281,7 +307,7 @@ static const fd_game_entry_t *listed_pkg(void)
 static bool pkg_outdated(void)
 {
     const fd_game_entry_t *g = listed_pkg();
-    return g && entry_state(g) == G_OLD;
+    return g && ver_cmp(s_pkg.version, g->version) < 0;
 }
 
 /* ---------- widget nho ---------- */
@@ -383,7 +409,7 @@ static const char *cur_name(void) { return s_pkg.name; }
 static void cur_opts(bool *dir, bool *spd)
 {
     size_t len = 0;
-    char *sc = fd_game_pkg_script(&len);
+    char *sc = fd_game_script(s_cur, &len);
     *dir = sc && strstr(sc, "fd.opt(\"dir\")");
     *spd = sc && strstr(sc, "fd.opt(\"spd\")");
     free(sc);
@@ -402,7 +428,7 @@ static void show_menu(void)
     s_view = V_MENU;
     dlg_close();
     body_reset();
-    s_have_pkg = fd_game_installed(&s_pkg);
+    select_game(s_cur);
     if (!s_have_pkg) { show_home(); return; }
     set_load();
     lv_obj_t *sc = ui_setup_begin(s_body, cur_name());
@@ -410,7 +436,7 @@ static void show_menu(void)
     lv_obj_t *top = row(sc);
     lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *ic = lv_image_create(top);
-    lv_image_set_src(ic, game_icon(s_pkg.icon, s_pkg.berry));
+    lv_image_set_src(ic, game_icon(s_pkg.icon));
     gm_rec_t rec[GM_REC_N];
     int nrec = rec_load(rec);
     char tmp[96];
@@ -464,7 +490,10 @@ static void show_menu(void)
         }
         ui_label_create(ln, tmp, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     }
-    ui_setup_start(s_body, begin_cb);
+    /* 4.9.7: nut Bat dau nam CUOI noi dung cuon (sau cach choi, cai dat, ky luc), khong ghim */
+    lv_obj_t *sr = row(sc);
+    lv_obj_set_style_pad_ver(sr, 6, 0);
+    ui_setup_start(sr, begin_cb);
     if (s_menu_y > 0) {
         lv_obj_update_layout(sc);
         lv_obj_scroll_to_y(sc, s_menu_y, LV_ANIM_OFF);
@@ -506,9 +535,16 @@ static int load_words(void)
 static void start(void)
 {
     dlg_close();
-    s_have_pkg = fd_game_installed(&s_pkg);
+    select_game(s_cur);
     if (!s_have_pkg) { show_home(); return; }
-    if (!s_pkg.berry || pkg_outdated()) {   /* 4.9.3 ban moi bat buoc; 4.9.6 goi type catch cu khong con chay */   /* 4.9.3: biet co ban moi thi bat buoc cap nhat moi choi */
+    if (!s_pkg.runnable) {   /* goi can firmware moi hon ban dang chay */
+        char t[64];
+        snprintf(t, sizeof(t), _("GAME_NEED_FW"), s_pkg.min_fw[0] ? s_pkg.min_fw : "?");
+        fd_ui_toast(t);
+        show_home();
+        return;
+    }
+    if (pkg_outdated()) {   /* 4.9.3 ban moi bat buoc; 4.9.6 goi type catch cu khong con chay */   /* 4.9.3: biet co ban moi thi bat buoc cap nhat moi choi */
         fd_ui_toast(_("GAME_NEED_UPDATE"));
         show_home();
         return;
@@ -742,7 +778,7 @@ static bool berry_measure(const char *txt, int font, int maxw, int *w, int *h)
 static void show_berry(void)
 {
     size_t len = 0;
-    char *script = fd_game_pkg_script(&len);
+    char *script = fd_game_script(s_cur, &len);
     if (!script) { show_msg(_("GAME_INSTALL_FAIL"), NULL); return; }
     s_view = V_BERRY;
     body_reset();
@@ -836,7 +872,7 @@ static void show_over(void)
 #define GT_H_PORT 84
 #define GT_GAP_COL 8
 #define GT_GAP_ROW 12
-#define GT_PKG     (-2)   /* goi dang cai nhung khong co trong danh sach (khong mang) */
+#define GT_INST    (-10)  /* - (10 + i): goi da cai thu i khong co trong danh sach (khong mang / da go) */
 #define LIST_TTL_MS 60000
 
 static void on_render(void);
@@ -845,7 +881,8 @@ static void play_new_async(void *a)
 {
     (void)a;
     if (!s_body || s_view != V_HOME) return;
-    start();   /* 4.9.1: tai xong choi ngay */
+    inst_reload();
+    start();   /* 4.9.1: tai xong choi ngay (s_cur = game vua tai) */
 }
 
 
@@ -856,7 +893,13 @@ static void tile_cb(lv_event_t *e)
     fd_game_status_t st;
     fd_game_get(&st);
     if (st.state == FD_GAME_DOWNLOADING) return;   /* dang tai mot tro choi */
-    if (i == GT_PKG) { lv_async_call(open_menu_async, NULL); return; }
+    if (i <= GT_INST) {
+        int k = GT_INST - i;
+        if (k >= s_ninst) return;
+        select_game(s_inst[k].id);
+        lv_async_call(open_menu_async, NULL);
+        return;
+    }
     if (i < 0 || i >= s_nentries) return;
     const fd_game_entry_t *g = &s_entries[i];
     if (!g->supported) {
@@ -865,10 +908,11 @@ static void tile_cb(lv_event_t *e)
         fd_ui_toast(t);
         return;
     }
-    if (entry_state(g) == G_OK) { lv_async_call(open_menu_async, NULL); return; }
+    if (entry_state(g) == G_OK) { select_game(g->id); lv_async_call(open_menu_async, NULL); return; }
     /* chua cai hoac ban cu (G_OLD): tai ban moi, cai de len slot; cai dat + ky luc giu theo id */
     if (!fd_game_install(g)) { fd_ui_toast(_("GAME_INSTALL_FAIL")); return; }
-    s_dl_idx = i;
+    strlcpy(s_dl_id, g->id, sizeof(s_dl_id));
+    select_game(g->id);
     /* tien do hien ngay tren nhan o vua cham (khong dung lai luoi trong callback cua chinh o do) */
     lv_obj_t *tb = lv_event_get_current_target(e);
     s_dl_lbl = lv_obj_get_child(tb, 1);
@@ -919,19 +963,19 @@ static void grid_build(void)
     if (!s_grid) return;
     lv_obj_clean(s_grid);
     s_dl_lbl = NULL;
-    s_have_pkg = fd_game_installed(&s_pkg);
     int32_t gw = lv_display_get_horizontal_resolution(NULL) - 12;
     int32_t tw = (gw - 2 * GT_GAP_COL) / 3;
-    bool pkg_listed = false, any_dim = false;
+    bool any_dim = false;
+    fd_game_status_t st;
+    fd_game_get(&st);
+    bool dl = st.state == FD_GAME_DOWNLOADING && s_dl_id[0];
     for (int i = 0; i < s_nentries; i++) {
         const fd_game_entry_t *g = &s_entries[i];
         gstate_t gs = entry_state(g);
-        bool inst = gs == G_OK;
-        if (s_have_pkg && !strcmp(s_pkg.id, g->id)) pkg_listed = true;   /* khac ban = o mo, cham de cap nhat */
+        bool inst = gs == G_OK && g->supported;   /* 4.9.7: moi game da tai (ban moi nhat) = o sang */
+        bool mine = dl && !strcmp(g->id, s_dl_id);
         char nm[96];
-        if (i == s_dl_idx) {
-            fd_game_status_t st;
-            fd_game_get(&st);
+        if (mine) {
             snprintf(nm, sizeof(nm), _("GAME_DL_PCT"), st.pct);
         } else if (!g->supported) {
             snprintf(nm, sizeof(nm), _("GAME_NEED_FW"), g->min_fw[0] ? g->min_fw : "?");
@@ -941,12 +985,22 @@ static void grid_build(void)
             strlcpy(nm, g->name, sizeof(nm));
         }
         any_dim = any_dim || !inst;
-        lv_obj_t *l = tile(s_grid, tw, game_icon(g->icon, g->berry), nm, !inst, i);
-        if (i == s_dl_idx) s_dl_lbl = l;
+        lv_obj_t *l = tile(s_grid, tw, game_icon(g->icon), nm, !inst, i);
+        if (mine) s_dl_lbl = l;
     }
-    if (s_have_pkg && !pkg_listed) tile(s_grid, tw, game_icon(s_pkg.icon, s_pkg.berry), s_pkg.berry ? s_pkg.name : _("GAME_NEED_UPDATE"), !s_pkg.berry, GT_PKG);
-    lv_obj_set_hidden(s_grid, !s_have_pkg && s_nentries == 0);
-    if (s_on_status && any_dim && s_dl_idx < 0) lv_label_set_text(s_on_status, _("GAME_TAP_HINT"));
+    /* goi da cai khong co trong danh sach (chua co danh sach / may chu da go): van choi duoc */
+    for (int k = 0; k < s_ninst; k++) {
+        bool listed = false;
+        for (int i = 0; i < s_nentries && !listed; i++) listed = !strcmp(s_entries[i].id, s_inst[k].id);
+        if (listed) continue;
+        const fd_game_cfg_t *c = &s_inst[k];
+        char nm[64];
+        if (c->runnable) strlcpy(nm, c->name, sizeof(nm));
+        else snprintf(nm, sizeof(nm), _("GAME_NEED_FW"), c->min_fw[0] ? c->min_fw : "?");
+        tile(s_grid, tw, game_icon(c->icon), nm, !c->runnable, GT_INST - k);
+    }
+    lv_obj_set_hidden(s_grid, s_ninst == 0 && s_nentries == 0);
+    if (s_on_status && any_dim && !dl) lv_label_set_text(s_on_status, _("GAME_TAP_HINT"));
 }
 
 static const char *err_text(const char *err, bool install)
@@ -966,8 +1020,8 @@ static void on_render(void)
     bool first = s_on_seen != st.state;
     s_on_seen = st.state;
     switch (st.state) {
-    case FD_GAME_LISTING:
-        lv_label_set_text(s_on_status, _("GAME_LOADING"));
+    case FD_GAME_LISTING:   /* 4.9.7: dang hien cache / goi da cai thi tai ngam, khong bao */
+        lv_label_set_text(s_on_status, (s_nentries == 0 && s_ninst == 0) ? _("GAME_LOADING") : "");
         break;
     case FD_GAME_DOWNLOADING:
         if (s_dl_lbl) {
@@ -981,13 +1035,14 @@ static void on_render(void)
             if (!s_entries) s_entries = ps_alloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
             s_nentries = s_entries ? fd_game_list(s_entries, FD_GAME_LIST_MAX) : 0;
             s_list_at = lv_tick_get();
-            lv_label_set_text(s_on_status, s_nentries > 0 ? "" : _("GAME_NONE_ONLINE"));
-            grid_build();
+            s_list_fresh = true;
+            lv_label_set_text(s_on_status, (s_nentries > 0 || s_ninst > 0) ? "" : _("GAME_NONE_ONLINE"));
+            grid_build();   /* cap nhat tai cho (timer LVGL) */
         }
         break;
     case FD_GAME_DONE:
         if (first) {
-            s_dl_idx = -1;
+            s_dl_id[0] = 0;
             lv_async_call(play_new_async, NULL);
         }
         break;
@@ -996,13 +1051,15 @@ static void on_render(void)
             const char *m = err_text(st.err, st.install);
             if (st.install) {
                 fd_ui_toast(m);
-                s_dl_idx = -1;
+                s_dl_id[0] = 0;
                 grid_build();
             }
-            if (!st.install && !s_have_pkg && s_nentries == 0) {
+            if (!st.install && s_ninst == 0 && s_nentries == 0) {
                 /* 4.9.6: khong mang va chua cai tro choi nao */
                 snprintf(t, sizeof(t), "%s\n%s", _("GAME_NO_LOCAL"), m);
                 lv_label_set_text(s_on_status, t);
+            } else if (!st.install && s_nentries > 0) {
+                lv_label_set_text(s_on_status, "");   /* khong mang: dung danh sach cache, khong bao loi */
             } else if (!strcmp(st.err, "none") || !strcmp(st.err, "no_wifi") || !strcmp(st.err, "unpaired")) lv_label_set_text(s_on_status, m);
             else { snprintf(t, sizeof(t), "%s (%s)", m, st.err); lv_label_set_text(s_on_status, t); }
         }
@@ -1011,6 +1068,75 @@ static void on_render(void)
         break;
     }
 }
+
+/* ---------- 4.9.7 DAT LAI ---------- */
+static bool s_reset_dlg;
+/* Xoa cai dat + ky luc moi tro choi trong NVS fd: "gs"/"gr" + 8 hex va khoa cu gm_* (khong dung khoa module khac). */
+static void nvs_games_erase(void)
+{
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) return;
+    enum { KMAX = 48 };
+    char (*keys)[NVS_KEY_NAME_MAX_SIZE] = ps_alloc(sizeof(*keys) * KMAX);
+    int n = 0;
+    nvs_iterator_t it = NULL;
+    esp_err_t r = keys ? nvs_entry_find(NVS_DEFAULT_PART_NAME, "fd", NVS_TYPE_ANY, &it) : ESP_FAIL;
+    while (r == ESP_OK && n < KMAX) {
+        nvs_entry_info_t info;
+        nvs_entry_info(it, &info);
+        const char *k = info.key;
+        bool game = (strlen(k) == 10 && k[0] == 'g' && (k[1] == 's' || k[1] == 'r') && strspn(k + 2, "0123456789abcdef") == 8) ||
+                    !strcmp(k, K_DIR) || !strcmp(k, K_SPD) || !strcmp(k, K_REP) || !strcmp(k, K_BEST) ||
+                    !strcmp(k, K_PBST) || !strcmp(k, K_PID);
+        if (game) strlcpy(keys[n++], k, NVS_KEY_NAME_MAX_SIZE);
+        r = nvs_entry_next(&it);
+    }
+    nvs_release_iterator(it);
+    for (int i = 0; i < n; i++) nvs_erase_key(h, keys[i]);
+    nvs_commit(h);
+    nvs_close(h);
+    free(keys);
+}
+
+static void reset_do_async(void *a)
+{
+    (void)a;
+    fd_game_status_t st;
+    fd_game_get(&st);
+    if (st.state == FD_GAME_DOWNLOADING || st.state == FD_GAME_LISTING) { fd_ui_toast(_("GAME_RESET_BUSY")); return; }
+    fd_game_reset();
+    nvs_games_erase();
+    s_cur[0] = 0;
+    s_have_pkg = false;
+    s_nentries = 0;
+    s_list_fresh = false;
+    fd_ui_toast(_("GAME_RESET_DONE"));
+    if (s_body && s_view == V_HOME) show_home();   /* moi o mo, tai lai danh sach ngam */
+}
+
+static void reset_cancel_cb(lv_event_t *e) { (void)e; s_reset_dlg = false; dlg_close(); }
+static void reset_ok_cb(lv_event_t *e)
+{
+    (void)e;
+    s_reset_dlg = false;
+    dlg_close();
+    lv_async_call(reset_do_async, NULL);
+}
+
+static void reset_open(void)
+{
+    if (s_dlg) return;
+    s_dlg = ui_dialog_open();
+    s_reset_dlg = true;
+    lv_obj_t *box = ui_dialog_box(s_dlg);
+    ui_dialog_title(box, _("GAME_RESET_Q"));
+    label(box, _("GAME_RESET_HINT"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *r = ui_dialog_btns(box);
+    ui_dialog_btn(r, _("CANCEL"), true, reset_cancel_cb, NULL);    /* mac dinh = Huy (noi bat) */
+    ui_dialog_btn(r, _("GAME_RESET_OK"), false, reset_ok_cb, NULL);
+}
+
+static void reset_cb(lv_event_t *e) { (void)e; if (s_view == V_HOME) reset_open(); }
 
 static void on_timer_cb(lv_timer_t *t) { (void)t; if (s_view == V_HOME) on_render(); }
 
@@ -1032,13 +1158,24 @@ static void show_home(void)
     lv_obj_set_style_pad_row(s_grid, GT_GAP_ROW, 0);
     lv_obj_set_style_pad_column(s_grid, GT_GAP_COL, 0);
     s_on_status = label(s_body, "", &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    /* 4.9.7: Dat lai (xoa moi game da tai + ky luc + cai dat); Nut 4 cung mo */
+    lv_obj_t *rr = row(s_body);
+    lv_obj_set_style_pad_top(rr, 4, 0);
+    ui_gate_btn(rr, _("GAME_RESET"), false, reset_cb);
     s_on_seen = FD_GAME_IDLE;
     fd_game_status_t st;
     fd_game_get(&st);
-    if (st.state != FD_GAME_DOWNLOADING) s_dl_idx = -1;
+    if (st.state != FD_GAME_DOWNLOADING) s_dl_id[0] = 0;
+    /* 4.9.7: hien ngay tu goi da cai + danh sach cache, roi tai danh sach moi ngam (task fd_game) */
+    inst_reload();
+    if (s_nentries == 0) {
+        if (!s_entries) s_entries = ps_alloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+        s_nentries = s_entries ? fd_game_list_cached(s_entries, FD_GAME_LIST_MAX) : 0;
+        s_list_fresh = false;
+    }
     grid_build();
-    /* tai lai danh sach khi chua co hoac da cu (> 60 s); tranh nhay luoi moi lan quay ve */
-    bool stale = s_nentries == 0 || lv_tick_elaps(s_list_at) > LIST_TTL_MS;
+    /* tai lai danh sach khi chi co cache hoac da cu (> 60 s); tranh nhay luoi moi lan quay ve */
+    bool stale = !s_list_fresh || lv_tick_elaps(s_list_at) > LIST_TTL_MS;
     if (st.state != FD_GAME_DOWNLOADING && stale) fd_game_list_fetch();
     else s_on_seen = st.state;   /* khong dung lai luoi cho trang thai cu */
     on_render();
@@ -1081,7 +1218,11 @@ static void destroy(void)
     s_body = NULL;
     s_score_lbl = s_level_lbl = s_on_status = s_grid = s_dl_lbl = NULL;
     memset(s_life, 0, sizeof(s_life));
-    s_dl_idx = -1;
+    s_dl_id[0] = 0;
+    s_reset_dlg = false;
+    free(s_inst);
+    s_inst = NULL;
+    s_ninst = 0;
     free(s_words);
     s_words = NULL;
     free(s_entries);
@@ -1093,12 +1234,28 @@ static bool on_button(const fd_evt_button_t *b)
 {
     if (s_gate_pair) return false;   /* cong Dang nhap: hanh vi chung nhu cac mo-dun hoc */
     if (b->action == FD_BTN_LONG_PRESS) return false;   /* giu Nut 1 = quay lai, giu Nut 2 = bang nhanh (ui_nav) */
-    if (s_dlg) return true;
     int pos = ui_btn_user_pos(b->index);
+    if (s_dlg) {
+        if (s_reset_dlg && pos >= 0) {   /* Nut 4 = Xoa het, nut khac = Huy */
+            s_reset_dlg = false;
+            dlg_close();
+            if (pos == 3) lv_async_call(reset_do_async, NULL);
+        }
+        return true;
+    }
     if (pos < 0) return true;
     switch (s_view) {
     case V_BERRY: if (!paused()) fd_berry_event(FD_BERRY_EV_BUTTON, pos + 1); return true;
-    case V_MENU: start(); return true;
+    case V_MENU:   /* 4.9.7: Nut 1 2 cuon len, Nut 3 4 cuon xuong; da o cuoi trang thi Nut 3 4 = Bat dau */
+        if (s_menu_sc) {
+            if (pos < 2) { lv_obj_scroll_by_bounded(s_menu_sc, 0, 80, LV_ANIM_ON); return true; }
+            if (lv_obj_get_scroll_bottom(s_menu_sc) > 2) { lv_obj_scroll_by_bounded(s_menu_sc, 0, -80, LV_ANIM_ON); return true; }
+        }
+        start();
+        return true;
+    case V_HOME:
+        if (pos == 3) reset_open();   /* Nut 4 = Dat lai; o tro choi chi cham (giong Home) */
+        return true;
     case V_OVER: if (lv_tick_elaps(s_over_at) >= OVER_GUARD_MS) start(); return true;
     case V_MSG: show_menu(); return true;
     default: return true;   /* luoi, Cai dat, Ky luc: chi cham (giong Home) */
@@ -1108,7 +1265,7 @@ static bool on_button(const fd_evt_button_t *b)
 static bool on_back(void)
 {
     if (s_gate_pair) return false;
-    if (s_dlg) { dlg_close(); return true; }
+    if (s_dlg) { s_reset_dlg = false; dlg_close(); return true; }
     if (s_view == V_BERRY) { quit_open(); return true; }
     if (s_view == V_MENU) { s_menu_y = 0; show_home(); return true; }
     if (s_view != V_HOME) { show_menu(); return true; }
