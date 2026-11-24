@@ -18,7 +18,6 @@
 #include "freertos/task.h"
 #include "ui_priv.h"
 #include "ulp_riscv.h"
-#include "ulp_riscv_gpio.h"
 
 extern const uint8_t ulp_tap_bin_start[] asm("_binary_ulp_tap_bin_start");
 extern const uint8_t ulp_tap_bin_end[] asm("_binary_ulp_tap_bin_end");
@@ -82,13 +81,14 @@ void fd_sleep_enter(void)
     }
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
     esp_sleep_enable_ext1_wakeup_io(mask, ESP_EXT1_WAKEUP_ANY_LOW);
-    /* Cham hai lan: ULP doc INT. Mot lan cham khong dua GPIO17 vao ext1. */
+    /* Cham hai lan: ULP doc INT qua RTC GPIO. Mot lan cham khong dua GPIO17 vao ext1. */
     ulp_riscv_timer_stop();
     ulp_riscv_halt();
-    ulp_riscv_gpio_init(BOARD_TOUCH_INT);
-    ulp_riscv_gpio_input_enable(BOARD_TOUCH_INT);
-    ulp_riscv_gpio_pullup(BOARD_TOUCH_INT);
-    ulp_riscv_gpio_pulldown_disable(BOARD_TOUCH_INT);
+    rtc_gpio_init(BOARD_TOUCH_INT);
+    rtc_gpio_set_direction(BOARD_TOUCH_INT, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_set_direction_in_sleep(BOARD_TOUCH_INT, RTC_GPIO_MODE_INPUT_ONLY);
+    rtc_gpio_pullup_en(BOARD_TOUCH_INT);
+    rtc_gpio_pulldown_dis(BOARD_TOUCH_INT);
     size_t ulp_bytes = (size_t)(ulp_tap_bin_end - ulp_tap_bin_start);
     esp_err_t ue = ulp_riscv_load_binary(ulp_tap_bin_start, ulp_bytes);
     if (ue == ESP_OK) ue = ulp_riscv_run();
