@@ -1,4 +1,4 @@
-/* Cai dat > Ngon ngu / Language: Tieng Viet | English (luu NVS fd/lang, chon xong tu ve man truoc). */
+/* Cai dat > Ngon ngu: Tieng Viet | English | Francais (luu NVS fd/lang, chon xong tu ve man truoc). */
 #include "fd_fonts.h"
 #include "ui_priv.h"
 
@@ -36,12 +36,12 @@ static void build(lv_obj_t *scr)
     lv_obj_t *t = lv_label_create(body);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_width(t, lv_pct(100)); lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
-    lv_label_set_text(t, "Ng\u00f4n ng\u1eef / Language");   /* song ngu co dinh */
+    lv_label_set_text(t, "Ng\u00f4n ng\u1eef \u00b7 Language \u00b7 Langue");
 
     for (int i = 0; i < FD_LANG_COUNT; i++) {
         lv_obj_t *b = lv_button_create(body);
         s_btn[i] = b;
-        lv_obj_set_size(b, lv_pct(100), 48);
+        lv_obj_set_size(b, lv_pct(100), 42);
         lv_obj_set_style_radius(b, 10, 0);
         lv_obj_set_style_shadow_width(b, 0, 0);
         lv_obj_set_style_border_width(b, 1, 0);
