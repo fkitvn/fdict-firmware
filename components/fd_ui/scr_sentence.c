@@ -186,7 +186,9 @@ static void show_setup(void)
     lv_obj_t *sc = ui_setup_begin(s_body, _("SENTENCE"));   /* 2.3.6: mau cai dat chung */
     ui_setup_deck(sc, setup_async);
     static const char *const CNT[] = {"10", "20", "ENDLESS"};
-    static const char *const DIR[] = {"SEN_DIR_VI_EN", "SEN_DIR_EN_VI"};
+    const char *DIR[2];
+    if (fd_sync_target_is_fr()) { DIR[0] = "SEN_DIR_VI_FR"; DIR[1] = "SEN_DIR_FR_VI"; }
+    else { DIR[0] = "SEN_DIR_VI_EN"; DIR[1] = "SEN_DIR_EN_VI"; }
     static const char *const RP[] = {"OFF", "ON"};
     int nsel = s_cnt == 0 ? 2 : (s_cnt == 20 ? 1 : 0);
     ui_setup_opt_row(sc, _("QUESTIONS"), CNT, 3, nsel, opt_cb, OPT_CNT, 0);

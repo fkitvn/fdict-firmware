@@ -1,7 +1,7 @@
 #pragma once
-/* Giong doc chat luong cao (lai voi Pico): cache /data/voice/<word>.pcm (16-bit LE mono 16 kHz, <= 64 KB).
- * Tai tu GET {base}/api/v1/audio/{word}?fmt=pcm16k (Bearer, xem .cursor/docs/tts/CONTRACT-firmware.md) trong task "fd_voice"
- * uu tien thap (khong chan LVGL / am thanh). 404 -> nho 6 h; loi mang/5xx -> thu lai sau 60 s; 401 -> fd_ota ve Chua ghep.
+/* Giong doc chat luong cao (lai voi Pico): cache /data/voice/<crc32>.pcm (16-bit LE mono 16 kHz, <= 64 KB).
+ * Ten file = CRC32 cua tu (an toan UTF-8 / chu Phap co dau). Tai tu GET {base}/api/v1/audio/{word}?fmt=pcm16k
+ * (Bearer) trong task "fd_voice" uu tien thap. 404 -> nho 6 h; loi mang/5xx -> thu lai sau 60 s; 401 -> fd_ota ve Chua ghep.
  * Cache toi da 2 MB: vuot -> xoa file cu nhat (mtime). */
 #include <stdbool.h>
 #include <stddef.h>
@@ -13,12 +13,12 @@ extern "C" {
 
 /* Tao task + dang ky fd_audio miss_cb (goi nhieu lan duoc). */
 void fd_voice_init(void);
-/* Duong dan cache cho tu ([a-z], 1..31 ky tu, khong phan biet hoa thuong). false = tu khong hop le. */
+/* Duong dan cache cho 1 tu (chu Latin/UTF-8, 1..31 ky tu). false = tu khong hop le. */
 bool fd_voice_path(const char *word, char *out, size_t len);
 /* Xep tai (khong chan): bo qua neu khong WiFi / chua ghep / vua 404 / hang doi day. */
 void fd_voice_request(const char *word);
 /* Duong phat am DUNG CHUNG (Flash card, Hoc tap, Phat am). Chi xep hang (goi tu LVGL duoc), tong hop/phat trong task fd_audio.
- * 1 tu [A-Za-z]{1,31} -> cache /data/voice/<tu>.pcm, thieu -> Pico + tai nen; cum tu/ky tu khac -> chi Pico (khong tai).
+ * 1 tu -> cache /data/voice/<crc32>.pcm, thieu -> Pico + tai nen; cum tu/ky tu khac -> chi Pico (khong tai).
  * Dang phat / con hang doi -> BO QUA cham moi (ESP_ERR_INVALID_STATE, khong bip). Toi da 39 ky tu.*/
 esp_err_t fd_pron_say(const char *text);
 

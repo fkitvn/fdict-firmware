@@ -35,6 +35,7 @@ vi:
   DISPLAY_INFO: '%dx%d, xoay %d°'
   ENDLESS: Vô tận
   EN_VI: Anh-Việt
+  FR_VI: Pháp-Việt
   ERROR_FMT: 'Lỗi: %s'
   FLASH_CARD: Lật từ
   FLASH_MEMORY: Bộ nhớ flash
@@ -202,6 +203,7 @@ vi:
   UPDATE: Cập nhật
   UPGRADE: Nâng cấp
   VI_EN: Việt-Anh
+  VI_FR: Việt-Pháp
   VOICE: Giọng đọc
   VOICE_DATA_MISSING: Thiếu dữ liệu giọng đọc
   VOLUME: Âm lượng
@@ -242,6 +244,8 @@ vi:
   SEN_DIR: 'Chiều'
   SEN_DIR_EN_VI: 'Anh - Việt'
   SEN_DIR_VI_EN: 'Việt - Anh'
+  SEN_DIR_FR_VI: 'Pháp - Việt'
+  SEN_DIR_VI_FR: 'Việt - Pháp'
   DEV_TOOLS: 'Công cụ kiểm tra'
   BTN_TEST: 'Thử nút bấm'
   BTN_TEST_HINT: 'Nhấn lần lượt từng nút bên dưới màn hình'
@@ -285,9 +289,11 @@ vi:
   SPELLING: Chính tả
   SPELL_BUILD_EN: 'Việt - Anh'
   SPELL_BUILD_VI: 'Anh - Việt'
+  SPELL_BUILD_FR: 'Việt - Pháp'
   SPELL_DIR_MIX: Trộn
   SPELL_NO_FIT: Không có từ dài từ 2 đến 20 ký tự
   SPELL_PROMPT_EN: Ghép từ tiếng Anh
+  SPELL_PROMPT_FR: Ghép từ tiếng Pháp
   SPELL_PROMPT_VI: Ghép nghĩa tiếng Việt
   STATS_DAYS_FMT: '%d ngày'
   STATS_AI_CALLS: 'Lượt AI tháng này'

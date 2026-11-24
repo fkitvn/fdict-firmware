@@ -505,7 +505,10 @@ static void show_menu(void)
 
     /* Cai dat ngay tren trang */
     section(sc, _("SETTINGS"));
-    static const char *const DIR[] = {"SPELL_BUILD_EN", "SPELL_BUILD_VI", "SPELL_DIR_MIX"};
+    const char *DIR[3];
+    DIR[0] = fd_sync_target_is_fr() ? "SPELL_BUILD_FR" : "SPELL_BUILD_EN";
+    DIR[1] = "SPELL_BUILD_VI";
+    DIR[2] = "SPELL_DIR_MIX";
     static const char *const SPD[] = {"GAME_SLOW", "GAME_NORMAL", "GAME_FAST"};
     static const char *const RP[] = {"OFF", "ON"};
     ui_setup_deck(sc, menu_keep_async);   /* 4.9.4: moi tro choi dung Bo tu cua may (chung voi cac muc hoc) */

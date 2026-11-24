@@ -315,15 +315,38 @@ int fd_sync_pick_count(unsigned flags)
     return n;
 }
 
-static void nvs_save_settings(bool pn, bool pu, const char *topics)
+static void set_target_lang(const char *t)
+{
+    if (t && t[0] == 'f' && t[1] == 'r') {
+        s_st.target_lang[0] = 'f';
+        s_st.target_lang[1] = 'r';
+    } else {
+        s_st.target_lang[0] = 'e';
+        s_st.target_lang[1] = 'n';
+    }
+    s_st.target_lang[2] = 0;
+}
+
+static void nvs_save_settings(bool pn, bool pu, const char *topics, const char *target)
 {
     nvs_handle_t h;
     if (nvs_open(NVS_NS, NVS_READWRITE, &h) != ESP_OK) return;
     nvs_set_u8(h, "p_new", pn);
     nvs_set_u8(h, "p_unl", pu);
     nvs_set_str(h, "topics", topics ? topics : "");
+    nvs_set_str(h, "tlang", target && target[0] == 'f' ? "fr" : "en");
     nvs_commit(h);
     nvs_close(h);
+}
+
+const char *fd_sync_target_lang(void)
+{
+    return s_st.target_lang[0] ? s_st.target_lang : "en";
+}
+
+bool fd_sync_target_is_fr(void)
+{
+    return fd_sync_target_lang()[0] == 'f';
 }
 
 static void nvs_save_last(time_t t)
@@ -342,6 +365,10 @@ static void nvs_load(void)
     uint8_t v = 0;
     if (nvs_get_u8(h, "p_new", &v) == ESP_OK) s_st.prio_new = v;
     if (nvs_get_u8(h, "p_unl", &v) == ESP_OK) s_st.prio_unl = v;
+    char tlang[4] = "";
+    size_t tl = sizeof(tlang);
+    if (nvs_get_str(h, "tlang", tlang, &tl) == ESP_OK) set_target_lang(tlang);
+    else set_target_lang("en");
     int64_t t = 0;
     if (nvs_get_i64(h, "last", &t) == ESP_OK) s_st.last_sync = (time_t)t;
     nvs_load_pick(h);
@@ -430,6 +457,7 @@ static bool load_store_locked(void)
         } else if (!strcmp(fl[0], "S") && n >= 4) {
             pn = fl[1][0] == '1'; pu = fl[2][0] == '1';
             strlcpy(topics, fl[3], sizeof(topics));
+            if (n >= 5) set_target_lang(fl[4]);
         } else if (!strcmp(fl[0], "C")) {
             nc++;
             if (n >= 4 && s_c && s_nc < FD_SYNC_MAX_COLS) {
@@ -900,8 +928,10 @@ static int pull_all(char *rx, char *err, size_t errn)
                 clean_field(topics);
                 bool pn = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(st, "priority_new"));
                 bool pu = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(st, "priority_unlearned"));
-                fprintf(f, "S\t%d\t%d\t%s\n", pn, pu, topics);
-                nvs_save_settings(pn, pu, topics);
+                const char *tl = js(st, "target_lang");
+                set_target_lang(tl);
+                fprintf(f, "S\t%d\t%d\t%s\t%s\n", pn, pu, topics, fd_sync_target_lang());
+                nvs_save_settings(pn, pu, topics, fd_sync_target_lang());
                 const cJSON *c;
                 cJSON_ArrayForEach(c, cJSON_GetObjectItemCaseSensitive(r, "collections")) {
                     fputs("C", f);

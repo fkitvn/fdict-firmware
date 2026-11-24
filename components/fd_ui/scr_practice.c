@@ -326,7 +326,9 @@ static void show_setup(void)
     lv_obj_t *sc = ui_setup_begin(s_body, _("PRACTICE"));
     ui_setup_deck(sc, setup_async);
 
-    static const char *const DIR[] = {"EN_VI", "VI_EN"};
+    const char *DIR[2];
+    if (fd_sync_target_is_fr()) { DIR[0] = "FR_VI"; DIR[1] = "VI_FR"; }
+    else { DIR[0] = "EN_VI"; DIR[1] = "VI_EN"; }
     static const char *const NS[] = {"10", "20", "ENDLESS"};
     opt_row(sc, _("DIRECTION"), OPT_DIR, DIR, 2, s_dir);
     static const char *const RP[] = {"OFF", "ON"};

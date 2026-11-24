@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Build ban app OTA (ESP-IDF 6.1, esp32s3) cho CI va ghi OTA_BIN, FW_VERSION, BUILD_ID, NOTES_VI vao $GITHUB_ENV.
+# Build mot app OTA (ESP-IDF 6.1, esp32s3) va hai anh USB: full.bin (Pico Anh), full-fr.bin (Pico Phap).
+# Ghi OTA_BIN, FULL_BIN, FULL_BIN_FR, FW_VERSION, BUILD_ID, NOTES_VI vao $GITHUB_ENV.
+# Khong build idf.py lan hai: anh Phap chi thay voice.bin, cung ELF / build_id.
 #
 # - FW_VERSION: PROJECT_VER trong CMakeLists.txt goc ("FDict One - x.y.z", co dau cach), doi chieu voi esp_app_desc.version trong file bin.
 #   Ten file/tag chi dung SEMVER (x.y.z), khong dung FW_VERSION.
@@ -161,6 +163,38 @@ FULL_SIZE="$(stat -c%s "$FULL_BIN")"
 FULL_SHA256="$(sha256sum "$FULL_BIN" | awk '{print $1}')"
 echo "full: $(basename "$FULL_BIN") size=$FULL_SIZE sha256=$FULL_SHA256"
 
+# Ban nap USB tieng Phap: cung app/bootloader, chi thay voice.bin. Khong build lai firmware.
+FR_TA="components/fd_tts/pico/lang/fr-FR_ta.bin"
+FR_SG="components/fd_tts/pico/lang/fr-FR_nk0_sg.bin"
+[[ -f "$FR_TA" && -f "$FR_SG" ]] || die "Thieu lingware Pico tieng Phap ($FR_TA, $FR_SG)"
+FR_VOICE="$BUILD_DIR/voice-fr.bin"
+"$PY" tools/mk_voice.py --lang fr "$FR_TA" "$FR_SG" "$FR_VOICE" || die "Dong goi voice.bin tieng Phap that bai"
+FR_ARGS="$BUILD_DIR/flash_args_fr"
+"$PY" - "$BUILD_DIR/flash_args" "$FR_ARGS" "voice-fr.bin" <<'PY' || die "flash_args khong co voice.bin"
+import pathlib, sys
+src, dst, voice = sys.argv[1:]
+lines, hit = [], False
+for line in pathlib.Path(src).read_text(encoding="utf-8").splitlines():
+    parts = line.split()
+    if parts and parts[-1].replace("\\", "/").endswith("voice.bin"):
+        parts[-1] = voice
+        line = " ".join(parts)
+        hit = True
+    lines.append(line)
+if not hit:
+    sys.exit(1)
+pathlib.Path(dst).write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+FULL_BIN_FR="$OUT_DIR/fdict-firmware-v${SEMVER}-${BUILD_ID}-full-fr.bin"
+FULL_FR_ABS="$(cd "$OUT_DIR" && pwd)/$(basename "$FULL_BIN_FR")"
+( cd "$BUILD_DIR" && "$PY" -m esptool --chip esp32s3 merge-bin -o "$FULL_FR_ABS" @"$(basename "$FR_ARGS")" ) \
+  || die "merge-bin tieng Phap that bai"
+FULL_FR_SIZE="$(stat -c%s "$FULL_BIN_FR")"
+(( FULL_FR_SIZE > 0 && FULL_FR_SIZE <= 16777216 )) || die "Kich thuoc -full-fr.bin $FULL_FR_SIZE khong hop le (<= 16777216)"
+FULL_SHA256_FR="$(sha256sum "$FULL_BIN_FR" | awk '{print $1}')"
+[[ "$FULL_SHA256_FR" != "$FULL_SHA256" ]] || die "full-fr.bin trung full.bin tieng Anh"
+echo "full-fr: $(basename "$FULL_BIN_FR") size=$FULL_FR_SIZE sha256=$FULL_SHA256_FR"
+
 echo "fw_version=$FW_VERSION build_id=$BUILD_ID size=$SIZE sha256=$SHA256"
 
 if [[ -n "${GITHUB_ENV:-}" ]]; then
@@ -171,5 +205,7 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
     echo "NOTES_VI=$NOTES_VI"
     echo "FULL_BIN=$FULL_BIN"
     echo "FULL_SHA256=$FULL_SHA256"
+    echo "FULL_BIN_FR=$FULL_BIN_FR"
+    echo "FULL_SHA256_FR=$FULL_SHA256_FR"
   } >> "$GITHUB_ENV"
 fi

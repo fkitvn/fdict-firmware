@@ -13,7 +13,7 @@
  * Hoc offline 100%: Luyen tap / Flash card / Sap xep cau doc tu kho nay (khong mang).
  * Dinh dang store.tsv (UTF-8, tab, 1 ban ghi/dong):
  *   #FDS1<TAB>rev<TAB>epoch_tai
- *   S<TAB>uu_tien_tu_moi(0/1)<TAB>uu_tien_chua_thuoc(0/1)<TAB>chu_de,chu_de
+ *   S<TAB>uu_tien_tu_moi(0/1)<TAB>uu_tien_chua_thuoc(0/1)<TAB>chu_de,chu_de[<TAB>target_lang en|fr]
  *   C<TAB>id<TAB>mac_dinh(0/1)<TAB>ten
  *   W<TAB>id<TAB>collection_id<TAB>status(0 new,1 learning,2 mastered)<TAB>created_epoch<TAB>en<TAB>ipa<TAB>vi<TAB>pos<TAB>(ex de trong)<TAB>n<TAB>(en<TAB>vi) x n
  *   #END<TAB>so_tu<TAB>so_bo<TAB>so_cau   (thieu/sai = file hong -> bo, tai lai toan bo) */
@@ -39,6 +39,7 @@ typedef struct {
     time_t last_sync;        /* lan doi chieu thanh cong cuoi voi server (0 = chua / chua co gio) */
     bool prio_new, prio_unl; /* cai dat tu web app */
     int topics;              /* so chu de quan tam */
+    char target_lang[3];     /* ngon ngu hoc: "en" | "fr" (tu settings.target_lang) */
     bool manual;             /* dang chay "Dong bo ngay" */
     uint32_t force_done;     /* 4.1.4: so lan "Dong bo ngay" da chay xong (UI cho ket qua) */
     bool force_ok;           /* ket qua lan "Dong bo ngay" cuoi */
@@ -75,6 +76,10 @@ typedef struct {
 } fd_spell_word_t;
 /* Lay toi da cap tu theo uu tien hoc (nhu Luyen tap), da xao. Tra so tu (0 khi kho rong). */
 int fd_sync_build_spell(fd_spell_word_t *out, int cap);
+
+/* Ngon ngu hoc cua tai khoan ("en"|"fr"). Mac dinh "en". */
+const char *fd_sync_target_lang(void);
+bool fd_sync_target_is_fr(void);
 
 void fd_sync_init(void);                 /* goi 1 lan sau khi mount /data (nap kho + outbox, tao task) */
 void fd_sync_kick(void);                 /* co ket qua moi: gui outbox som */

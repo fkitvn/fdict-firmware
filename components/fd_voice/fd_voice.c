@@ -7,11 +7,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "esp_log.h"
+#include "esp_rom_crc.h"
 #include "esp_timer.h"
 #include "fd_audio.h"
 #include "fd_net.h"
 #include "fd_deck.h"
 #include "fd_ota.h"
+#include "fd_sync.h"
+#include "fd_tts.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -36,12 +39,20 @@ static SemaphoreHandle_t s_mx;
 static neg_t s_neg[NEG_N];
 static int s_neg_i;
 
+/* Chap nhan chu Latin ASCII + UTF-8 (tieng Phap). out = ban sao cat, lowercase ASCII neu co. */
 static bool norm(const char *in, char *out)
 {
     size_t k = 0;
     for (; in && in[k]; k++) {
-        if (k >= WORD_MAX - 1 || !isalpha((unsigned char)in[k])) return false;
-        out[k] = (char)tolower((unsigned char)in[k]);
+        unsigned char c = (unsigned char)in[k];
+        if (k >= WORD_MAX - 1) return false;
+        if (c < 0x80) {
+            if (!isalpha(c) && c != '\'') return false;
+            out[k] = (char)tolower(c);
+        } else {
+            /* Byte UTF-8: giu nguyen (ten file cache dung bam, khong dung chuoi nay). */
+            out[k] = (char)c;
+        }
     }
     out[k] = 0;
     return k > 0;
@@ -51,7 +62,9 @@ bool fd_voice_path(const char *word, char *out, size_t len)
 {
     char w[WORD_MAX];
     if (!norm(word, w)) return false;
-    return snprintf(out, len, VDIR "/%s.pcm", w) < (int)len;
+    /* Ten file = CRC32 hex: an toan UTF-8 (chu Phap co dau), khong dung truc tiep chuoi tu. */
+    uint32_t h = esp_rom_crc32_le(0, (const uint8_t *)w, (uint32_t)strlen(w));
+    return snprintf(out, len, VDIR "/%08lx.pcm", (unsigned long)h) < (int)len;
 }
 
 static bool neg_blocked(const char *w)
@@ -119,7 +132,7 @@ static void prune(void)
 static void fetch(const char *w)
 {
     char dst[WORD_MAX + 24], path[WORD_MAX + 32];
-    snprintf(dst, sizeof(dst), VDIR "/%s.pcm", w);
+    if (!fd_voice_path(w, dst, sizeof(dst))) return;
     struct stat st;
     if (stat(dst, &st) == 0) return;   /* da co (yeu cau trung) */
     snprintf(path, sizeof(path), "/api/v1/audio/%s?fmt=pcm16k", w);
@@ -182,6 +195,8 @@ esp_err_t fd_pron_say_cfg(const char *text, const fd_pron_cfg_t *cfg)
     /* 23/10: KHONG bo qua khi dang phat (am dung/sai vua xep hang -> tu tu phat / bam loa bi nuot) - xep vao hang doi;
      * hang doi day (bam lien tuc) -> INVALID_STATE (khong bip/toast) */
     fd_voice_init();
+    /* Tai khoan Phap + may giong Anh (hoac nguoc lai): khong doc bang Pico (leech SKU). */
+    bool lang_ok = fd_sync_target_is_fr() == fd_tts_is_fr();
     char w[WORD_MAX], path[48];
     esp_err_t r;
     bool word = norm(t, w) && fd_voice_path(w, path, sizeof(path));
@@ -189,8 +204,9 @@ esp_err_t fd_pron_say_cfg(const char *text, const fd_pron_cfg_t *cfg)
     if (!cfg) cfg = &DEF;
     unsigned fl = cfg->mode == FD_PRON_PICO_ONLY ? FD_SAY_NO_FILE | FD_SAY_NO_DL : cfg->mode == FD_PRON_FILES_ONLY ? FD_SAY_NO_PICO : 0;
     if (!cfg->dl) fl |= FD_SAY_NO_DL;
+    if (!lang_ok) fl |= FD_SAY_NO_PICO;   /* lech ngon ngu: chi thu file cache, khong Pico */
     if (word) r = fd_audio_say_ex(path, w, fl, cfg->reps);
-    else if (cfg->mode == FD_PRON_FILES_ONLY) r = ESP_ERR_NOT_FOUND;   /* cum tu: khong co file */
+    else if (cfg->mode == FD_PRON_FILES_ONLY || !lang_ok) r = ESP_ERR_NOT_FOUND;   /* cum tu / lech: khong doc */
     else r = fd_audio_say_ex(NULL, t, FD_SAY_NO_FILE | FD_SAY_NO_DL, cfg->reps);   /* cum tu: chi TTS, khong tai */
     if (r == ESP_ERR_TIMEOUT) r = ESP_ERR_INVALID_STATE;
     ESP_LOGD(TAG, "pron \"%s\": mode %u x%u dl %d %s -> %s", t, cfg->mode, cfg->reps, cfg->dl, word ? "tu" : "cum", esp_err_to_name(r));
