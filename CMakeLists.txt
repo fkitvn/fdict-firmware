@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # Ten firmware = app version (esp_app_desc.version, char[32]): "FDict One - x.y.z" (dinh dang duy nhat).
 # Build ID = 10 ky tu hex dau (chu thuong) cua SHA256 file ELF (vd 3fa9c01b7e).
-set(PROJECT_VER "FDict One - 5.1.0")
+set(PROJECT_VER "FDict One - 5.2.0")
 # Hau to theo nhanh git (tu dong, KHONG sua tay): nhanh dung "dev" -> "FDict One - x.y.z-dev";
 # moi nhanh/trang thai khac (prod, detached HEAD, CI tren prod, khong co git) -> giu nguyen.
 # Nhanh: git rev-parse --abbrev-ref HEAD; neu detached ("HEAD") / loi -> env GITHUB_REF_NAME, roi CI_COMMIT_BRANCH.
@@ -75,13 +75,28 @@ idf_build_set_property(INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/components
 project(fdict-firmware)
 
 # Du lieu giong Pico (fd_tts) -> build/voice.bin -> phan vung voice; idf.py flash nap luon.
+# FD_VOICE_LANG=en|fr (CACHE): chon lingware theo SKU khi tao full.bin. App.bin khong doi.
+set(FD_VOICE_LANG "en" CACHE STRING "Ngon ngu giong Pico trong voice.bin: en hoac fr")
+set_property(CACHE FD_VOICE_LANG PROPERTY STRINGS en fr)
+if(NOT FD_VOICE_LANG MATCHES "^(en|fr)$")
+    message(FATAL_ERROR "FD_VOICE_LANG phai la en hoac fr: '${FD_VOICE_LANG}'")
+endif()
 set(FD_LANG "${CMAKE_CURRENT_LIST_DIR}/components/fd_tts/pico/lang")
+if(FD_VOICE_LANG STREQUAL "fr")
+    set(FD_VOICE_TA "${FD_LANG}/fr-FR_ta.bin")
+    set(FD_VOICE_SG "${FD_LANG}/fr-FR_nk0_sg.bin")
+else()
+    set(FD_VOICE_TA "${FD_LANG}/en-US_ta.bin")
+    set(FD_VOICE_SG "${FD_LANG}/en-US_lh0_sg.bin")
+endif()
 set(FD_VOICE_BIN "${CMAKE_BINARY_DIR}/voice.bin")
 idf_build_get_property(fd_python PYTHON)
 add_custom_command(OUTPUT "${FD_VOICE_BIN}"
-    COMMAND ${fd_python} "${CMAKE_CURRENT_LIST_DIR}/tools/mk_voice.py" "${FD_LANG}/en-US_ta.bin" "${FD_LANG}/en-US_lh0_sg.bin" "${FD_VOICE_BIN}"
-    DEPENDS "${CMAKE_CURRENT_LIST_DIR}/tools/mk_voice.py" "${FD_LANG}/en-US_ta.bin" "${FD_LANG}/en-US_lh0_sg.bin"
-    COMMENT "Dong goi voice.bin (Pico en-US)")
+    COMMAND ${fd_python} "${CMAKE_CURRENT_LIST_DIR}/tools/mk_voice.py" --lang "${FD_VOICE_LANG}"
+            "${FD_VOICE_TA}" "${FD_VOICE_SG}" "${FD_VOICE_BIN}"
+    DEPENDS "${CMAKE_CURRENT_LIST_DIR}/tools/mk_voice.py" "${FD_VOICE_TA}" "${FD_VOICE_SG}"
+    COMMENT "Dong goi voice.bin (Pico ${FD_VOICE_LANG})")
 add_custom_target(fd_voice_bin ALL DEPENDS "${FD_VOICE_BIN}")
 esptool_py_flash_to_partition(flash "voice" "${FD_VOICE_BIN}")
 add_dependencies(flash fd_voice_bin)
+message(STATUS "FDict voice: FD_VOICE_LANG='${FD_VOICE_LANG}' -> ${FD_VOICE_TA}")

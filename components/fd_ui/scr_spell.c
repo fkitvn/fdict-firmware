@@ -216,7 +216,10 @@ static void show_setup(void)
     lv_obj_t *sc = ui_setup_begin(s_body, _("SPELLING"));
     ui_setup_deck(sc, setup_async);
     static const char *const CNT[] = {"10", "20", "ENDLESS"};
-    static const char *const DIR[] = {"SPELL_BUILD_EN", "SPELL_BUILD_VI", "SPELL_DIR_MIX"};
+    const char *DIR[3];
+    DIR[0] = fd_sync_target_is_fr() ? "SPELL_BUILD_FR" : "SPELL_BUILD_EN";
+    DIR[1] = "SPELL_BUILD_VI";
+    DIR[2] = "SPELL_DIR_MIX";
     static const char *const RP[] = {"OFF", "ON"};
     int nsel = s_cnt == 0 ? 2 : (s_cnt == 20 ? 1 : 0);
     ui_setup_opt_row(sc, _("QUESTIONS"), CNT, 3, nsel, opt_cb, OPT_CNT, 0);
@@ -350,7 +353,7 @@ static void show_play(void)
     if (s_cnt == 0) snprintf(tmp, sizeof(tmp), _("QUIZ_QUESTION_N"), s_pos + 1);
     else snprintf(tmp, sizeof(tmp), _("SEN_PROGRESS"), s_pos + 1, s_n);
     label(s_body, tmp, &fd_font_noto_14, FD_COLOR_PRIMARY_TEXT);
-    label(s_body, s_build_vi ? _("SPELL_PROMPT_VI") : _("SPELL_PROMPT_EN"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    label(s_body, s_build_vi ? _("SPELL_PROMPT_VI") : (fd_sync_target_is_fr() ? _("SPELL_PROMPT_FR") : _("SPELL_PROMPT_EN")), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     label(s_body, s_build_vi ? w->en : w->vi, &fd_font_noto_18, FD_COLOR_TEXT);
     s_ans = row(s_body, true);
     lv_obj_set_style_min_height(s_ans, 36, 0);

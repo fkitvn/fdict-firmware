@@ -35,6 +35,7 @@ en:
   DISPLAY_INFO: '%dx%d, rotated %d°'
   ENDLESS: Endless
   EN_VI: EN-VI
+  FR_VI: FR-VI
   ERROR_FMT: 'Error: %s'
   FLASH_CARD: Flash card
   FLASH_MEMORY: Flash memory
@@ -202,6 +203,7 @@ en:
   UPDATE: Update
   UPGRADE: Upgrade
   VI_EN: VI-EN
+  VI_FR: VI-FR
   VOICE: Voice
   VOICE_DATA_MISSING: Voice data missing
   VOLUME: Volume
@@ -242,6 +244,8 @@ en:
   SEN_DIR: 'Direction'
   SEN_DIR_EN_VI: 'English - Vietnamese'
   SEN_DIR_VI_EN: 'Vietnamese - English'
+  SEN_DIR_FR_VI: 'French - Vietnamese'
+  SEN_DIR_VI_FR: 'Vietnamese - French'
   DEV_TOOLS: 'Test tools'
   BTN_TEST: 'Button test'
   BTN_TEST_HINT: 'Press each button below the screen in turn'
@@ -285,9 +289,11 @@ en:
   SPELLING: Spelling
   SPELL_BUILD_EN: 'Vietnamese - English'
   SPELL_BUILD_VI: 'English - Vietnamese'
+  SPELL_BUILD_FR: 'Vietnamese - French'
   SPELL_DIR_MIX: Mixed
   SPELL_NO_FIT: No words are 2 to 20 characters long
   SPELL_PROMPT_EN: Spell the English word
+  SPELL_PROMPT_FR: Spell the French word
   SPELL_PROMPT_VI: Spell the Vietnamese meaning
   STATS_DAYS_FMT: '%d days'
   STATS_AI_CALLS: 'AI uses this month'

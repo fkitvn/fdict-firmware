@@ -12,14 +12,16 @@
 static const char *TAG = "fd_tts";
 
 #define ARENA_B   (1280 * 1024)
-#define TA_NAME   "/pico/en-US_ta.bin"
-#define SG_NAME   "/pico/en-US_lh0_sg.bin"
+/* Ten tai nguyen noi: chi la khoa mmap, khong phai ten that trong lingware. */
+#define TA_NAME   "/pico/ta.bin"
+#define SG_NAME   "/pico/sg.bin"
 #define VOICE     "FdVoice"
 #define TEXT_MAX  60
 #define OUT_MAX   (16000 * 6)   /* toi da 6 s */
 #define TRIM_TH   300
 
-/* 23/10: du lieu giong o phan vung flash 'voice' (tools/mk_voice.py), mmap - khong sao chep vao RAM */
+/* 23/10: du lieu giong o phan vung flash 'voice' (tools/mk_voice.py), mmap - khong sao chep vao RAM.
+ * Byte 32..35 (sau header 32 B): ma ngon ngu ASCII 2 ky tu + \0\0 (vd "en\0\0", "fr\0\0"). */
 #define VOICE_PART  "voice"
 #define VOICE_MAGIC "FDVOICE1"
 typedef struct {
@@ -28,6 +30,7 @@ typedef struct {
 } voice_hdr_t;
 static const unsigned char *fd_pico_ta_start, *fd_pico_ta_end, *fd_pico_sg_start, *fd_pico_sg_end;
 static int s_voice = -1;   /* -1 chua kiem tra, 0 thieu/hong, 1 OK */
+static char s_lang[4] = "en";   /* "en" | "fr" */
 
 /* Map + kiem tra header/CRC phan vung voice (1 lan). */
 static bool voice_map(void)
@@ -61,11 +64,37 @@ static bool voice_map(void)
     fd_pico_ta_end = fd_pico_ta_start + v->ta_len;
     fd_pico_sg_start = b + v->sg_off;
     fd_pico_sg_end = fd_pico_sg_start + v->sg_len;
+    /* Ma ngon ngu o byte 32..35 (truoc ta_off=36). Du lieu cu toan 0 -> mac dinh en. */
+    s_lang[0] = 'e';
+    s_lang[1] = 'n';
+    s_lang[2] = 0;
+    if (v->ta_off >= sizeof(*v) + 2) {
+        const unsigned char *lang = b + sizeof(*v);
+        if (lang[0] == 'f' && lang[1] == 'r') {
+            s_lang[0] = 'f';
+            s_lang[1] = 'r';
+        } else if (lang[0] == 'e' && lang[1] == 'n') {
+            s_lang[0] = 'e';
+            s_lang[1] = 'n';
+        }
+    }
     s_voice = 1;
+    ESP_LOGI(TAG, "voice ok: lang=%s ta=%u sg=%u", s_lang, (unsigned)v->ta_len, (unsigned)v->sg_len);
     return true;   /* giu mmap suot doi */
 }
 
 bool fd_tts_voice_ok(void) { return voice_map(); }
+
+const char *fd_tts_lang(void)
+{
+    (void)voice_map();
+    return s_lang;
+}
+
+bool fd_tts_is_fr(void)
+{
+    return fd_tts_lang()[0] == 'f';
+}
 
 static pico_System s_sys;
 static pico_Engine s_eng;
@@ -128,8 +157,13 @@ esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count)
     *count = 0;
     char in[TEXT_MAX + 2];
     size_t k = 0;
-    for (const char *p = text; *p && k < TEXT_MAX; p++)
-        if (*p >= 0x20 && *p < 0x7f) in[k++] = *p;
+    const bool fr = fd_tts_is_fr();
+    for (const char *p = text; *p && k < TEXT_MAX; p++) {
+        unsigned char c = (unsigned char)*p;
+        /* en: ASCII in duoc. fr: them UTF-8 (byte cao) de qua chu Phap co dau. Bo dieu khien. */
+        if (c >= 0x20 && c < 0x7f) in[k++] = (char)c;
+        else if (fr && c >= 0x80) in[k++] = (char)c;
+    }
     in[k] = 0;
     if (!k) return ESP_ERR_INVALID_ARG;
     esp_err_t e = fd_tts_init();

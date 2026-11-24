@@ -5,6 +5,12 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.2.0] - 2026-11-24
+- Hỗ trợ học tiếng Pháp trên cùng một bản firmware, giọng đọc offline theo gói voice của từng máy.
+- Máy nhận ngôn ngữ học từ tài khoản khi đồng bộ, nhãn chiều học đổi Anh hoặc Pháp cho phù hợp.
+- Bộ lọc phát âm Pico chấp nhận chữ Pháp có dấu, tên file cache dùng mã băm an toàn UTF 8.
+- Đóng gói voice.bin có mã ngôn ngữ trong header, chọn lingware Anh hoặc Pháp theo SKU lúc tạo full.bin.
+
 ## [5.1.0] - 2026-11-21
 - Trò chơi có đồ họa đẹp hơn với nền chuyển màu, hình tròn, hiệu ứng nổ và hạt bay, chuẩn bị cho trò Bắn bóng bay.
 

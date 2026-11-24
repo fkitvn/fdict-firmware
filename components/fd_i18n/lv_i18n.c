@@ -376,6 +376,12 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"GAME_DEL_Q", "Delete this game?"},
     {"GAME_DEL_OK", "Delete"},
     {"GAME_DEL_DONE", "Game deleted"},
+    {"FR_VI", "FR-VI"},
+    {"VI_FR", "VI-FR"},
+    {"SEN_DIR_FR_VI", "French - Vietnamese"},
+    {"SEN_DIR_VI_FR", "Vietnamese - French"},
+    {"SPELL_BUILD_FR", "Vietnamese - French"},
+    {"SPELL_PROMPT_FR", "Spell the French word"},
     {NULL, NULL} // End mark
 };
 
@@ -757,6 +763,12 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"GAME_DEL_Q", "Xóa trò chơi này?"},
     {"GAME_DEL_OK", "Xóa"},
     {"GAME_DEL_DONE", "Đã xóa trò chơi"},
+    {"FR_VI", "Pháp-Việt"},
+    {"VI_FR", "Việt-Pháp"},
+    {"SEN_DIR_FR_VI", "Pháp - Việt"},
+    {"SEN_DIR_VI_FR", "Việt - Pháp"},
+    {"SPELL_BUILD_FR", "Việt - Pháp"},
+    {"SPELL_PROMPT_FR", "Ghép từ tiếng Pháp"},
     {NULL, NULL} // End mark
 };
 

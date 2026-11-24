@@ -8,7 +8,7 @@
 
 # FDict One – Máy học từ vựng
 
-Firmware cho **FDict One**, máy học từ vựng tiếng Anh cầm tay chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
+Firmware cho **FDict One**, máy học từ vựng cầm tay (Anh–Việt hoặc Pháp–Việt) chạy trên **ESP32-S3** (bo mạch **Freenove FNK0104B**).
 Viết bằng C trên ESP-IDF 6.1 và LVGL 9.
 
 _English summary at the end._
@@ -36,7 +36,7 @@ _English summary at the end._
 - **Từ điển**: tra hai chiều Anh–Việt, gõ tiếng Việt.
 - **Sắp xếp câu**, **Phân loại từ**, **Điền từ**.
 - **Học offline**: bài học tải từ máy chủ được lưu cache trên LittleFS; kết quả lưu vào hàng chờ và tự gửi khi có mạng.
-- **Phát âm offline** bằng SVOX Pico TTS (en-US); dữ liệu giọng nằm ở phân vùng flash `voice` riêng. Khi có mạng có thể tải âm thanh từ máy chủ về cache.
+- **Phát âm offline** bằng SVOX Pico TTS. Phân vùng `voice` chứa một giọng: Anh (`en-US`) hoặc Pháp (`fr-FR`). Cùng một app, hai file nạp USB. OTA không đổi giọng. Khi có mạng có thể tải âm thanh từ máy chủ về cache.
 - Wi-Fi: quét mạng, lưu nhiều mạng, nhập mật khẩu trên màn hình.
 - Ghép thiết bị với tài khoản web bằng mã QR.
 - Cập nhật firmware OTA qua HTTPS, kiểm tra SHA256 và tự rollback nếu bản mới lỗi.
@@ -89,26 +89,66 @@ Không commit token, mật khẩu Wi-Fi hay `sdkconfig` chứa thông tin riêng
 
 ## Build và nạp
 
+Một app cho mọi máy. Giọng Pico nằm ở phân vùng `voice` (1,75 MB), chỉ chứa một ngôn ngữ. Cờ CMake `FD_VOICE_LANG` là `en` hoặc `fr`. Giá trị ghi vào cache của thư mục build và giữ nguyên cho lần build sau nếu không truyền lại.
+
+| Môi trường | Cách build | File nạp | OTA |
+|---|---|---|---|
+| Dev, máy tiếng Anh | `idf.py -B build-en -DFD_VOICE_LANG=en build` rồi flash | USB, giọng Anh | Không phát hành |
+| Dev, máy tiếng Pháp | `idf.py -B build-fr -DFD_VOICE_LANG=fr build` rồi flash | USB, giọng Pháp | Không phát hành |
+| Prod | Push nhánh `prod`. Workflow build app một lần, rồi ghép hai ảnh USB | `full.bin` (Anh) và `full-fr.bin` (Pháp) | Một `app.bin`, không đổi giọng |
+
+`idf.py build` không kèm cờ dùng thư mục `build/` và mặc định `en`. `tools\flash-monitor.ps1` chỉ nạp đúng giọng đang có trong thư mục `build/`. Muốn nạp Pháp thì build với `-DFD_VOICE_LANG=fr` trước, hoặc dùng thư mục `build-fr` và nạp bằng `idf.py -B build-fr -p <PORT> flash`.
+
+Lingware phải có trong repo, nếu không bản Pháp không dựng được:
+
+- Anh: `components/fd_tts/pico/lang/en-US_ta.bin`, `en-US_lh0_sg.bin`
+- Pháp: `components/fd_tts/pico/lang/fr-FR_ta.bin`, `fr-FR_nk0_sg.bin`
+
+### Dev (cáp USB)
+
 ```sh
 # nạp môi trường ESP-IDF 6.1 (export.sh / export.ps1 hoặc profile của EIM)
-idf.py set-target esp32s3        # lần đầu
-idf.py build
-idf.py -p <PORT> flash monitor   # nạp bootloader, bảng phân vùng, ứng dụng và phân vùng voice
+idf.py set-target esp32s3
+
+# Máy tiếng Anh
+idf.py -B build-en -DFD_VOICE_LANG=en build
+idf.py -B build-en -p <PORT> flash monitor
+
+# Máy tiếng Pháp (thư mục build riêng để không lẫn cache với bản Anh)
+idf.py -B build-fr -DFD_VOICE_LANG=fr build
+idf.py -B build-fr -p <PORT> flash monitor
 ```
 
-Trên Windows có thể dùng `tools\flash-monitor.ps1 [-Port COM6] [-NoFlash]` để nạp và ghi log monitor vào `logs\`.
+Trên Windows, sau khi đã build đúng giọng vào `build/`, có thể nạp bằng `tools\flash-monitor.ps1 [-Port COM6] [-NoFlash]`. Nhánh dev không tạo bản OTA và không đẩy bin lên server.
 
-Build ID (màn _Thông tin phiên bản_) = 10 ký tự hex đầu (chữ thường) của SHA256 file ELF.
+Build ID (màn _Thông tin phiên bản_) = 10 ký tự hex đầu (chữ thường) của SHA256 file ELF. Hai thư mục build local có thể ra hai build ID khác nhau vì đường dẫn build nằm trong ELF. Bản prod không làm vậy: một lần `idf.py build`, một app, hai ảnh USB chỉ khác `voice.bin`.
+
+### Prod
+
+Không build hai lần `idf.py` để phát hành. Push nhánh `prod` chạy `.github/workflows/ota-prod.yml`:
+
+1. `scripts/ci-ota-build.sh` build app với giọng Anh mặc định.
+2. Ghép `full.bin` (Pico Anh) từ `flash_args`.
+3. Đóng `voice-fr.bin` bằng `tools/mk_voice.py --lang fr`, sửa dòng voice trong `flash_args`, ghép `full-fr.bin`. App, bootloader và bảng phân vùng giữ nguyên.
+4. Đăng một `app.bin` lên OTA. Tải `full.bin` rồi `full-fr.bin` (`voice=fr`) vào cùng `release_id`.
+5. GitHub Release đính kèm cả hai ảnh USB và `app.bin`.
+
+Job lỗi nếu thiếu lingware Pháp, nếu hai ảnh USB trùng sha256, hoặc nếu server không giữ được cả hai file. Web-app phải đã nhận `voice=fr` trước lần push firmware này. Nếu chưa, file Pháp ghi đè file Anh.
+
+Trang nạp: <https://fkit.vn/fdict/firmware>. Người dùng chọn Tiếng Anh hoặc Tiếng Pháp rồi bấm Nạp firmware.
 
 ### Nạp lần đầu (ảnh đầy đủ)
 
-Máy mới, hoặc máy đang chạy bảng phân vùng cũ (trước 1.0.0, chưa có `voice`), phải nạp **một lần qua USB** bằng ảnh đầy đủ `fdict-firmware-v<ver>-<build>-full.bin` tại offset `0x0`. Ảnh này gồm bootloader, bảng phân vùng, otadata, ứng dụng và `voice`:
+Máy mới, hoặc máy đang chạy bảng phân vùng cũ (trước 1.0.0, chưa có `voice`), phải nạp **một lần qua USB** bằng ảnh đầy đủ tại offset `0x0`. Ảnh gồm bootloader, bảng phân vùng, otadata, ứng dụng và đúng một giọng:
 
 ```sh
+# Tiếng Anh
 esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>-<build>-full.bin
+# Tiếng Pháp
+esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>-<build>-full-fr.bin
 ```
 
-Cách dễ nhất: mở <https://fkit.vn/firmware?spu=fdictone> bằng Chrome/Edge và bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)). Hoặc dùng <https://espressif.github.io/esptool-js/>: chọn cổng, thêm file `-full.bin` ở địa chỉ `0x0`, bấm Program.
+Cách dễ nhất: mở <https://fkit.vn/fdict/firmware> bằng Chrome/Edge, chọn ngôn ngữ, rồi bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)).
 
 Khi đổi bảng phân vùng, dữ liệu LittleFS cũ không được giữ. Firmware không tự format; sau khi nạp full.bin qua USB, xác nhận Khôi phục cài đặt gốc để tạo lại LittleFS (xóa NVS và dữ liệu, cần ghép lại).
 
@@ -124,9 +164,12 @@ esptool --chip esp32s3 merge_bin -o full.bin --flash_mode dio --flash_freq 80m -
 
 ### Dữ liệu giọng đọc
 
-- Đã nằm sẵn trong `-full.bin` (offset `0xE30000`); GitHub Release không đính kèm file giọng riêng.
-- Muốn nạp riêng: tự build để có `build/voice.bin` (tạo bằng `python tools/mk_voice.py <ta.bin> <sg.bin> voice.bin`, tự chạy khi build), rồi `esptool --chip esp32s3 -p <PORT> write_flash 0xE30000 build/voice.bin`.
+- Nằm trong ảnh USB tại offset `0xE30000`. `full.bin` là Pico Anh. `full-fr.bin` là Pico Pháp. GitHub Release đính kèm cả hai ảnh, không đính kèm file giọng rời.
+- Header `voice.bin` ghi `en` hoặc `fr` ở byte 32–35. Bản cũ toàn số 0 được firmware 5.2.0 đọc là Anh.
+- Đóng gói tay: `python tools/mk_voice.py --lang en <ta.bin> <sg.bin> voice.bin` hoặc `--lang fr`. Build đã gọi lệnh này.
+- Nạp riêng phân vùng giọng, không đụng app: `esptool --chip esp32s3 -p <PORT> write_flash 0xE30000 voice.bin`.
 - Thiếu hoặc hỏng dữ liệu giọng: máy vẫn chạy, Pico TTS tắt, nút loa báo "Thiếu dữ liệu giọng đọc".
+- Tài khoản Pháp trên máy giọng Anh (hoặc ngược lại): máy không đọc bằng Pico.
 
 Chỉ cập nhật ứng dụng qua USB (máy đã có bảng phân vùng mới):
 
@@ -136,12 +179,12 @@ esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x20000 fdict-firmware-v<
 
 ## app.bin và full.bin
 
-| | app.bin | full.bin |
-|---|---|---|
-| Tên file | `fdict-firmware-vX.Y.Z-<build_id>-app.bin` | `fdict-firmware-vX.Y.Z-<build_id>-full.bin` |
-| Kích thước | ~1,5 MB (phải < 3 MiB) | ~16,3 MB (≤ 16 MiB) |
-| Nội dung | chỉ chương trình FDict One | ảnh gộp toàn bộ flash |
-| Nạp bằng | OTA | USB, từ offset `0x0` (fkit.vn/firmware / `esptool write_flash 0x0 ...`) |
+| | app.bin | full.bin | full-fr.bin |
+|---|---|---|---|
+| Tên file | `fdict-firmware-vX.Y.Z-<build_id>-app.bin` | `...-full.bin` | `...-full-fr.bin` |
+| Kích thước | ~1,5 MB (phải < 3 MiB) | ≤ 16 MiB | ≤ 16 MiB |
+| Giọng Pico | không chứa giọng | Anh | Pháp |
+| Nạp bằng | OTA | USB tại `0x0` | USB tại `0x0` |
 
 - **app.bin**: chỉ chương trình FDict One, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 3 MiB) nên phải < 3 MiB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
 - **full.bin**: ảnh gộp (merged image) nạp từ `0x0` qua USB, gồm:
@@ -152,9 +195,9 @@ esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x20000 fdict-firmware-v<
 | `0x8000` | bảng phân vùng (partition table) |
 | `0x19000` | otadata |
 | `0x20000` | ứng dụng (`ota_0`) |
-| `0xE30000` | dữ liệu giọng `voice` (Pico) |
+| `0xE30000` | dữ liệu giọng `voice` (Pico Anh hoặc Pháp, tùy file USB) |
 
-**Khi nào dùng cái nào:** máy mới hoặc máy lỗi → nạp full.bin qua USB; máy đang chạy → cập nhật app.bin qua OTA. CI tạo cả hai từ **cùng một bản build** và đẩy lên máy chủ (`/api/admin/releases` cho app.bin, `/api/admin/releases/full` cho full.bin). File được lưu trên object storage (S3/MinIO) của máy chủ.
+**Khi nào dùng cái nào:** máy mới hoặc máy đổi giọng → nạp `full.bin` hoặc `full-fr.bin` qua USB. Máy đang chạy, giữ nguyên giọng → OTA chỉ nhận `app.bin`. Prod tạo cả ba file từ một lần build app và đẩy lên máy chủ (`/api/admin/releases` cho app, `/api/admin/releases/full` cho ảnh Anh, cùng endpoint với `voice=fr` cho ảnh Pháp). File nằm trên object storage (S3/MinIO).
 
 ## Ngôn ngữ giao diện (vi/en)
 
@@ -177,7 +220,7 @@ Cài đặt > Ngôn ngữ / Language. Font tiêu đề `fd_font_noto_32_title` l
 
 ## Cập nhật OTA
 
-OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>-app.bin`, không dùng `-full.bin`). Bảng phân vùng và dữ liệu giọng không đổi qua OTA.
+OTA chỉ cập nhật **ứng dụng** (file `fdict-firmware-v<ver>-<build>-app.bin`). Không dùng `full.bin` hay `full-fr.bin`. Bảng phân vùng và giọng Pico trên máy không đổi.
 
 1. Thiết bị đã ghép, có Wi-Fi và đã đồng bộ giờ sẽ định kỳ gọi `GET {base}/api/ota/check` với các tham số `hw`, `channel`, `fw_version`, `build_id`, `device_id`, `battery`, `rssi`.
 2. Máy chủ trả JSON. Nếu `update` là `false`, thiết bị coi là bản mới nhất (`check_again_s` là chu kỳ kiểm tra lại, tuỳ chọn). Nếu `update` là `true`, cần các trường `release_id`, `fw_version`, `sha256`, `size`, `url` (HTTPS). Các trường tuỳ chọn: `build_id`, `notes_vi`, `mandatory`, `min_battery`.
@@ -188,19 +231,19 @@ Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `
 
 ### Nạp firmware qua USB từ trình duyệt
 
-Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/firmware?spu=fdictone> bằng Chrome hoặc Edge, bấm *Nạp firmware*, chọn cổng của máy rồi làm theo hướng dẫn để nạp bản mới nhất. Không cần cài ESP-IDF.
+Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/fdict/firmware> bằng Chrome hoặc Edge, chọn **Tiếng Anh** hoặc **Tiếng Pháp**, bấm *Nạp firmware*, chọn cổng của máy rồi làm theo hướng dẫn. Không cần cài ESP-IDF. Bản đang phát hành chưa có file Pháp thì nút Pháp không nạp được.
 
 ## Phát hành OTA qua GitHub Actions
 
 Workflow `.github/workflows/ota-prod.yml` chạy khi **push lên nhánh `prod`**:
 
-1. Build ứng dụng trong container `espressif/idf:v6.1` bằng `scripts/ci-ota-build.sh`.
-2. Upload artifact (file app `.bin` và `build-info.json`).
-3. Đăng bản lên máy chủ: `POST {DICT_API_URL}/api/admin/releases`, multipart, header `X-CI-Token`, kênh `stable`, `rollout_percent=100`.
-4. Tải `-full.bin` của cùng bản build lên máy chủ: `POST {DICT_API_URL}/api/admin/releases/full` (gắn vào `release_id` vừa đăng), cho trình nạp USB trên web.
-5. Tạo **GitHub Release** tag `v<semver>` (tiêu đề `FDict One - <semver>`) với `...-full.bin`, `...-app.bin` và `SHA256SUMS.txt`, ghi chú lấy từ CHANGELOG. Mỗi bản prod đều xuất hiện ở mục Releases của repo; tag đã có thì bỏ qua, không ghi đè.
+1. Build trong container `espressif/idf:v6.1` bằng `scripts/ci-ota-build.sh`: một app, `full.bin` (Anh) và `full-fr.bin` (Pháp).
+2. Upload artifact gồm app, cả hai ảnh USB và `build-info.json`.
+3. Đăng bản app lên máy chủ: `POST {DICT_API_URL}/api/admin/releases`, multipart, header `X-CI-Token`, kênh `stable`, `rollout_percent=100`.
+4. Tải `full.bin`: `POST {DICT_API_URL}/api/admin/releases/full`. Rồi tải `full-fr.bin` vào cùng endpoint với field `voice=fr`. Cả hai gắn một `release_id`.
+5. Tạo **GitHub Release** tag `v<semver>` với `...-full.bin`, `...-full-fr.bin`, `...-app.bin` và `SHA256SUMS.txt`. Tag đã có thì bỏ qua, không ghi đè.
 
-Bước OTA chỉ đẩy **bản app** (< 3 MiB); `-full.bin` đi qua endpoint riêng ở bước 4.
+Bước 3 chỉ đẩy **bản app** (< 3 MiB). Hai ảnh USB đi ở bước 4. Job dừng nếu bước 4 không xác nhận được cả hai sha256, hoặc nếu sha256 Anh bị đổi sau khi tải bản Pháp.
 
 ### Biến và secret cần tạo
 
@@ -228,11 +271,13 @@ Script dừng build nếu:
 - mục đầu CHANGELOG khác `PROJECT_VER`;
 - phiên bản ghi trong file bin (`esp_app_desc`) khác `PROJECT_VER`;
 - build có cảnh báo;
-- file bin từ 3 MiB trở lên.
+- file app từ 3 MiB trở lên;
+- thiếu lingware Pico Pháp;
+- `full-fr.bin` trùng sha256 với `full.bin`.
 
 `build_id` = 10 ký tự hex đầu (chữ thường) SHA256 file ELF, giống màn _Thông tin_.
 
-Máy chủ trả `201` khi đăng thành công (kèm `release_id`, dùng để gắn `-full.bin` và tạo GitHub Release). Nếu trả `409` (bản `fw_version`/`build_id` đã tồn tại), máy chủ chỉ trả `{"error":"exists"}`, không có `release_id`, nên workflow **báo lỗi** và dừng (không tải `-full.bin`, không tạo GitHub Release). Muốn phát hành lại: tăng `PROJECT_VER` trong `CMakeLists.txt`, thêm mục mới ở đầu `CHANGELOG.md`, rồi push lại lên `prod`. Tóm tắt job ghi `fw_version`, `build_id`, kích thước, `sha256`, `release_id` và ghi chú.
+Máy chủ trả `201` khi đăng app thành công (kèm `release_id`, dùng để gắn cả hai ảnh USB và tạo GitHub Release). Nếu trả `409` (bản `fw_version`/`build_id` đã tồn tại) mà không có `release_id`, workflow **báo lỗi** và dừng, không tải ảnh USB, không tạo GitHub Release. Muốn phát hành lại: tăng `PROJECT_VER` trong `CMakeLists.txt`, thêm mục mới ở đầu `CHANGELOG.md`, rồi push lại lên `prod`. Tóm tắt job ghi `fw_version`, `build_id`, kích thước, sha256 của app và của cả hai ảnh USB, `release_id` và ghi chú.
 
 ### Phát hành dần (canary)
 
@@ -289,14 +334,14 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 
 **FDict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, Practice (Luyện tập) 2x2 quizzes, Dictionary (Từ điển), Word order (Sắp xếp câu), Parts of speech (Phân loại từ), Gap fill (Điền từ), auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
 
-- **Build:** ESP-IDF 6.1, `idf.py set-target esp32s3 && idf.py build`; flash with `idf.py -p <PORT> flash monitor`.
+- **Build:** ESP-IDF 6.1. Dev English: `idf.py -B build-en -DFD_VOICE_LANG=en build` then `idf.py -B build-en -p <PORT> flash`. Dev French: the same with `-B build-fr -DFD_VOICE_LANG=fr`. Prod is a push to `prod`: one app build, then `full.bin` (English Pico) and `full-fr.bin` (French Pico).
 - **Configure:** production server URLs are Kconfig options (`menuconfig` / git-ignored `sdkconfig`), placeholders in Kconfig by default, and are injected at CI from `DICT_BASE`. The Lab base URL default (`https://fdict-dev.joinnow.vn`) is in `components/fd_ota/Kconfig`. Dev workflow flashes over USB only; it does not publish OTA.
-- **First-time flashing:** write `fdict-firmware-v<ver>-<build>-full.bin` at `0x0` over USB (esptool or a web flasher).
-- **app.bin vs full.bin:** app.bin (~1.5 MB, < 3 MiB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`; full.bin (~16.3 MB) is the merged image written at `0x0` over USB (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). CI builds both from the same build and uploads them to the server.
+- **First-time flashing:** write `...-full.bin` (English) or `...-full-fr.bin` (French) at `0x0` over USB, or pick the language at <https://fkit.vn/fdict/firmware>.
+- **app.bin vs full images:** app.bin (~1.5 MB, < 3 MiB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`, and it does not change the voice partition. Each full image is written at `0x0` (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). Prod uploads one app plus both full images from that single app build.
 - **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>-app.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.
 - **License:** Apache-2.0 (`LICENSE`, `NOTICE`). The FDict (device: FDict One) / fkit.vn names and logo are trademarks of fkit.vn and are not covered by the Apache license. Third-party notices: `THIRD_PARTY_NOTICES.md`.
 
 ## Quy tắc build firmware: dev và prod
 
-- **Dev (nhánh dev):** firmware chỉ build bằng cách cắm cáp USB, build và nạp thẳng vào máy (`idf.py build`, `idf.py -p <PORT> flash monitor`, hoặc `tools\flash-monitor.ps1` trong fdict-firmware). Không dùng OTA, không tạo bảng cập nhật hay bản phát hành OTA.
-- **Prod (nhánh prod):** bảng cập nhật OTA và file OTA chỉ được tạo khi push lên nhánh prod. Workflow `.github/workflows/ota-prod.yml` của fdict-firmware chỉ chạy khi push nhánh `prod`. Gộp dev vào prod rồi push là phát cho khách ngay.
+- **Dev (nhánh dev):** chỉ nạp qua cáp USB. Chọn giọng bằng `-DFD_VOICE_LANG=en` hoặc `fr`, mỗi giọng một thư mục build (`build-en`, `build-fr`). `flash-monitor.ps1` nạp giọng đang nằm trong `build/`. Không dùng OTA, không tạo bản phát hành, không đẩy bin lên server.
+- **Prod (nhánh prod):** OTA và hai ảnh USB chỉ xuất hiện khi push nhánh `prod`. Workflow `.github/workflows/ota-prod.yml` dựng một app và cả `full.bin` lẫn `full-fr.bin`. Gộp dev vào prod rồi push là phát cho khách ngay. Web-app phải nhận `voice=fr` trước lần push đó.
