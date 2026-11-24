@@ -1,7 +1,8 @@
 /* Ngu (deep sleep; board khong co mach giu nguon/latch): dung WiFi, tat am thanh, tat LCD, deep sleep.
- * Danh thuc bang nut bat ky (GPIO21/2/3/14, active-low, RTC GPIO) HOAC cham man hinh (FT6336U INT = GPIO17,
- * active-low, RTC GPIO) qua ext1 -> khoi dong lai binh thuong (co PIN + co fd/pin_req -> man PIN).
- * Cat han pin can cong tac / mach latch phan cung. */
+ * Danh thuc bang nut bat ky (GPIO21/2/3/14, active-low) qua ext1, HOAC cham man hinh hai lan.
+ * Cham don khong bat may: ULP RISC-V dem hai lan INT thap (FT6336U GPIO17) roi moi goi CPU.
+ * Khoi dong lai binh thuong (co PIN + co fd/pin_req -> man PIN). */
+#include <stddef.h>
 #include "board.h"
 #include "board_pins.h"
 #include "driver/gpio.h"
@@ -16,13 +17,18 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "ui_priv.h"
+#include "ulp_riscv.h"
+#include "ulp_riscv_gpio.h"
+
+extern const uint8_t ulp_tap_bin_start[] asm("_binary_ulp_tap_bin_start");
+extern const uint8_t ulp_tap_bin_end[] asm("_binary_ulp_tap_bin_end");
 
 static const char *TAG = "fd_sleep";
 
 /* Cam ung FT6336U truoc deep sleep: KHONG hibernate (0xA5=3 tat INT). Dat G_MODE (0xA4) = 0 polling (INT giu thap
- * suot luc cham, de ext1 bat muc thap chac chan) va CTRL (0x86) = 1 (tu vao Monitor khi khong cham).
- * Giu RST muc cao qua deep sleep (gpio_hold_en; board_touch_init nha lai). Cho nha tay (INT cao) de khong bi danh
- * thuc ngay (toi da 10 s). Thiet bi I2C tam (0x38) duoc go ngay sau khi ghi. */
+ * suot luc cham, de ULP thay mot lan cham) va CTRL (0x86) = 1 (tu vao Monitor khi khong cham).
+ * Giu RST muc cao qua deep sleep (gpio_hold_en; board_touch_init nha lai). Cho nha tay (INT cao) de lan cham cu
+ * khong tinh la lan thu nhat. Thiet bi I2C tam (0x38) duoc go ngay sau khi ghi. */
 static void touch_prepare_wake(void)
 {
     i2c_master_bus_handle_t bus = board_i2c_bus();
@@ -74,9 +80,28 @@ void fd_sleep_enter(void)
         rtc_gpio_pulldown_dis(BTN[k]);
         mask |= 1ULL << BTN[k];
     }
-    rtc_gpio_pullup_en(BOARD_TOUCH_INT);   /* cham man hinh (INT active-low) cung danh thuc */
-    rtc_gpio_pulldown_dis(BOARD_TOUCH_INT);
-    mask |= 1ULL << BOARD_TOUCH_INT;
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-    esp_sleep_enable_ext1_wakeup_io(mask, ESP_EXT1_WAKEUP_ANY_LOW);    esp_deep_sleep_start();
+    esp_sleep_enable_ext1_wakeup_io(mask, ESP_EXT1_WAKEUP_ANY_LOW);
+    /* Cham hai lan: ULP doc INT. Mot lan cham khong dua GPIO17 vao ext1. */
+    ulp_riscv_timer_stop();
+    ulp_riscv_halt();
+    ulp_riscv_gpio_init(BOARD_TOUCH_INT);
+    ulp_riscv_gpio_input_enable(BOARD_TOUCH_INT);
+    ulp_riscv_gpio_pullup(BOARD_TOUCH_INT);
+    ulp_riscv_gpio_pulldown_disable(BOARD_TOUCH_INT);
+    size_t ulp_bytes = (size_t)(ulp_tap_bin_end - ulp_tap_bin_start);
+    esp_err_t ue = ulp_riscv_load_binary(ulp_tap_bin_start, ulp_bytes);
+    if (ue == ESP_OK) ue = ulp_riscv_run();
+    if (ue == ESP_OK) ue = esp_sleep_enable_ulp_wakeup();
+    ESP_LOGI(TAG, "ulp double-tap: %s (%u B)", esp_err_to_name(ue), (unsigned)ulp_bytes);
+    esp_deep_sleep_start();
+}
+
+void fd_sleep_after_wake(void)
+{
+    uint32_t cause = esp_sleep_get_wakeup_causes();
+    if ((cause & ((1u << ESP_SLEEP_WAKEUP_ULP) | (1u << ESP_SLEEP_WAKEUP_EXT1))) == 0) return;
+    ulp_riscv_timer_stop();
+    ulp_riscv_halt();
+    if (rtc_gpio_is_valid_gpio(BOARD_TOUCH_INT)) rtc_gpio_deinit(BOARD_TOUCH_INT);
 }

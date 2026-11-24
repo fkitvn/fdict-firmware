@@ -36,9 +36,12 @@ typedef enum {
     FD_SCR_LISTEN,      /* Nghe cau AI, nhap chu cai dau */
     FD_SCR_SPELL,       /* 4.5.3 Chinh ta: ghep tu tu ky tu da xao */
     FD_SCR_GAMES,       /* 4.8.0 Tro choi (Hung tu + goi tai tu may chu) */
+    FD_SCR_SHADOW,      /* Nhai: doan van online, chu cuon, khong cham diem */
     FD_SCR_COUNT,
 } fd_scr_t;
 
+/* Goi truoc fd_display_init neu vua thuc tu ngu sau: dung ULP dem cham va tra chan cam ung ve GPIO. */
+void fd_sleep_after_wake(void);
 /* Dang ky xu ly su kien (nut, WiFi, gio) va hien man dau tien. Goi sau fd_display_init(). */
 esp_err_t fd_ui_start(fd_scr_t first);
 /* Chuyen man (an toan tu bat ky task/callback nao). */

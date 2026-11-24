@@ -1,6 +1,6 @@
 /* Man chao: logo FDict One giua man hinh nen trang trong 1 s, chi luc khoi dong that (boot / thuc deep sleep).
  * Khong hien khi chi bat lai den nen sau thoi gian cho man hinh (screen_wake).
- * Logo 88x73 + dong chu "FDict One - May hoc tu vung" (Noto 14, 1 dong). Lop phu tren lv_layer_sys() nen man dang mo phia duoi giu nguyen va hien lai sau khi het 1 s.
+ * Logo 88x73 + dong chu (Noto 14). Cau dai hon be ngang thi xuong dong, khong cat mep. Lop phu tren lv_layer_sys() nen man dang mo phia duoi giu nguyen va hien lai sau khi het 1 s.
  * Trong luc hien: cham bi ui_nav.c chuyen thanh "nha" (touch_read_wrap), nut bi nuot (on_fd_event). */
 #include "esp_log.h"
 #include "fd_fonts.h"
@@ -53,12 +53,14 @@ void ui_splash_show(void)
     lv_obj_t *img = lv_image_create(grp);
     lv_image_set_src(img, &img_logo_full);   /* 88x73, khong zoom */
     lv_obj_t *lbl = lv_label_create(grp);
-    /* 1 dong: Noto 14 rong ~187 px (le >= 10% ca man ngang 320 va man doc 240) */
+    /* Noto 14, le 12 px moi ben. Cau ngan giu 1 dong. Cau dai xuong dong, khong cat mep. */
     lv_obj_set_style_text_font(lbl, &fd_font_noto_14, 0);
     lv_obj_set_style_text_color(lbl, lv_color_hex(0x1E293B), 0);   /* slate dam tren nen trang */
     lv_label_set_text(lbl, _("SPLASH_TAGLINE"));
-    lv_obj_set_width(lbl, LV_SIZE_CONTENT);   /* khong xuong dong */
-    lv_label_set_long_mode(lbl, LV_LABEL_LONG_CLIP);
+    lv_coord_t maxw = lv_display_get_horizontal_resolution(NULL);
+    if (maxw > 24) maxw -= 24;
+    lv_obj_set_width(lbl, maxw);
+    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_center(grp);
     lv_obj_fade_in(grp, FADE_MS, 0);   /* opa cua nhom ap dung cho ca logo va chu */

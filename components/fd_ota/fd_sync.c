@@ -222,6 +222,20 @@ void fd_sync_pick_get(fd_sync_pick_t *out)
     unlock();
 }
 
+int fd_sync_pick_sel(char out[][FD_SYNC_WID_LEN], int cap)
+{
+    if (!out || cap <= 0 || !s_mx) return 0;
+    lock();
+    int n = 0;
+    for (int i = 0; i < s_pk_nsel && n < cap; i++) {
+        if (!s_pk_sel[i][0]) continue;
+        ucpy(out[n], FD_SYNC_WID_LEN, s_pk_sel[i]);
+        n++;
+    }
+    unlock();
+    return n;
+}
+
 void fd_sync_pick_set_mode(fd_sync_pick_mode_t mode)
 {
     if (mode > FD_SYNC_PICK_COMBINED) mode = FD_SYNC_PICK_ALL;
@@ -654,6 +668,7 @@ static const char *event_kind(const char *line)
     if (!strncmp(p, "quiz\"", 5)) return "quiz";
     if (!strncmp(p, "sen\"", 4)) return "sen";
     if (!strncmp(p, "spell\"", 6)) return "spell";
+    if (!strncmp(p, "shadow\"", 7)) return "shadow";
     return "card";
 }
 
@@ -701,6 +716,34 @@ void fd_sync_session_end(void)
 {
     s_sid[0] = 0;
     s_smod[0] = 0;
+}
+
+static void ev_meta(char *dst, size_t cap, const char *m, int hints);
+
+void fd_sync_event_shadow(void)
+{
+    if (!s_mx || !s_evmx) return;
+    char meta[96];
+    ev_meta(meta, sizeof(meta), "shadow", 0);
+    char line[192];
+    snprintf(line, sizeof(line), "{\"eid\":\"e%08lx%08lx\",\"k\":\"shadow\",\"ok\":0%s,\"ts\":%lld}\n",
+             (unsigned long)esp_random(), (unsigned long)esp_random(), meta, (long long)now_epoch());
+    xSemaphoreTake(s_evmx, portMAX_DELAY);
+    mkdir(SDIR, 0775);
+    struct stat st;
+    if (stat(EVLOG, &st) == 0 && st.st_size > EV_MAX_BYTES) ev_rewrite(NULL, 500);
+    FILE *f = fopen(EVLOG, "a");
+    bool ok = f && fputs(line, f) >= 0;
+    if (f) {
+        ok = fflush(f) == 0 && ok;
+        ok = fsync(fileno(f)) == 0 && ok;
+        ok = fclose(f) == 0 && ok;
+    }
+    xSemaphoreGive(s_evmx);
+    lock();
+    if (ok) s_st.pending++;
+    unlock();
+    if (!ok) ESP_LOGW(TAG, "khong ghi duoc phien nhai");
 }
 
 /* Truong them cho dong su kien: ,"m":..,"s":..,"t":..,"h":.. (bo truong rong). */
@@ -1095,7 +1138,7 @@ static void do_stats(char *rx)
             s_stats.streak_days = jint(r, "streak_days");
             s_stats.ai_calls = jint(r, "ai_calls");
             s_stats.ai_tokens = jint(r, "ai_tokens");
-            static const char *const MODS[FD_MOD_N] = {"quiz", "pos", "spell", "cloze", "order", "hear"};
+            static const char *const MODS[FD_MOD_N] = {"quiz", "pos", "spell", "cloze", "order", "hear", "shadow"};
             const cJSON *wm = cJSON_GetObjectItemCaseSensitive(wk, "modules");
             for (int i = 0; i < FD_MOD_N; i++) {
                 const cJSON *mo = cJSON_GetObjectItemCaseSensitive(wm, MODS[i]);

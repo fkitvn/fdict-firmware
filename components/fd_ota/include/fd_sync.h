@@ -58,13 +58,13 @@ typedef struct {
     int today_answers, today_correct, week_answers, week_correct, week_sessions, streak_days;
     int today_hinted, week_hinted;   /* 4.5.3: cau Nghe dung Gợi ý, la hoat dong nhung khong tinh ti le dung */
     int ai_calls, ai_tokens;     /* luot Gemini va tong token trong thang (server) */
-    /* 4.5.3: 7 ngay theo module (server week.modules), thu tu FD_MOD_*. hinted chi co o Nghe. */
-    struct { int answers, correct, hinted, sessions; } mod[6];
+    /* 7 ngay theo module (server week.modules), thu tu FD_MOD_*. Nhai chi co so phien. */
+    struct { int answers, correct, hinted, sessions; } mod[7];
     /* 4.5.4: 7 ngay gan nhat neu server gui mang days (thieu thi 0). Phan tu cuoi la hom nay. */
     struct { char date[11]; int answers, correct, hinted; } day[FD_STATS_DAYS];
 } fd_sync_stats_t;
 
-enum { FD_MOD_QUIZ = 0, FD_MOD_POS, FD_MOD_SPELL, FD_MOD_CLOZE, FD_MOD_ORDER, FD_MOD_HEAR, FD_MOD_N };
+enum { FD_MOD_QUIZ = 0, FD_MOD_POS, FD_MOD_SPELL, FD_MOD_CLOZE, FD_MOD_ORDER, FD_MOD_HEAR, FD_MOD_SHADOW, FD_MOD_N };
 
 /* 4.5.3 Chinh ta: 1 tu trong kho (nguoi goi tach ky tu, chon chieu ghep). vi = nghia dau tien (cat o , ; / ( ). */
 #define FD_SPELL_TOK 20   /* toi da so ky tu (khong tinh khoang trang) cua dap an */
@@ -109,6 +109,8 @@ void fd_sync_event_hear(const char *wid, const char *sentence, bool correct, int
  * Su kien trong phien gui kem s (ma phien) va t (ms tu su kien truoc). Chi goi tu luong giao dien. */
 void fd_sync_session_begin(const char *mod);
 void fd_sync_session_end(void);
+/* Phien Nhai: khong co tu, khong cham diem, khong doi tu da thuoc. Chi ghi lich su phien. */
+void fd_sync_event_shadow(void);
 /* Thong ke: LUON goi server (gui outbox truoc). Khong Wi-Fi -> ERROR "no_wifi". */
 void fd_sync_stats_fetch(void);
 void fd_sync_stats_get(fd_sync_stats_t *out);
@@ -139,6 +141,8 @@ typedef struct {
 int  fd_sync_col_count(void);
 bool fd_sync_col_get(int i, fd_sync_col_t *out);
 void fd_sync_pick_get(fd_sync_pick_t *out);
+/* Sao chep id bo dang chon khi che do Ket hop. Tra ve so id. */
+int fd_sync_pick_sel(char out[][FD_SYNC_WID_LEN], int cap);
 void fd_sync_pick_set_mode(fd_sync_pick_mode_t mode);
 void fd_sync_pick_toggle_col(int col_idx);
 void fd_sync_pick_set(fd_sync_pick_mode_t mode, const char ids[][FD_SYNC_WID_LEN], int n);

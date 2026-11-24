@@ -54,6 +54,7 @@ static const struct {
     {&img_tile_cloze, "FILL_BLANK", FD_SCR_CLOZE},
     {&img_tile_sentence, "SENTENCE", FD_SCR_SENTENCE},
     {&img_tile_listen, "LISTEN", FD_SCR_LISTEN},
+    {&img_tile_listen, "SHADOW", FD_SCR_SHADOW},
     {&img_tile_flashcard, "FLASH_CARD", FD_SCR_FLASHCARD},
     {&img_tile_dict, "DICTIONARY", FD_SCR_DICT},
     {&img_tile_game, "GAMES", FD_SCR_GAMES},
