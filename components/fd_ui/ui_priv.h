@@ -23,7 +23,7 @@ typedef struct {
 
 extern const ui_screen_t g_scr_home, g_scr_settings, g_scr_wifi,
     g_scr_about, g_scr_rotation, g_scr_brightness, g_scr_volume, g_scr_timeout, g_scr_deepsleep, g_scr_flashcard, g_scr_practice, g_scr_sync, g_scr_stats, g_scr_pin, g_scr_pair, g_scr_lang, g_scr_sentence, g_scr_mictest,
-    g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty, g_scr_phone_qr, g_scr_deck, g_scr_listen, g_scr_spell, g_scr_games;
+    g_scr_devmode, g_scr_btntest, g_scr_pos, g_scr_cloze, g_scr_dict, g_scr_warranty, g_scr_phone_qr, g_scr_deck, g_scr_listen, g_scr_spell, g_scr_games, g_scr_shadow;
 
 /* Ma thiet bi: MAC eFuse 12 hex (same stable ID used in pairing QR). */
 void ui_device_ident(char *out, size_t n);
@@ -79,7 +79,7 @@ void ui_splash_show(void);
 bool ui_splash_active(void);
 void ui_pin_wake_init(void);     /* scr_pin.c: doc co fd/pin_req luc khoi dong */
 bool ui_pin_wake_locked(void);   /* true = dang khoa sau khi thuc (chi cho man PIN) */
-void fd_sleep_enter(void);   /* fd_sleep.c: ngu (deep sleep), nut bat ky de bat lai */
+void fd_sleep_enter(void);   /* fd_sleep.c: ngu sau. Nut bat ky, hoac cham man hinh hai lan. */
 void ui_quick_open(void);
 void ui_quick_close(bool anim);
 bool ui_quick_is_open(void);

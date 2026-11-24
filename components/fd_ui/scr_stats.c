@@ -320,13 +320,17 @@ static void show(const fd_sync_stats_t *st)
     snprintf(v, sizeof(v), _("STATS_ANS_FMT"), st->today_correct, scored);
     kv_row(acard, _("STATS_TODAY"), v);
     static const char *const MOD_KEY[FD_MOD_N] = {
-        "PRACTICE", "WORD_TYPE", "SPELLING", "FILL_BLANK", "SENTENCE", "LISTEN"
+        "PRACTICE", "WORD_TYPE", "SPELLING", "FILL_BLANK", "SENTENCE", "LISTEN", "SHADOW"
     };
     for (int i = 0; i < FD_MOD_N; i++) {
-        int n = snprintf(v, sizeof(v), _("STATS_MOD_FMT"), st->mod[i].sessions, st->mod[i].correct,
-                         st->mod[i].answers - st->mod[i].hinted);
-        if (st->mod[i].hinted > 0 && n > 0 && n < (int)sizeof(v))
-            snprintf(v + n, sizeof(v) - (size_t)n, _("STATS_MOD_HINT_FMT"), st->mod[i].hinted);
+        if (i == FD_MOD_SHADOW) {
+            snprintf(v, sizeof(v), _("STATS_MOD_SESS"), st->mod[i].sessions);
+        } else {
+            int n = snprintf(v, sizeof(v), _("STATS_MOD_FMT"), st->mod[i].sessions, st->mod[i].correct,
+                             st->mod[i].answers - st->mod[i].hinted);
+            if (st->mod[i].hinted > 0 && n > 0 && n < (int)sizeof(v))
+                snprintf(v + n, sizeof(v) - (size_t)n, _("STATS_MOD_HINT_FMT"), st->mod[i].hinted);
+        }
         kv_row(acard, _(MOD_KEY[i]), v);
     }
     snprintf(v, sizeof(v), "%d", st->ai_calls);

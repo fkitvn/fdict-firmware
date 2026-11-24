@@ -57,6 +57,7 @@ static void heap_timer_cb(void *arg)
 
 static void run_app(void)
 {
+    fd_sleep_after_wake();   /* thuc tu ngu sau: dung ULP, tra chan cam ung truoc khi khoi tao touch */
     ESP_ERROR_CHECK(fd_events_init());
 
     bool storage_ok = fd_store_mount() == ESP_OK && fd_store_selftest() == ESP_OK;   /* tu kiem tra OTA */

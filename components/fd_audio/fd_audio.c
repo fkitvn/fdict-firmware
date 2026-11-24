@@ -30,6 +30,7 @@ static const char *TAG = "fd_audio";
 #define REQ_RESET     SIZE_MAX   /* req_t.count: yeu cau reset codec+PA (thuc) */
 #define REQ_REC       (SIZE_MAX - 2)   /* 2.1.8: ghi am thu tu mic (I2S RX) */
 #define REQ_WAV       (SIZE_MAX - 3)   /* 2.1.8: phat file WAV ghi am (req_t.path) */
+#define REQ_LONG      (SIZE_MAX - 4)   /* doan Nhai: pcm tro toi chuoi PSRAM, task tu giai phong */
 #define WAV_HDR       44
 
 /* ===== 4.6.10: CHUAN HOA AM LUONG CHUNG (moi am ra loa di qua write_mono -> lvl_sample) =====
@@ -71,6 +72,7 @@ static i2c_master_dev_handle_t s_dev;   /* ES8311 0x18 */
 static volatile int s_vol = -1;   /* -1 = chua doc NVS */
 static int s_vol_applied = -1;
 static volatile bool s_playing;
+static volatile bool s_say_stop;
 static volatile bool s_rec_on;   /* 2.1.8 dang ghi am (hoac da xep yeu cau ghi) */
 
 /* Trang thai chuan hoa (chi task am thanh dung; lvl_init goi truoc khi tong hop/phat). */
@@ -316,6 +318,48 @@ static void say_text(const char *text)
     free(pcm);
 }
 
+/* Pico chi nhan khoang 60 byte moi lan. Cat theo khoang trang, khong cat giua byte UTF-8. */
+static void play_long(char *text)
+{
+    s_say_stop = false;
+    static const int16_t gap[800] = {0};   /* ~50 ms giua cac manh */
+    const char *p = text ? text : "";
+    bool any = false;
+    while (*p && !s_say_stop) {
+        while (*p == ' ') p++;
+        if (!*p) break;
+        int n = 0;
+        int end = 0;
+        int brk = 0;
+        while (p[n] && n < 56) {
+            unsigned char c = (unsigned char)p[n];
+            int w = 1;
+            if ((c & 0xE0) == 0xC0) w = 2;
+            else if ((c & 0xF0) == 0xE0) w = 3;
+            else if ((c & 0xF8) == 0xF0) w = 4;
+            if (n + w > 56) break;
+            n += w;
+            end = n;
+            if (c < 0x80) brk = n;
+        }
+        if (p[end] && brk > 0) end = brk;
+        while (end > 0 && p[end - 1] == ' ') end--;
+        if (end <= 0) break;
+        char chunk[64];
+        memcpy(chunk, p, (size_t)end);
+        chunk[end] = 0;
+        if (any) write_mono(gap, 800);
+        say_text(chunk);
+        any = true;
+        p += end;
+    }
+}
+
+static void free_long(const req_t *r)
+{
+    if (r && r->count == REQ_LONG && r->pcm) free((void *)r->pcm);
+}
+
 /* Phat n mau PCM tu vi tri hien tai cua f. <= LVL_BUF_MAX: nap PSRAM, chuan hoa ca doan; dai hon / het PSRAM:
  * doc theo khoi 512 mau qua AGC. Tra ve so mau da phat. */
 static size_t play_file(FILE *f, size_t n, float gmax)
@@ -499,10 +543,11 @@ static void audio_task(void *arg)
             continue;
         }
         if (!r.pcm && r.count == REQ_REC) { rec_run(); continue; }
-        ESP_LOGD(TAG, "dequeue: %s %u B", r.text[0] ? r.text : (r.pcm ? "pcm" : "chime"), (unsigned)(r.count * 2));
-        if (!s_hw_ok) { ESP_LOGD(TAG, "skip: hw not ok"); continue; }
+        if (r.count == REQ_LONG) ESP_LOGD(TAG, "dequeue: doan dai");
+        else ESP_LOGD(TAG, "dequeue: %s %u B", r.text[0] ? r.text : (r.pcm ? "pcm" : "chime"), (unsigned)(r.count * 2));
+        if (!s_hw_ok) { free_long(&r); ESP_LOGD(TAG, "skip: hw not ok"); continue; }
         int v = fd_audio_get_volume();
-        if (v == 0) { ESP_LOGD(TAG, "skip: volume==0"); continue; }   /* tat tieng: khong phat, PA giu tat */
+        if (v == 0) { free_long(&r); ESP_LOGD(TAG, "skip: volume==0"); continue; }   /* tat tieng: khong phat, PA giu tat */
         if (v != s_vol_applied) {
             int got = -1;
             esp_err_t e = fd_es8311_voice_volume_set(s_es, v, &got);
@@ -515,7 +560,8 @@ static void audio_task(void *arg)
         amp(true);
         vTaskDelay(pdMS_TO_TICKS(PA_STARTUP_MS));   /* vendor music_test bat PA tu dau; PA can thoi gian khoi dong */
         static const int16_t z[CHUNK] = {0};
-        if (!r.pcm && r.count == REQ_WAV) play_wav(r.path);
+        if (r.count == REQ_LONG && r.pcm) play_long((char *)r.pcm);
+        else if (!r.pcm && r.count == REQ_WAV) play_wav(r.path);
         else if (r.path[0] || r.flags) {
             for (int k = 0; k < (r.reps ? r.reps : 1); k++) {
                 if (k) for (int i = 0; i < 3 * DRAIN_CHUNKS; i++) write_mono(z, CHUNK);   /* nghi ~0.3 s giua 2 lan doc */
@@ -529,6 +575,7 @@ static void audio_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(PA_TAIL_MS));
         amp(false);
         s_playing = false;
+        free_long(&r);
     }
 }
 
@@ -584,6 +631,28 @@ esp_err_t fd_audio_play_pcm(const int16_t *samples, size_t count)
     ESP_RETURN_ON_FALSE(samples && count, ESP_ERR_INVALID_ARG, TAG, "pcm");
     return post(samples, count);
 }
+esp_err_t fd_audio_say_long(const char *text)
+{
+    ESP_RETURN_ON_FALSE(text && text[0], ESP_ERR_INVALID_ARG, TAG, "long");
+    ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
+    size_t n = strlen(text);
+    if (n > 1400) n = 1400;
+    while (n > 0 && ((unsigned char)text[n - 1] & 0xC0) == 0x80) n--;
+    char *copy = heap_caps_malloc(n + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!copy) copy = malloc(n + 1);
+    if (!copy) return ESP_ERR_NO_MEM;
+    memcpy(copy, text, n);
+    copy[n] = 0;
+    req_t r = {.pcm = (const int16_t *)copy, .count = REQ_LONG};
+    if (xQueueSend(s_q, &r, 0) != pdTRUE) {
+        free(copy);
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_OK;
+}
+
+void fd_audio_say_stop(void) { s_say_stop = true; }
+
 esp_err_t fd_audio_say(const char *text)
 {
     ESP_RETURN_ON_FALSE(text && text[0], ESP_ERR_INVALID_ARG, TAG, "text");

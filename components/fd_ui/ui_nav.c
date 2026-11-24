@@ -55,6 +55,7 @@ static const ui_screen_t *const s_screens[FD_SCR_COUNT] = {
     [FD_SCR_LISTEN] = &g_scr_listen,
     [FD_SCR_SPELL] = &g_scr_spell,
     [FD_SCR_GAMES] = &g_scr_games,
+    [FD_SCR_SHADOW] = &g_scr_shadow,
 };
 
 static fd_scr_t s_cur = FD_SCR_COUNT;
