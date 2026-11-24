@@ -4,8 +4,8 @@
 #include "nvs.h"
 
 static const char *TAG = "fd_i18n";
-static const char *const CODE[FD_LANG_COUNT] = {"vi", "en"};
-static const char *const NAME[FD_LANG_COUNT] = {"Ti\u1ebfng Vi\u1ec7t", "English"};
+static const char *const CODE[FD_LANG_COUNT] = {"vi", "en", "fr"};
+static const char *const NAME[FD_LANG_COUNT] = {"Ti\u1ebfng Vi\u1ec7t", "English", "Fran\u00e7ais"};
 static fd_lang_t s_lang = FD_LANG_VI;
 
 void fd_i18n_init(void)

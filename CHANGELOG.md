@@ -5,6 +5,12 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.3.0] - 2026-11-24
+- Thêm tiếng Pháp vào ngôn ngữ hiển thị của máy, cạnh tiếng Việt và tiếng Anh.
+- Màn cài đặt ngôn ngữ có ba lựa chọn và máy nhớ lựa chọn đó.
+- Toàn bộ nhãn giao diện có bản tiếng Pháp.
+- Ngôn ngữ học của tài khoản không đổi.
+
 ## [5.2.0] - 2026-11-24
 - Hỗ trợ học tiếng Pháp trên cùng một bản firmware, giọng đọc offline theo gói voice của từng máy.
 - Máy nhận ngôn ngữ học từ tài khoản khi đồng bộ, nhãn chiều học đổi Anh hoặc Pháp cho phù hợp.
