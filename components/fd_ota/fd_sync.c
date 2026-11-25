@@ -72,6 +72,13 @@ typedef struct {
 } col_t;
 static col_t *s_c;
 static int s_nc;
+typedef struct {
+    char id[FD_SYNC_WID_LEN];
+    uint8_t n;
+    fd_sync_pass_line_t line[FD_SYNC_PASS_LINES];
+} pass_t;
+static pass_t *s_pass;
+static int s_np;
 static fd_sync_pick_mode_t s_pk_mode;
 static int s_pk_nsel;
 static char s_pk_sel[FD_SYNC_MAX_COLS][FD_SYNC_WID_LEN];
@@ -329,6 +336,42 @@ int fd_sync_pick_count(unsigned flags)
     return n;
 }
 
+int fd_sync_passage_count(void)
+{
+    if (!s_mx) return 0;
+    lock();
+    int n = s_np;
+    unlock();
+    return n;
+}
+
+bool fd_sync_passage_at(int i, char *preview, size_t npreview, int *lines)
+{
+    if (!s_mx) return false;
+    lock();
+    bool ok = s_pass && i >= 0 && i < s_np && s_pass[i].n > 0;
+    if (ok) {
+        if (preview && npreview) ucpy(preview, npreview, s_pass[i].line[0].text);
+        if (lines) *lines = s_pass[i].n;
+    }
+    unlock();
+    return ok;
+}
+
+int fd_sync_passage_load(int i, fd_sync_pass_line_t *out, int cap)
+{
+    if (!s_mx || !out || cap <= 0) return 0;
+    lock();
+    int n = 0;
+    if (s_pass && i >= 0 && i < s_np) {
+        n = s_pass[i].n;
+        if (n > cap) n = cap;
+        if (n > 0) memcpy(out, s_pass[i].line, (size_t)n * sizeof(*out));
+    }
+    unlock();
+    return n;
+}
+
 static void set_target_lang(const char *t)
 {
     if (t && t[0] == 'f' && t[1] == 'r') {
@@ -440,10 +483,39 @@ static void replay_events(void);
 /* Doc store.tsv vao RAM (giu khoa). false = khong co / hong (kho rong). */
 static void views_replay_locked(void);
 
+static void strip_end(char *s)
+{
+    size_t n = s ? strlen(s) : 0;
+    while (n && (s[n - 1] == '\n' || s[n - 1] == '\r')) s[--n] = 0;
+}
+
+static void pass_add(const char *id, const char *text, const char *vi, const char *ipa)
+{
+    if (!s_pass || !id || !id[0] || !text || !text[0]) return;
+    pass_t *p = NULL;
+    for (int i = 0; i < s_np; i++) if (!strcmp(s_pass[i].id, id)) { p = &s_pass[i]; break; }
+    if (!p) {
+        if (s_np >= FD_SYNC_PASSAGES) return;
+        p = &s_pass[s_np++];
+        memset(p, 0, sizeof(*p));
+        ucpy(p->id, sizeof(p->id), id);
+    }
+    if (p->n >= FD_SYNC_PASS_LINES) return;
+    fd_sync_pass_line_t *l = &p->line[p->n];
+    ucpy(l->text, sizeof(l->text), text);
+    ucpy(l->vi, sizeof(l->vi), vi ? vi : "");
+    ucpy(l->ipa, sizeof(l->ipa), ipa ? ipa : "");
+    strip_end(l->text);
+    strip_end(l->vi);
+    strip_end(l->ipa);
+    if (l->text[0] && l->vi[0]) p->n++;
+}
+
 static bool load_store_locked(void)
 {
     s_nw = 0;
     s_nc = 0;
+    s_np = 0;
     s_rev[0] = 0;
     s_st.have = false;
     s_st.words = s_st.sentences = s_st.collections = 0;
@@ -502,6 +574,8 @@ static bool load_store_locked(void)
             if (!w->en[0] || !w->vi[0] || !is_wid(w->id)) continue;
             ns += k;
             s_nw++;
+        } else if (!strcmp(fl[0], "P") && n >= 5) {
+            pass_add(fl[1], fl[2], fl[3], fl[4]);
         } else if (!strcmp(fl[0], "#END") && n >= 4) {
             end = atoi(fl[1]) == s_nw && atoi(fl[2]) == nc;
             if (!end) { bad = true; break; }
@@ -513,6 +587,7 @@ static bool load_store_locked(void)
         ESP_LOGW(TAG, "store.tsv hong/thieu -> bo, se tai lai toan bo");
         s_nw = 0;
         s_nc = 0;
+        s_np = 0;
         s_rev[0] = 0;
         unlink(STORE);
         return false;
@@ -984,6 +1059,19 @@ static int pull_all(char *rx, char *err, size_t errn)
                     fputc('\n', f);
                     nc++;
                 }
+                const cJSON *ps;
+                cJSON_ArrayForEach(ps, cJSON_GetObjectItemCaseSensitive(r, "passages")) {
+                    const char *pid = js(ps, "id");
+                    const cJSON *ln;
+                    cJSON_ArrayForEach(ln, cJSON_GetObjectItemCaseSensitive(ps, "lines")) {
+                        fputs("P", f);
+                        put_field(f, pid, FD_SYNC_WID_LEN, tmp);
+                        put_field(f, js(ln, "text"), 140, tmp);
+                        put_field(f, js(ln, "vi"), 140, tmp);
+                        put_field(f, js(ln, "ipa"), 96, tmp);
+                        fputc('\n', f);
+                    }
+                }
             }
             const cJSON *w;
             cJSON_ArrayForEach(w, cJSON_GetObjectItemCaseSensitive(r, "words")) {
@@ -1234,6 +1322,7 @@ void fd_sync_init(void)
     s_evmx = xSemaphoreCreateMutex();
     s_w = heap_caps_calloc(FD_SYNC_MAX_WORDS, sizeof(word_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     s_c = heap_caps_calloc(FD_SYNC_MAX_COLS, sizeof(col_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    s_pass = heap_caps_calloc(FD_SYNC_PASSAGES, sizeof(pass_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     s_q = xQueueCreate(4, sizeof(int));
     if (!s_mx || !s_evmx || !s_w || !s_q) {
         if (s_q) vQueueDelete(s_q);
@@ -1241,7 +1330,8 @@ void fd_sync_init(void)
         if (s_evmx) vSemaphoreDelete(s_evmx);
         heap_caps_free(s_w);
         heap_caps_free(s_c);
-        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL; s_c = NULL;
+        heap_caps_free(s_pass);
+        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL; s_c = NULL; s_pass = NULL;
         ESP_LOGE(TAG, "init: het bo nho"); return;
     }
     mkdir(SDIR, 0775);
@@ -1254,8 +1344,8 @@ void fd_sync_init(void)
     int p = count_events();
     lock(); s_st.pending = p; unlock();
     if (xTaskCreate(task, "fd_sync", 8192, NULL, 2, NULL) != pdPASS) {
-        vQueueDelete(s_q); vSemaphoreDelete(s_mx); vSemaphoreDelete(s_evmx); heap_caps_free(s_w); heap_caps_free(s_c);
-        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL; s_c = NULL;
+        vQueueDelete(s_q); vSemaphoreDelete(s_mx); vSemaphoreDelete(s_evmx); heap_caps_free(s_w); heap_caps_free(s_c); heap_caps_free(s_pass);
+        s_q = NULL; s_mx = NULL; s_evmx = NULL; s_w = NULL; s_c = NULL; s_pass = NULL;
         ESP_LOGE(TAG, "init: khong tao duoc task");
     }
 }

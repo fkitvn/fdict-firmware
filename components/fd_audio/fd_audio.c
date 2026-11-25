@@ -636,7 +636,7 @@ esp_err_t fd_audio_say_long(const char *text)
     ESP_RETURN_ON_FALSE(text && text[0], ESP_ERR_INVALID_ARG, TAG, "long");
     ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
     size_t n = strlen(text);
-    if (n > 1400) n = 1400;
+    if (n > 2400) n = 2400;
     while (n > 0 && ((unsigned char)text[n - 1] & 0xC0) == 0x80) n--;
     char *copy = heap_caps_malloc(n + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!copy) copy = malloc(n + 1);
