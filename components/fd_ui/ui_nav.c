@@ -702,6 +702,12 @@ static void edge_indev_cb(lv_event_t *ev)
             if (!o) o = lv_indev_search_obj(lv_layer_top(), &p);
             if (!o) o = lv_indev_search_obj(lv_screen_active(), &p);
             s_back_ok = !needs_hdrag(o);   /* ngoai le ap dung cho moi vuot quay lai */
+            /* Nut icon gon o mep (vd Nghe lai): cham khong bat dau cu chi mep; vuot van duoc neu cham ngoai nut. */
+            for (lv_obj_t *x = o; x; x = lv_obj_get_parent(x)) {
+                if (!lv_obj_is_clickable(x)) continue;
+                int32_t ow = lv_obj_get_width(x), oh = lv_obj_get_height(x);
+                if (ow > 0 && oh > 0 && ow <= 72 && oh <= 72) { s_back_ok = false; break; }
+            }
         }
         if (p.y < FD_SWIPE_TOP_PX) s_zones |= Z_TOP;
         if (p.x < FD_SWIPE_EDGE_PX) s_zones |= Z_LEFT;

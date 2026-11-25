@@ -10,7 +10,7 @@
  *   fd.W, fd.H, fd.side ("bottom" | "top" | "left" | "right" = phia cum nut)
  *   fd.count() so tu; fd.en(i), fd.vi(i) tu thu i (0..count-1)
  *   fd.text(id, s) | fd.box(id, x, y, w, h) (w, h = 0: vua chu) | fd.color(id, nen, chu) (0xRRGGBB, nen < 0 = trong suot)
- *   fd.font(id, 14 | 18 | 32) | fd.show(id, bool) | fd.clear()
+ *   fd.font(id, 14 | 18 | 24 | 32) | fd.show(id, bool) | fd.clear()
  *   fd.hud(diem, mang, cap[, combo]) | fd.sound(dung) | fd.say(tu_tieng_anh) | fd.over(diem[, so_dung, cap]) | fd.rand(n) | fd.ms()
  *   4.9.5 (moi tro choi, ke ca Hung tu dung san, la script Berry; hoat hinh va ve van la C):
  *   fd.style(id, vien_px, mau_vien, bo_goc, dem) | fd.measure(chu, font, rong_toi_da) -> [w, h] cua chu (px)
@@ -30,7 +30,7 @@
  *     fd.pos(id) -> [x, y] vi tri hien tai cua doi tuong (ke ca khi dang fd.move)
  *   print(...) ra log.
  *   5.4.0 tinh nang tai ve (Nhai lai, scr_shadow.c) dung chung may ao nay:
- *     fd.font(id, 12) Noto 12 | fd.align(id, 0 giua | 1 trai | 2 trai mot dong co dau ...)
+ *     fd.font(id, 12) Noto 12 | fd.font(id, 24) Mont 24 (icon LV_SYMBOL_*) | fd.align(id, 0 giua | 1 trai | 2 trai mot dong co dau ...)
  *     fd.say_long(chu[, toc_do_pct]) doc doan dai (<= 2400 byte, 50..200%, mac dinh 100) | fd.say_stop() | fd.busy() dang doc / con hang doi
  *     fd.pass_count() | fd.pass_at(i) -> chu xem truoc | fd.pass_load(i) -> [[cau, nghia, ipa], ...] (doan da dong bo)
  *     fd.pref_get(k) | fd.pref_set(k, so) chi khoa trong danh sach cho phep (sh_vi, sh_ipa, sh_snd, sh_spd), luu NVS fd
