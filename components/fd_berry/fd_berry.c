@@ -117,8 +117,8 @@ static fd_berry_roll_item_t *s_roll;     /* PSRAM FD_BERRY_ROLL_MAX */
 static fd_berry_roll_t s_rst;
 static volatile int s_roll_y;
 static fd_berry_line_t *s_lines;         /* PSRAM FD_BERRY_LINES, chi task VM */
-static const char *const PREF_K[] = {"sh_vi", "sh_ipa"};
-static const uint8_t PREF_DEF[] = {1, 0};
+static const char *const PREF_K[] = {"sh_vi", "sh_ipa", "sh_snd"};
+static const uint8_t PREF_DEF[] = {1, 0, 0};
 #define PREF_N ((int)(sizeof(PREF_K) / sizeof(PREF_K[0])))
 static uint8_t s_pref[PREF_N];
 static uint32_t s_pref_dirty;
@@ -811,6 +811,7 @@ static int f_roll_run(bvm *vm)
 {
     LOCK();
     s_rst.est_ms = clampv(argi(vm, 1, 8000), 0, 600000);
+    s_rst.silent = be_top(vm) >= 2 && be_tobool(vm, 2);
     s_rst.run_seq++;
     UNLOCK();
     be_return_nil(vm);

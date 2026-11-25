@@ -10,7 +10,7 @@
 #include "ui_priv.h"
 #include "fd_store.h"
 
-static lv_obj_t *s_body, *s_v[5], *s_state, *s_btn;
+static lv_obj_t *s_body, *s_v[6], *s_state, *s_btn;
 static bool s_gate;
 
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
@@ -48,14 +48,15 @@ static void refresh(void)
     lv_label_set_text_fmt(s_v[0], "%d", st.words);
     lv_label_set_text_fmt(s_v[1], "%d", st.sentences);
     lv_label_set_text_fmt(s_v[2], "%d", st.collections);
-    lv_label_set_text_fmt(s_v[4], "%d", st.pending);
+    lv_label_set_text_fmt(s_v[3], "%d", fd_sync_passage_count());
+    lv_label_set_text_fmt(s_v[5], "%d", st.pending);
     char t[48];
     if (st.last_sync > 0) {
         struct tm lt;
         localtime_r(&st.last_sync, &lt);
         strftime(t, sizeof(t), "%H:%M", &lt);   /* 4.1.10: chi gio dong bo (24h), bo ngay */
     } else strlcpy(t, _("SYNC_NEVER"), sizeof(t));
-    lv_label_set_text(s_v[3], t);
+    lv_label_set_text(s_v[4], t);
     bool run = st.state == FD_SYNC_CHECKING || st.state == FD_SYNC_PULLING || st.state == FD_SYNC_PUSHING || st.manual;
     char m[96];
     uint32_t col = FD_COLOR_TEXT_MUTED;
@@ -77,7 +78,7 @@ static void build(lv_obj_t *scr)
     s_body = ui_page_create(scr);
     s_gate = !fd_ota_is_paired();
     if (s_gate) { ui_pair_gate(s_body); return; }
-    lv_obj_set_style_pad_row(s_body, 6, 0);
+    lv_obj_set_style_pad_row(s_body, 5, 0);
     lv_obj_t *t = lv_label_create(s_body);
     lv_obj_set_style_text_font(t, &fd_font_noto_18, 0);
     lv_obj_set_style_text_color(t, lv_color_hex(FD_COLOR_PRIMARY_TEXT), 0);
@@ -85,8 +86,9 @@ static void build(lv_obj_t *scr)
     s_v[0] = kv(s_body, _("SYNC_WORDS"));
     s_v[1] = kv(s_body, _("SYNC_SENTENCES"));
     s_v[2] = kv(s_body, _("SYNC_COLLECTIONS"));
-    s_v[3] = kv(s_body, _("SYNC_LAST"));
-    s_v[4] = kv(s_body, _("SYNC_PENDING"));
+    s_v[3] = kv(s_body, _("SYNC_PASSAGES"));
+    s_v[4] = kv(s_body, _("SYNC_LAST"));
+    s_v[5] = kv(s_body, _("SYNC_PENDING"));
     s_state = lv_label_create(s_body);
     lv_obj_set_width(s_state, lv_pct(100));
     lv_label_set_long_mode(s_state, LV_LABEL_LONG_WRAP);

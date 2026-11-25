@@ -5,6 +5,12 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.4.2] - 2026-11-25
+- Nhại lại thêm nút bật tắt âm thanh và mặc định tắt.
+- Đổi màu tiêu đề Nhại lại giống các mục học khác.
+- Màn hình Đồng bộ hiện thêm số lượng đoạn văn Nhại lại.
+- Thêm hướng dẫn tạo nội dung trên điện thoại khi chưa có đoạn văn.
+
 ## [5.4.1] - 2026-11-25
 - Sửa lỗi máy khởi động lại khi mở Nhại lại.
 
