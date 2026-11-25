@@ -364,7 +364,10 @@ vi:
   GAME_DEL_OK: 'Xóa'
   GAME_DEL_DONE: 'Đã xóa trò chơi'
   FEATURE_FAIL: 'Không tải được. Thử lại.'
+  FEATURE_SCRIPT_ERR: 'Tính năng gặp lỗi và đã dừng'
   FEATURE_WIFI: 'Kết nối Wi-Fi để tải tính năng'
+  MOD_CHECKING: 'Đang kiểm tra…'
+  RAM_FREE: '%s / %s (%u,%u%%, trống %u KB)'
   SHADOW: Nhại lại
   SHADOW_AGAIN: Nghe lại
   SHADOW_FAIL: 'Không soạn được đoạn. Thử lại.'

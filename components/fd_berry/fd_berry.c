@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "berry.h"
+#include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -85,7 +86,7 @@ size_t fd_berry_mem_used(void) { return s_mem; }
 static SemaphoreHandle_t s_mx, s_done;
 static QueueHandle_t s_q;
 static TaskHandle_t s_task;
-static fd_berry_obj_t s_obj[FD_BERRY_OBJ_MAX];
+static EXT_RAM_BSS_ATTR fd_berry_obj_t s_obj[FD_BERRY_OBJ_MAX];
 static uint32_t s_dirty;
 static fd_berry_misc_t s_misc;
 static fd_berry_cfg_t s_cfg;
@@ -95,12 +96,12 @@ static int64_t s_t0;
 /* 4.9.5 dong ho tro choi (khong dem luc tam dung) + hoat hinh fd.move (tinh trong C) */
 static int64_t s_pause_acc, s_pause_at;
 typedef struct { bool on; int16_t x0, y0, x1, y1; int64_t t0; int32_t dur; } anim_t;
-static anim_t s_anim[FD_BERRY_OBJ_MAX];
+static EXT_RAM_BSS_ATTR anim_t s_anim[FD_BERRY_OBJ_MAX];
 static uint32_t s_arrived;   /* bit: doi tuong vua toi dich, cho goi arrive(id) */
 /* 5.1.0 hieu ung (fd.fx) va lac (fd.sway), tinh theo dong ho tro choi */
 typedef struct { uint8_t kind; int64_t t0; int32_t dur; } fx_t;
 typedef struct { int16_t amp; int32_t period; } sway_t;
-static fx_t s_fx[FD_BERRY_OBJ_MAX];
+static EXT_RAM_BSS_ATTR fx_t s_fx[FD_BERRY_OBJ_MAX];
 static sway_t s_sway[FD_BERRY_OBJ_MAX];
 static uint32_t s_calls, s_max_us;
 static uint64_t s_sum_us;
@@ -1043,7 +1044,7 @@ static void run_game(void)
         while (!s_stop && xQueueReceive(s_q, &ev, 0) == pdTRUE) {
             if (s_paused) continue;
             const char *fn = ev.type == FD_BERRY_EV_BUTTON ? "button" : ev.type == FD_BERRY_EV_BACK ? "back" : "tap";
-            if (!call_fn(vm, fn, ev.type == FD_BERRY_EV_BACK ? 0 : 1, ev.arg, FD_BERRY_FRAME_MS)) goto out;
+            if (!call_fn(vm, fn, ev.type == FD_BERRY_EV_BACK ? 0 : 1, ev.arg, FD_BERRY_EVENT_MS)) goto out;
         }
         /* hoat hinh toi dich -> arrive(id) */
         if (!s_paused) {
@@ -1055,7 +1056,7 @@ static void run_game(void)
             for (int i = 0; i < FD_BERRY_OBJ_MAX && arr && !s_stop; i++)
                 if (arr & (1u << i)) {
                     arr &= ~(1u << i);
-                    if (!call_fn(vm, "arrive", 1, i, FD_BERRY_FRAME_MS)) goto out;
+                    if (!call_fn(vm, "arrive", 1, i, FD_BERRY_EVENT_MS)) goto out;
                 }
         }
         int64_t now = esp_timer_get_time();

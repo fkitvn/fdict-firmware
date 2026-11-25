@@ -369,15 +369,16 @@ static void refresh(void)
     char ip[16] = "";
     fd_net_ip(ip, sizeof(ip));
     lv_label_set_text(s_val[R_IP], (fd_net_is_connected() && ip[0]) ? ip : _("NOT_CONNECTED"));
-    {   /* RAM: cung format dong Du lieu: "<da dung> / <tong> (<x,y>%)", % lam tron 1 so le */
+    {   /* RAM noi bo (heap internal): dung tong heap thuc te + trong KB */
         char u[16], t[16];
-        const size_t in_tot = 512 * 1024;   /* SRAM ESP32-S3 */
+        size_t in_tot = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
         size_t in_free = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
-        size_t in_used = in_free < in_tot ? in_tot - in_free : 0;
-        unsigned p10 = (unsigned)(((uint64_t)in_used * 1000 + in_tot / 2) / in_tot);
+        size_t in_used = (in_tot > 0 && in_free < in_tot) ? in_tot - in_free : 0;
+        unsigned p10 = in_tot ? (unsigned)(((uint64_t)in_used * 1000 + in_tot / 2) / in_tot) : 0;
+        unsigned free_kb = (unsigned)((in_free + 512) / 1024);
         fmt_sz(u, sizeof(u), in_used, 1);
         fmt_sz(t, sizeof(t), in_tot, 1);
-        lv_label_set_text_fmt(s_val[R_RAM], "%s / %s (%u,%u%%)", u, t, p10 / 10, p10 % 10);
+        lv_label_set_text_fmt(s_val[R_RAM], _("RAM_FREE"), u, t, p10 / 10, p10 % 10, free_kb);
         size_t ps_tot = esp_psram_is_initialized() ? esp_psram_get_size() : 0;
         size_t ps_heap = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
         if (ps_tot && ps_heap) {

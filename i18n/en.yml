@@ -364,7 +364,10 @@ en:
   GAME_DEL_OK: 'Delete'
   GAME_DEL_DONE: 'Game deleted'
   FEATURE_FAIL: 'Could not download. Try again.'
+  FEATURE_SCRIPT_ERR: 'Module hit an error and stopped'
   FEATURE_WIFI: 'Connect to Wi-Fi to download this feature'
+  MOD_CHECKING: 'Checking version…'
+  RAM_FREE: '%s / %s (%u,%u%%, %u KB free)'
   SHADOW: Repeat
   SHADOW_AGAIN: Replay
   SHADOW_FAIL: 'Could not write a passage. Try again.'

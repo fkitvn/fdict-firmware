@@ -10,6 +10,7 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "cJSON.h"
+#include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "fd_net.h"
@@ -38,13 +39,13 @@ typedef struct {
 
 static SemaphoreHandle_t s_mx;
 static fd_sen_ex_t *s_ex;   /* FD_SEN_MAX, PSRAM */
-static res_t s_res[FD_SEN_MAX];
+static EXT_RAM_BSS_ATTR res_t s_res[FD_SEN_MAX];
 static char s_sid[FD_SEN_ID_LEN];
 static fd_sen_status_t s_st;
 static int s_count = 10, s_streak;
 static uint32_t s_dur;
 static bool s_local;                /* 2.3.0: bo cau tu kho dong bo: moi cau tra loi = su kien fd_sync */
-static char s_wid[FD_SEN_MAX][FD_SYNC_WID_LEN];
+static EXT_RAM_BSS_ATTR char s_wid[FD_SEN_MAX][FD_SYNC_WID_LEN];
 static bool s_can_submit;           /* bo cau hien tai la phien server chua lam */
 static volatile bool s_sync_busy;
 static int64_t s_sync_last;

@@ -88,7 +88,7 @@ static bool s_gate_pair;                /* 4.9.0: chua dang nhap -> cong Dang nh
 static bool s_berry_on;
 static fd_berry_word_t *s_bwords;       /* tro vao s_words, giu den khi VM dung */
 static lv_obj_t *s_bplay, *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX], *s_bs[FD_BERRY_OBJ_MAX];
-static fd_berry_obj_t s_bcur[FD_BERRY_OBJ_MAX];
+/* dung chung g_ui_berry_cur / g_ui_berry_tmp trong ui_widgets.c (PSRAM) */
 /* 5.1.0 fd.deco (vet sang, day, nut) va hat fd.burst */
 static lv_obj_t *s_bdeco[FD_BERRY_OBJ_MAX][3];
 #define PART_N 32
@@ -98,7 +98,7 @@ static lv_obj_t *s_bfx;   /* lop hat, nam tren s_bplay */
 static int s_blives_max;
 
 /* luoi tro choi (V_HOME) */
-static lv_obj_t *s_on_status, *s_grid, *s_dl_lbl;
+static lv_obj_t *s_on_status, *s_grid, *s_dl_lbl, *s_list_spin, *s_load_ovl, *s_load_lbl;
 static lv_timer_t *s_on_timer;
 static fd_game_entry_t *s_entries;      /* PSRAM FD_GAME_LIST_MAX, ban sao danh sach may chu */
 static int s_nentries;
@@ -106,6 +106,7 @@ static char s_dl_id[FD_GAME_ID_LEN];   /* game dang tai (rong = khong) */
 static uint32_t s_list_at;              /* lv_tick lan tai danh sach thanh cong */
 static bool s_list_fresh;               /* 4.9.7: s_entries la ban moi tai (false = cache LittleFS) */
 static char s_pend_id[FD_GAME_ID_LEN];  /* 4.9.9: cham luc dang lam moi danh sach -> tai ngay khi xong */
+static char s_pend_open_id[FD_GAME_ID_LEN];
 static fd_game_state_t s_on_seen;
 
 LV_IMAGE_DECLARE(img_game_basket);
@@ -375,7 +376,7 @@ static void body_reset(void)
     timers_stop();
     berry_stop();
     lv_obj_clean(s_body);
-    s_score_lbl = s_level_lbl = s_on_status = s_grid = s_dl_lbl = NULL;
+    s_score_lbl = s_level_lbl = s_on_status = s_grid = s_dl_lbl = s_list_spin = NULL;
     memset(s_life, 0, sizeof(s_life));
     lv_obj_set_style_pad_all(s_body, 6, 0);
     lv_obj_set_style_pad_row(s_body, 6, 0);
@@ -798,10 +799,10 @@ static void berry_apply(int i, const fd_berry_obj_t *o)
         s_bo[i] = b;
         s_bl[i] = l;
         s_bs[i] = sl;
-        memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
-        s_bcur[i].font = 0xFF;   /* buoc ap dung lan dau */
-        s_bcur[i].opa_now = 255;
-        s_bcur[i].scale = 256;
+        memset(&g_ui_berry_cur[i], 0, sizeof(g_ui_berry_cur[i]));
+        g_ui_berry_cur[i].font = 0xFF;   /* buoc ap dung lan dau */
+        g_ui_berry_cur[i].opa_now = 255;
+        g_ui_berry_cur[i].scale = 256;
         /* 5.1.0: thu tu ve = thu tu id (id lon nam tren), bat ke doi tuong nao duoc tao truoc */
         int idx = 0;
         for (int j = 0; j < i; j++) if (s_bo[j]) idx++;
@@ -810,7 +811,7 @@ static void berry_apply(int i, const fd_berry_obj_t *o)
         lv_obj_set_style_transform_pivot_y(b, LV_PCT(50), 0);
     }
     lv_obj_t *b = s_bo[i], *l = s_bl[i];
-    fd_berry_obj_t *c = &s_bcur[i];
+    fd_berry_obj_t *c = &g_ui_berry_cur[i];
     lv_obj_set_hidden(b, !o->used || !o->vis);
     if (c->x != o->x || c->y != o->y || c->ox != o->ox) lv_obj_set_pos(b, o->x + o->ox, o->y);
     /* 5.1.0 chuyen mau, do dac, phong to, trang tri */
@@ -875,11 +876,10 @@ static void berry_tick_cb(lv_timer_t *t)
     bool p = paused();
     fd_berry_pause(p);
     if (!p) lv_display_trigger_activity(NULL);
-    static fd_berry_obj_t objs[FD_BERRY_OBJ_MAX];
     fd_berry_misc_t m;
-    uint32_t d = fd_berry_sync(objs, &m);
+    uint32_t d = fd_berry_sync(g_ui_berry_tmp, &m);
     for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
-        if (d & (1u << i)) berry_apply(i, &objs[i]);
+        if (d & (1u << i)) berry_apply(i, &g_ui_berry_tmp[i]);
     for (int k = 0; k < m.nburst && k < FD_BERRY_BURST_Q; k++) part_burst(&m.burst[k]);
     if (!p) part_step(GM_TICK_MS);
     if (m.hud_dirty) {
@@ -1049,6 +1049,21 @@ static void show_over(void)
 
 static void on_render(void);
 static void grid_build(void);
+
+static void load_ovl_open(const char *txt)
+{
+    if (!s_load_ovl) s_load_ovl = ui_loading_open(txt, &s_load_lbl);
+    else ui_loading_set(s_load_lbl, txt);
+    if (s_on_timer) lv_timer_set_period(s_on_timer, 100);
+}
+
+static void load_ovl_close(void)
+{
+    ui_loading_close(&s_load_ovl);
+    s_load_lbl = NULL;
+    s_pend_open_id[0] = 0;
+    if (s_on_timer) lv_timer_set_period(s_on_timer, 300);
+}
 static void open_menu_async(void *a) { (void)a; if (s_body && s_view == V_HOME) show_menu(); }
 static void play_new_async(void *a)
 {
@@ -1092,38 +1107,82 @@ static void dl_begin(const fd_game_entry_t *g, lv_obj_t *tile_btn)
     if (!queued) { s_on_seen = FD_GAME_IDLE; on_render(); }
 }
 
-/* Cham o: da cai -> mo ngay (khong can mang); chua cai -> tai roi mo; ban cu + online + may chu co ban moi -> cap nhat. */
+/* Cham o: online & da ghep -> spinner kiem tra ban moi neu can, cap nhat hoac mo; offline -> dung ban da cai. */
 static void tile_cb(lv_event_t *e)
 {
     int i = (int)(intptr_t)lv_event_get_user_data(e);
-    if (s_dlg || s_view != V_HOME) return;
+    if (s_dlg || s_view != V_HOME || s_load_ovl || s_pend_open_id[0]) return;
     fd_game_status_t st;
     fd_game_get(&st);
-    if (st.state == FD_GAME_DOWNLOADING || s_pend_id[0]) { fd_ui_toast(_("GAME_BUSY")); return; }
+    if (st.state == FD_GAME_DOWNLOADING || s_pend_id[0]) {
+        char t[48];
+        snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
+        load_ovl_open(t);
+        return;
+    }
+    const char *id = NULL;
+    const fd_game_entry_t *g = NULL;
+    int inst_k = -1;
     if (i <= GT_INST) {
         int k = GT_INST - i;
-        if (k >= s_ninst) return;
-        if (!s_inst[k].runnable) {
+        if (k < 0 || k >= s_ninst) return;
+        inst_k = k;
+        id = s_inst[k].id;
+        g = entry_find(id);
+    } else {
+        if (i < 0 || i >= s_nentries) return;
+        g = &s_entries[i];
+        id = g->id;
+        inst_k = inst_find(id);
+    }
+    bool local_ok = inst_k >= 0 && s_inst[inst_k].runnable;
+    if (!fd_net_is_connected()) {
+        if (local_ok) { select_game(id); lv_async_call(open_menu_async, NULL); return; }
+        if (inst_k >= 0) {
             char t[64];
-            snprintf(t, sizeof(t), _("GAME_NEED_FW"), s_inst[k].min_fw[0] ? s_inst[k].min_fw : "?");
+            snprintf(t, sizeof(t), _("GAME_NEED_FW"), s_inst[inst_k].min_fw[0] ? s_inst[inst_k].min_fw : "?");
             fd_ui_toast(t);
             return;
         }
-        select_game(s_inst[k].id);
-        lv_async_call(open_menu_async, NULL);
+        fd_ui_toast(_("GAME_NEED_WIFI"));
         return;
     }
-    if (i < 0 || i >= s_nentries) return;
-    const fd_game_entry_t *g = &s_entries[i];
-    gstate_t gs = entry_state(g);
-    int k = inst_find(g->id);
-    if (gs == G_OK && k >= 0 && s_inst[k].runnable) { select_game(g->id); lv_async_call(open_menu_async, NULL); return; }
+    if (!fd_ota_is_paired()) {
+        if (local_ok) { select_game(id); lv_async_call(open_menu_async, NULL); return; }
+        fd_ui_toast(_("PAIR_TO_STUDY"));
+        return;
+    }
+    bool stale = !s_list_fresh || lv_tick_elaps(s_list_at) > LIST_TTL_MS;
+    if (st.state == FD_GAME_LISTING || stale) {
+        strlcpy(s_pend_open_id, id, sizeof(s_pend_open_id));
+        load_ovl_open(_("MOD_CHECKING"));
+        if (st.state != FD_GAME_LISTING) {
+            s_on_seen = FD_GAME_IDLE;
+            fd_game_list_fetch();
+        }
+        return;
+    }
+    if (!g) {
+        if (local_ok) { select_game(id); lv_async_call(open_menu_async, NULL); return; }
+        if (inst_k >= 0) {
+            char t[64];
+            snprintf(t, sizeof(t), _("GAME_NEED_FW"), s_inst[inst_k].min_fw[0] ? s_inst[inst_k].min_fw : "?");
+            fd_ui_toast(t);
+            return;
+        }
+        fd_ui_toast(_("GAME_ERR_GONE_T"));
+        return;
+    }
+    if (entry_state(g) == G_OK && local_ok) { select_game(id); lv_async_call(open_menu_async, NULL); return; }
     if (!g->supported) {
         char t[64];
         snprintf(t, sizeof(t), _("GAME_NEED_FW"), g->min_fw[0] ? g->min_fw : "?");
         fd_ui_toast(t);
         return;
     }
+    char t[48];
+    snprintf(t, sizeof(t), _("GAME_DL_PCT"), 0);
+    load_ovl_open(t);
     dl_begin(g, lv_event_get_current_target(e));
 }
 
@@ -1267,15 +1326,15 @@ static void on_render(void)
     char t[96];
     bool first = s_on_seen != st.state;
     s_on_seen = st.state;
+    if (s_list_spin) lv_obj_set_hidden(s_list_spin, !(st.state == FD_GAME_LISTING && s_nentries == 0 && s_ninst == 0));
     switch (st.state) {
     case FD_GAME_LISTING:   /* 4.9.7: dang hien cache / goi da cai thi tai ngam, khong bao */
         lv_label_set_text(s_on_status, (s_nentries == 0 && s_ninst == 0) ? _("GAME_LOADING") : "");
         break;
     case FD_GAME_DOWNLOADING:
-        if (s_dl_lbl) {
-            snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
-            lv_label_set_text(s_dl_lbl, t);
-        }
+        snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
+        if (s_dl_lbl) lv_label_set_text(s_dl_lbl, t);
+        if (s_load_lbl) ui_loading_set(s_load_lbl, t);
         lv_label_set_text(s_on_status, "");
         break;
     case FD_GAME_LIST_READY:
@@ -1286,21 +1345,60 @@ static void on_render(void)
             s_list_fresh = true;
             lv_label_set_text(s_on_status, (s_nentries > 0 || s_ninst > 0) ? "" : _("GAME_NONE_ONLINE"));
             grid_build();   /* cap nhat tai cho (timer LVGL) */
+            if (s_pend_open_id[0]) {
+                char pid[FD_GAME_ID_LEN];
+                strlcpy(pid, s_pend_open_id, sizeof(pid));
+                s_pend_open_id[0] = 0;
+                const fd_game_entry_t *g = entry_find(pid);
+                int k = inst_find(pid);
+                bool local_ok = k >= 0 && s_inst[k].runnable;
+                if (g && !g->supported) {
+                    load_ovl_close();
+                    char fw[64];
+                    snprintf(fw, sizeof(fw), _("GAME_NEED_FW"), g->min_fw[0] ? g->min_fw : "?");
+                    fd_ui_toast(fw);
+                } else if ((g && entry_state(g) == G_OK && local_ok) || (!g && local_ok)) {
+                    load_ovl_close();
+                    select_game(pid);
+                    lv_async_call(open_menu_async, NULL);
+                } else if (g) {
+                    snprintf(t, sizeof(t), _("GAME_DL_PCT"), 0);
+                    load_ovl_open(t);
+                    dl_begin(g, NULL);
+                } else {
+                    load_ovl_close();
+                    fd_ui_toast(_("GAME_ERR_GONE_T"));
+                }
+            }
             pend_run();
         }
         break;
     case FD_GAME_DONE:
         if (first) {
+            load_ovl_close();
             s_dl_id[0] = 0;
             lv_async_call(play_new_async, NULL);
         }
         break;
     case FD_GAME_ERROR:
+        if (first && !st.install && s_pend_open_id[0]) {
+            char pid[FD_GAME_ID_LEN];
+            strlcpy(pid, s_pend_open_id, sizeof(pid));
+            load_ovl_close();
+            int k = inst_find(pid);
+            if (k >= 0 && s_inst[k].runnable) {
+                select_game(pid);
+                lv_async_call(open_menu_async, NULL);
+            } else {
+                fd_ui_toast(err_text(st.err, false));
+            }
+        }
         if (first && !st.install && s_pend_id[0]) pend_run();   /* lam moi loi: van thu tai bang danh sach dang co */
         if (first) {
             const char *m = err_text(st.err, st.install);
-            if (!strcmp(st.err, "reset")) { s_dl_id[0] = 0; grid_build(); break; }   /* 5.0.1: huy do xoa / dat lai */
+            if (!strcmp(st.err, "reset")) { load_ovl_close(); s_dl_id[0] = 0; grid_build(); break; }   /* 5.0.1: huy do xoa / dat lai */
             if (st.install) {
+                load_ovl_close();
                 dl_fail_toast(st.err);
                 s_dl_id[0] = 0;
                 grid_build();
@@ -1515,7 +1613,19 @@ static void show_home(void)
     lv_obj_set_flex_align(s_grid, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_grid, GT_GAP_ROW, 0);
     lv_obj_set_style_pad_column(s_grid, GT_GAP_COL, 0);
-    s_on_status = label(s_body, "", &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *sr = row(s_body);
+    s_list_spin = lv_spinner_create(sr);
+    lv_obj_set_size(s_list_spin, 18, 18);
+    lv_spinner_set_anim_params(s_list_spin, 900, 220);
+    lv_obj_set_style_arc_width(s_list_spin, 2, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(s_list_spin, 2, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(s_list_spin, lv_color_hex(FD_COLOR_BORDER), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(s_list_spin, lv_color_hex(FD_COLOR_PRIMARY), LV_PART_INDICATOR);
+    lv_obj_set_hidden(s_list_spin, true);
+    s_on_status = ui_label_create(sr, "", &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_label_set_long_mode(s_on_status, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_max_width(s_on_status, lv_pct(85), 0);
+    lv_obj_set_style_text_align(s_on_status, LV_TEXT_ALIGN_CENTER, 0);
     /* 4.9.7: Dat lai (xoa moi game da tai + ky luc + cai dat); Nut 4 cung mo */
     lv_obj_t *rr = row(s_body);
     lv_obj_set_style_pad_top(rr, 4, 0);
@@ -1570,11 +1680,12 @@ static void destroy(void)
     s_left_from = s_body ? s_view : V_HOME;
     s_menu_y = (s_body && s_view == V_MENU && s_menu_sc) ? lv_obj_get_scroll_y(s_menu_sc) : 0;   /* vd mo Bo tu roi quay lai */
     s_menu_sc = NULL;
+    load_ovl_close();
     timers_stop();
     berry_stop();
     dlg_close();
     s_body = NULL;
-    s_score_lbl = s_level_lbl = s_on_status = s_grid = s_dl_lbl = NULL;
+    s_score_lbl = s_level_lbl = s_on_status = s_grid = s_dl_lbl = s_list_spin = NULL;
     memset(s_life, 0, sizeof(s_life));
     s_dl_id[0] = 0;
     s_pend_id[0] = 0;
@@ -1629,6 +1740,7 @@ static bool on_button(const fd_evt_button_t *b)
 static bool on_back(void)
 {
     if (s_gate_pair) return false;
+    if (s_load_ovl || s_pend_open_id[0]) { load_ovl_close(); return true; }
     if (s_dlg) { s_reset_dlg = false; s_del_dlg = false; dlg_close(); return true; }
     if (s_view == V_BERRY) { quit_open(); return true; }
     if (s_view == V_MENU) { s_menu_y = 0; show_home(); return true; }

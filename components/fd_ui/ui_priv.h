@@ -6,6 +6,7 @@
 #include "fd_events.h"
 #include "fd_ui.h"
 #include "fd_i18n.h"   /* _("...") = chuoi giao dien theo ngon ngu (lv_i18n) */
+#include "fd_berry.h"
 #include "fd_voice.h"
 #include "lvgl.h"
 #include "ui_theme.h"
@@ -138,4 +139,13 @@ lv_obj_t *ui_dialog_title(lv_obj_t *box, const char *txt);
 lv_obj_t *ui_dialog_btns(lv_obj_t *box);
 lv_obj_t *ui_dialog_btn(lv_obj_t *row, const char *txt, bool primary, lv_event_cb_t cb, void *user_data);
 void ui_dialog_close(lv_obj_t **overlay);
+
+/* Dung chung giua scr_shadow va scr_game (khong bao gio mo dong thoi), dat o PSRAM. */
+extern fd_berry_obj_t g_ui_berry_cur[FD_BERRY_OBJ_MAX];
+extern fd_berry_obj_t g_ui_berry_tmp[FD_BERRY_OBJ_MAX];
+
+/* Lop phu dang kiem tra / tai mo-dun (Noto 14 + spinner gon tren lv_layer_top). */
+lv_obj_t *ui_loading_open(const char *txt, lv_obj_t **out_lbl);
+void ui_loading_set(lv_obj_t *lbl, const char *txt);
+void ui_loading_close(lv_obj_t **overlay);
 

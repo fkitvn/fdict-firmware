@@ -5,6 +5,11 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.4.8] - 2026-11-25
+- Hiện vòng xoay khi kiểm tra và tải Nhại lại hoặc Trò chơi, không còn mở giao diện cũ khi script lỗi.
+- Sửa kiểm tra phiên bản module hết thời gian ngắn, tránh lặp tải và hỗ trợ khi mất mạng.
+- Chuyển nhiều bộ đệm sang PSRAM, tạo kênh thu âm khi ghi âm và sửa phần trăm RAM ở Thông tin.
+
 ## [5.4.7] - 2026-11-25
 - Câu đang đọc trong Nhại lại được in đậm và chữ cuộn đều theo nhịp đọc.
 - Chữ IPA và nghĩa to hơn một cỡ.

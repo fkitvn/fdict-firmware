@@ -531,22 +531,30 @@ static int parse_list(const char *buf, size_t len, fd_game_entry_t *tmp, int cap
         n = 0;
         const cJSON *it;
         cJSON_ArrayForEach(it, g) {
-            if (n >= cap) break;
             const char *id = jstr(it, "id"), *pth = jstr(it, "path"), *sha = jstr(it, "sha256");
             if (!safe_id(id) || !safe_path(pth) || !is_hex64(sha)) continue;
-            fd_game_entry_t *e = &tmp[n++];
-            memset(e, 0, sizeof(*e));
-            ucpy(e->id, sizeof(e->id), id);
-            ucpy(e->name, sizeof(e->name), jstr(it, "name")[0] ? jstr(it, "name") : id);
-            ucpy(e->version, sizeof(e->version), jstr(it, "version"));
-            ucpy(e->min_fw, sizeof(e->min_fw), jstr(it, "min_fw"));
-            ucpy(e->path, sizeof(e->path), pth);
-            icon_cpy(e->icon, jstr(it, "icon"));
-            e->berry = !strcmp(jstr(it, "type"), "berry");
-            for (int k = 0; k < 64; k++) e->sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
-            e->sha256[64] = 0;
-            e->size = clampi(jint(it, "size", 0), 0, FD_GAME_PKG_MAX + 1);
-            e->supported = e->berry && fw_ok(e->min_fw) && e->size <= FD_GAME_PKG_MAX;
+            fd_game_entry_t cand;
+            memset(&cand, 0, sizeof(cand));
+            ucpy(cand.id, sizeof(cand.id), id);
+            ucpy(cand.name, sizeof(cand.name), jstr(it, "name")[0] ? jstr(it, "name") : id);
+            ucpy(cand.version, sizeof(cand.version), jstr(it, "version"));
+            ucpy(cand.min_fw, sizeof(cand.min_fw), jstr(it, "min_fw"));
+            ucpy(cand.path, sizeof(cand.path), pth);
+            icon_cpy(cand.icon, jstr(it, "icon"));
+            cand.berry = !strcmp(jstr(it, "type"), "berry");
+            for (int k = 0; k < 64; k++) cand.sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
+            cand.sha256[64] = 0;
+            cand.size = clampi(jint(it, "size", 0), 0, FD_GAME_PKG_MAX + 1);
+            cand.supported = cand.berry && fw_ok(cand.min_fw) && cand.size <= FD_GAME_PKG_MAX;
+            int dup = -1;
+            for (int k = 0; k < n; k++) if (!strcmp(tmp[k].id, cand.id)) { dup = k; break; }
+            if (dup >= 0) {
+                bool take = (cand.supported && !tmp[dup].supported) ||
+                            (cand.supported == tmp[dup].supported && ver_num(cand.version) > ver_num(tmp[dup].version));
+                if (take) tmp[dup] = cand;
+            } else if (n < cap) {
+                tmp[n++] = cand;
+            }
         }
     }
     cJSON_Delete(j);
@@ -573,7 +581,7 @@ static void list_task(void *arg)
     fw_semver(fw, sizeof(fw));
     fd_ota_get_device_id(did, sizeof(did));
     snprintf(path, sizeof(path), "/api/devices/games?hw=" HW "&fw=%s&device_id=%s", fw, did);
-    int code = fd_ota_api_get_file_q(path, LIST_TMP, LIST_MAX, NULL, NULL);
+    int code = fd_ota_api_get_file_qt(path, LIST_TMP, LIST_MAX, 3500, NULL, NULL);
     ESP_LOGI(TAG, "list: HTTP %d", code);
     int n = 0;
     fd_game_entry_t *tmp = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);

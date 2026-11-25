@@ -243,16 +243,15 @@ static esp_err_t hw_init(void)
 
     i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     cc.auto_clear = true;
-    ESP_RETURN_ON_ERROR(i2s_new_channel(&cc, &s_tx, &s_rx), TAG, "i2s chan");
+    ESP_RETURN_ON_ERROR(i2s_new_channel(&cc, &s_tx, NULL), TAG, "i2s chan");
     i2s_std_config_t sc = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(SAMPLE_RATE),
         .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
         .gpio_cfg = {.mclk = BOARD_I2S_MCLK, .bclk = BOARD_I2S_BCLK, .ws = BOARD_I2S_WS,
-                     .dout = BOARD_I2S_DOUT, .din = BOARD_I2S_DIN},
+                     .dout = BOARD_I2S_DOUT, .din = I2S_GPIO_UNUSED},
     };
     sc.clk_cfg.mclk_multiple = I2S_MCLK_MULTIPLE_256;
     ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(s_tx, &sc), TAG, "i2s std");
-    ESP_RETURN_ON_ERROR(i2s_channel_init_std_mode(s_rx, &sc), TAG, "i2s rx");   /* chi enable khi ghi am */
 
     ESP_RETURN_ON_ERROR(board_i2c_init(), TAG, "i2c");
     i2c_device_config_t dc = {.dev_addr_length = I2C_ADDR_BIT_LEN_7, .device_address = 0x18, .scl_speed_hz = 400000};
@@ -583,14 +582,46 @@ static esp_err_t rec_capture(int16_t *pcm, uint32_t *out_n)
     return err;
 }
 
+static esp_err_t rx_open(void)
+{
+    if (s_rx) return ESP_OK;
+    i2s_chan_config_t cc = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    cc.auto_clear = true;
+    ESP_RETURN_ON_ERROR(i2s_new_channel(&cc, NULL, &s_rx), TAG, "i2s rx chan");
+    i2s_std_config_t sc = {
+        .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(SAMPLE_RATE),
+        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+        .gpio_cfg = {.mclk = I2S_GPIO_UNUSED, .bclk = BOARD_I2S_BCLK, .ws = BOARD_I2S_WS,
+                     .dout = I2S_GPIO_UNUSED, .din = BOARD_I2S_DIN},
+    };
+    sc.clk_cfg.mclk_multiple = I2S_MCLK_MULTIPLE_256;
+    esp_err_t err = i2s_channel_init_std_mode(s_rx, &sc);
+    if (err != ESP_OK) {
+        i2s_del_channel(s_rx);
+        s_rx = NULL;
+    }
+    return err;
+}
+
+static void rx_close(void)
+{
+    if (s_rx) {
+        i2s_del_channel(s_rx);
+        s_rx = NULL;
+    }
+}
+
 static void rec_run(void)
 {
     esp_err_t err = ESP_OK;
     int16_t *pcm = NULL;
     uint32_t n = 0;
-    if (!s_hw_ok || !s_rx || !s_es) err = ESP_ERR_INVALID_STATE;
+    if (!s_hw_ok || !s_es) err = ESP_ERR_INVALID_STATE;
     else if (!(pcm = heap_caps_malloc(s_rec_max * 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT))) err = ESP_ERR_NO_MEM;
-    else err = rec_capture(pcm, &n);
+    else if ((err = rx_open()) == ESP_OK) {
+        err = rec_capture(pcm, &n);
+        rx_close();
+    }
     if (err == ESP_OK && n < SAMPLE_RATE / 10) err = ESP_ERR_INVALID_SIZE;   /* qua ngan (< 0.1 s) */
     if (err == ESP_OK) {
         /* 4.6.10: luu ban tho; khi nghe lai play_wav chuan hoa theo muc chung (thay quy tac dinh -1 dBFS cu). */

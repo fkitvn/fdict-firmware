@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -30,7 +31,7 @@ typedef enum { V_LIST, V_PLAY } view_t;
 static view_t s_view;
 static lv_obj_t *s_body, *s_viewp, *s_roll;
 static lv_timer_t *s_tmr;
-static fd_sync_pass_line_t s_lines[FD_SYNC_PASS_LINES];
+static EXT_RAM_BSS_ATTR fd_sync_pass_line_t s_lines[FD_SYNC_PASS_LINES];
 static int s_n, s_est, s_pick, s_cur, s_focus_i, s_focus_n, s_nmark;
 static int s_item0[FD_SYNC_PASS_LINES], s_itemn[FD_SYNC_PASS_LINES];
 static fd_berry_roll_mark_t s_marks[FD_BERRY_MARK_MAX];
@@ -51,7 +52,7 @@ static void apply_focus_bold(void);
 static bool s_bmode;
 static lv_obj_t *s_cv;
 static lv_obj_t *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX];
-static fd_berry_obj_t s_bcur[FD_BERRY_OBJ_MAX];
+static char s_berr[96];
 static lv_timer_t *s_btmr;
 static uint32_t s_rver, s_rseq, s_fseq;
 static bool s_sess_open;
@@ -588,14 +589,14 @@ static void bapply(int i, const fd_berry_obj_t *o)
         lv_obj_set_clickable(l, false);
         s_bo[i] = b;
         s_bl[i] = l;
-        memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
-        s_bcur[i].font = 0xFF;
+        memset(&g_ui_berry_cur[i], 0, sizeof(g_ui_berry_cur[i]));
+        g_ui_berry_cur[i].font = 0xFF;
         int idx = s_viewp ? 1 : 0;   /* giu khung chu cuon o day, cac hop Berry noi phia tren */
         for (int j = 0; j < i; j++) if (s_bo[j]) idx++;
         lv_obj_move_to_index(b, idx);
     }
     lv_obj_t *b = s_bo[i], *l = s_bl[i];
-    fd_berry_obj_t *c = &s_bcur[i];
+    fd_berry_obj_t *c = &g_ui_berry_cur[i];
     bool first = c->font == 0xFF;
     lv_obj_set_hidden(b, !o->used || !o->vis);
     if (first || c->x != o->x || c->y != o->y) lv_obj_set_pos(b, o->x, o->y);
@@ -750,24 +751,52 @@ static void berry_teardown(void)
     s_lbuf = NULL;
 }
 
-static void fallback_async(void *a)
+static void err_back_cb(lv_event_t *e) { (void)e; ui_nav_back(); }
+
+static void show_berry_err(const char *err)
+{
+    berry_teardown();
+    s_gate = false;
+    s_bmode = false;
+    s_view = V_LIST;
+    if (!s_body) return;
+    lv_obj_clean(s_body);
+    lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(s_body, 8, 0);
+    lv_obj_t *t = ui_label_create(s_body, _("FEATURE_SCRIPT_ERR"), &fd_font_noto_18, FD_COLOR_ALERT);
+    lv_obj_set_width(t, lv_pct(100));
+    lv_label_set_long_mode(t, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_align(t, LV_TEXT_ALIGN_CENTER, 0);
+    if (err && err[0]) {
+        lv_obj_t *h = ui_label_create(s_body, err, &fd_font_noto_12, FD_COLOR_TEXT_MUTED);
+        lv_obj_set_width(h, lv_pct(100));
+        lv_label_set_long_mode(h, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);
+    }
+    lv_obj_t *r = lv_obj_create(s_body);
+    lv_obj_remove_style_all(r);
+    lv_obj_set_size(r, lv_pct(70), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(r, LV_FLEX_FLOW_ROW);
+    lv_obj_set_scrollable(r, false);
+    ui_gate_btn(r, _("BACK"), true, err_back_cb);
+}
+
+static void berry_err_async(void *a)
 {
     (void)a;
     if (!s_body || !s_bmode) return;
-    berry_teardown();
-    prefs_load();
-    show_list();
+    show_berry_err(s_berr);
 }
 
 static void btick_cb(lv_timer_t *t)
 {
     (void)t;
     if (!s_bmode) return;
-    static fd_berry_obj_t objs[FD_BERRY_OBJ_MAX];
     fd_berry_misc_t m;
-    uint32_t d = fd_berry_sync(objs, &m);
+    uint32_t d = fd_berry_sync(g_ui_berry_tmp, &m);
     for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
-        if (d & (1u << i)) bapply(i, &objs[i]);
+        if (d & (1u << i)) bapply(i, &g_ui_berry_tmp[i]);
     fd_berry_cmd_t c;
     while (fd_berry_cmd_take(&c)) bcmd(&c, true);
     if (m.sound >= 0) fd_audio_feedback(m.sound == 1);
@@ -822,9 +851,11 @@ static void btick_cb(lv_timer_t *t)
     fd_berry_set_busy(fd_audio_busy());
     fd_berry_pref_flush();
     if (m.state == FD_BERRY_ERROR || m.state == FD_BERRY_OVER) {
-        ESP_LOGW(TAG, "script dung (%s), dung man hinh C", m.state == FD_BERRY_ERROR ? m.err : "over");
+        const char *msg = m.state == FD_BERRY_ERROR ? m.err : "over";
+        ESP_LOGW(TAG, "script dung (%s)", msg);
+        strlcpy(s_berr, msg ? msg : "", sizeof(s_berr));
         lv_timer_pause(s_btmr);
-        lv_async_call(fallback_async, NULL);
+        lv_async_call(berry_err_async, NULL);
     }
 }
 
@@ -910,7 +941,8 @@ static void build(lv_obj_t *scr)
     if (s_gate) { ui_pair_gate(s_body); return; }
     prefs_load();
     if (berry_begin()) return;
-    show_list();
+    ESP_LOGW(TAG, "berry_begin that bai");
+    show_berry_err("init");
 }
 
 static void destroy(void)

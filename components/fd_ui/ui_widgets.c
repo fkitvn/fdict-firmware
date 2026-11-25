@@ -649,3 +649,53 @@ void ui_dialog_close(lv_obj_t **overlay)
     *overlay = NULL;
 }
 
+EXT_RAM_BSS_ATTR fd_berry_obj_t g_ui_berry_cur[FD_BERRY_OBJ_MAX];
+EXT_RAM_BSS_ATTR fd_berry_obj_t g_ui_berry_tmp[FD_BERRY_OBJ_MAX];
+
+lv_obj_t *ui_loading_open(const char *txt, lv_obj_t **out_lbl)
+{
+    lv_obj_t *ov = lv_obj_create(lv_layer_top());
+    lv_obj_remove_style_all(ov);
+    lv_obj_set_size(ov, lv_pct(100), lv_pct(100));
+    lv_obj_set_style_bg_color(ov, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(ov, LV_OPA_40, 0);
+    lv_obj_set_style_text_font(ov, &fd_font_noto_14, 0);
+    lv_obj_set_clickable(ov, true);
+    lv_obj_t *box = lv_obj_create(ov);
+    lv_obj_set_size(box, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_max_width(box, lv_pct(86), 0);
+    lv_obj_center(box);
+    lv_obj_set_style_bg_color(box, lv_color_white(), 0);
+    lv_obj_set_style_border_width(box, 0, 0);
+    lv_obj_set_style_radius(box, 14, 0);
+    lv_obj_set_style_pad_all(box, 14, 0);
+    lv_obj_set_style_pad_column(box, 10, 0);
+    lv_obj_set_scrollable(box, false);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t *sp = lv_spinner_create(box);
+    lv_obj_set_size(sp, 24, 24);
+    lv_spinner_set_anim_params(sp, 900, 220);
+    lv_obj_set_style_arc_width(sp, 3, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(sp, 3, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(sp, lv_color_hex(FD_COLOR_BORDER), LV_PART_MAIN);
+    lv_obj_set_style_arc_color(sp, lv_color_hex(FD_COLOR_PRIMARY), LV_PART_INDICATOR);
+    lv_obj_t *l = ui_label_create(box, txt ? txt : "", &fd_font_noto_14, FD_COLOR_TEXT);
+    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_max_width(l, 180, 0);
+    if (out_lbl) *out_lbl = l;
+    return ov;
+}
+
+void ui_loading_set(lv_obj_t *lbl, const char *txt)
+{
+    if (lbl && txt) lv_label_set_text(lbl, txt);
+}
+
+void ui_loading_close(lv_obj_t **overlay)
+{
+    if (!overlay || !*overlay) return;
+    lv_obj_delete(*overlay);
+    *overlay = NULL;
+}
+

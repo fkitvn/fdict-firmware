@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include "cJSON.h"
 #include "esp_app_desc.h"
+#include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -31,7 +32,7 @@ static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static SemaphoreHandle_t s_mx;
 static StaticSemaphore_t s_mx_buf;
 static fd_feature_status_t s_st;
-static fd_feature_entry_t s_list[FD_FEAT_LIST_MAX];
+static EXT_RAM_BSS_ATTR fd_feature_entry_t s_list[FD_FEAT_LIST_MAX];
 static int s_n;
 static bool s_busy;
 static bool s_cache_loaded;
@@ -225,21 +226,29 @@ static int parse_list(const char *buf, size_t len, fd_feature_entry_t *tmp, int 
         n = 0;
         const cJSON *it;
         cJSON_ArrayForEach(it, arr) {
-            if (n >= cap) break;
             const char *id = jstr(it, "id");
             const char *path = jstr(it, "path");
             const char *sha = jstr(it, "sha256");
             if (!safe_id(id) || !safe_path(path) || !is_hex64(sha)) continue;
-            fd_feature_entry_t *e = &tmp[n++];
-            memset(e, 0, sizeof(*e));
-            ucpy(e->id, sizeof(e->id), id);
-            ucpy(e->version, sizeof(e->version), jstr(it, "version"));
-            ucpy(e->min_fw, sizeof(e->min_fw), jstr(it, "min_fw"));
-            ucpy(e->path, sizeof(e->path), path);
-            for (int k = 0; k < 64; k++) e->sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
-            e->size = jint(it, "size");
-            if (e->size < 0 || e->size > FD_FEAT_PKG_MAX) e->size = 0;
-            e->supported = !strcmp(jstr(it, "type"), "shadow") && fw_ok(e->min_fw);
+            fd_feature_entry_t cand;
+            memset(&cand, 0, sizeof(cand));
+            ucpy(cand.id, sizeof(cand.id), id);
+            ucpy(cand.version, sizeof(cand.version), jstr(it, "version"));
+            ucpy(cand.min_fw, sizeof(cand.min_fw), jstr(it, "min_fw"));
+            ucpy(cand.path, sizeof(cand.path), path);
+            for (int k = 0; k < 64; k++) cand.sha256[k] = (char)((sha[k] >= 'A' && sha[k] <= 'F') ? sha[k] + 32 : sha[k]);
+            cand.size = jint(it, "size");
+            if (cand.size < 0 || cand.size > FD_FEAT_PKG_MAX) cand.size = 0;
+            cand.supported = !strcmp(jstr(it, "type"), "shadow") && fw_ok(cand.min_fw);
+            int dup = -1;
+            for (int k = 0; k < n; k++) if (!strcmp(tmp[k].id, cand.id)) { dup = k; break; }
+            if (dup >= 0) {
+                bool take = (cand.supported && !tmp[dup].supported) ||
+                            (cand.supported == tmp[dup].supported && ver_num(cand.version) > ver_num(tmp[dup].version));
+                if (take) tmp[dup] = cand;
+            } else if (n < cap) {
+                tmp[n++] = cand;
+            }
         }
     }
     cJSON_Delete(j);
@@ -253,7 +262,7 @@ static void list_task(void *arg)
     fw_semver(fw, sizeof(fw));
     fd_ota_get_device_id(did, sizeof(did));
     snprintf(path, sizeof(path), "/api/devices/features?hw=" HW "&fw=%.15s&device_id=%.23s", fw, did);
-    int code = fd_ota_api_get_file_q(path, LIST_TMP, LIST_MAX, NULL, NULL);
+    int code = fd_ota_api_get_file_qt(path, LIST_TMP, LIST_MAX, 3500, NULL, NULL);
     ESP_LOGI(TAG, "list: HTTP %d", code);
     fd_feature_entry_t tmp[FD_FEAT_LIST_MAX];
     int n = 0;
