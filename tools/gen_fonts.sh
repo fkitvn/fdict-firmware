@@ -17,8 +17,9 @@ RANGES="0x20-0x7E,0xA0-0xFF,0x100-0x17F,0x1A0-0x1A1,0x1AF-0x1B0,0x1EA0-0x1EF9,\
 # 20/10 tung bo Spacing Modifier, Combining (tru dau Viet), Phonetic Ext -> phien am that bi o vuong (t͡ʃ d͡ʒ n̩ ʰ ᵻ).
 # 15/11 (4.5.4): them lai du 3 khoi + β ⁓. Mau IPA that: tools/tests/data/ipa_samples.txt, test: tools/tests/test_ipa_glyphs.py.
 # Noto 14 = font mac dinh (LV_FONT_DEFAULT): fallback Montserrat 14 cho LV_SYMBOL_*.
-for SZ in 14 18; do
-  FB=""; if [ "$SZ" = 14 ]; then FB="--lv-fallback lv_font_montserrat_14"; fi
+# Noto 12: cung dai glyph, dung cho nghia/IPA Nhại lại.
+for SZ in 12 14 18; do
+  FB=""; if [ "$SZ" = 12 ] || [ "$SZ" = 14 ]; then FB="--lv-fallback lv_font_montserrat_14"; fi
   npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Regular.ttf -r "$RANGES" \
     --size $SZ --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_${SZ} $FB \
     -o components/fd_fonts/fd_font_noto_${SZ}.c

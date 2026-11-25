@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     check_glyph("default", def, 0xF053, &lv_font_montserrat_14);    /* LV_SYMBOL_LEFT */
 
     static const struct { const char *n; const lv_font_t *f; } F[] = {
-        {"default", LV_FONT_DEFAULT}, {"noto_14", &fd_font_noto_14}, {"noto_18", &fd_font_noto_18},
+        {"default", LV_FONT_DEFAULT}, {"noto_12", &fd_font_noto_12}, {"noto_14", &fd_font_noto_14}, {"noto_18", &fd_font_noto_18},
         {"noto_32_title", &fd_font_noto_32_title}, {"mont_24", &fd_font_mont_24}, {"mont_32", &fd_font_mont_32},
         {"montserrat_14", &lv_font_montserrat_14},
     };
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 
     /* Phien am: font that cua tung nhan phien am.
      * Tu dien, Luyen tap, Phan loai tu: label(..., ipa, NULL, ...) -> ke thua font man hinh (theme Noto 14, ui_nav.c).
-     * Chinh ta: Noto 14. Lat tu: Noto 18 (scr_flashcard.c face_label). */
+     * Chinh ta: Noto 14. Lat tu: Noto 18 (scr_flashcard.c face_label). Nhai lai nghia/IPA: Noto 12. */
     if (argc < 3) { printf("FAIL: thieu doi so <ipa_samples> <vi_samples>\n"); return 1; }
     static uint32_t ipa[MAX_CP], vi[MAX_CP];
     static char ipa_line[1024], vi_line[1024];
@@ -149,6 +149,7 @@ int main(int argc, char **argv)
         {"phien am ke thua (Tu dien/Luyen tap/Phan loai tu)", NULL},
         {"phien am Chinh ta (noto_14)", &fd_font_noto_14},
         {"phien am Lat tu (noto_18)", &fd_font_noto_18},
+        {"phien am Nhai lai (noto_12)", &fd_font_noto_12},
     };
     printf("IPA %d ky tu, Viet %d ky tu\n", n_ipa, n_vi);
     for (unsigned i = 0; i < sizeof(P) / sizeof(P[0]); i++) {
@@ -170,6 +171,7 @@ int main(int argc, char **argv)
     /* Fallback: mont_24/32 + tieu de 32 phai tro toi Noto 18; noto_18 khong tro nguoc (tranh vong lap). */
     CHECK(fd_font_mont_24.fallback == &fd_font_noto_18, "mont_24.fallback khong phai noto_18");
     CHECK(fd_font_mont_32.fallback == &fd_font_noto_18, "mont_32.fallback khong phai noto_18");
+    CHECK(fd_font_noto_12.fallback == &lv_font_montserrat_14, "noto_12.fallback khong phai montserrat_14");
     CHECK(fd_font_noto_32_title.fallback == &fd_font_noto_18, "noto_32_title.fallback khong phai noto_18");
     CHECK(fd_font_noto_18.fallback == NULL, "noto_18 khong duoc fallback ve mont (vong lap)");
     {
@@ -203,7 +205,7 @@ int main(int argc, char **argv)
         CHECK(sf, "khong mo duoc tep i18n %s", argv[3]);
         if (sf) {
             static const struct { const char *n; const lv_font_t *f; } L[] = {
-                {"default", LV_FONT_DEFAULT}, {"noto_14", &fd_font_noto_14}, {"noto_18", &fd_font_noto_18},
+                {"default", LV_FONT_DEFAULT}, {"noto_12", &fd_font_noto_12}, {"noto_14", &fd_font_noto_14}, {"noto_18", &fd_font_noto_18},
                 {"mont_24", &fd_font_mont_24}, {"mont_32", &fd_font_mont_32},
                 {"noto_32_title", &fd_font_noto_32_title},
             };

@@ -5,6 +5,12 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.3.5] - 2026-11-25
+- Nhại lại bỏ nút Trở lại, vuốt cạnh để quay về.
+- Khi thoát Nhại lại máy cắt tiếng ngay.
+- Chạm để dừng chữ cuộn, tự cuộn lại sau 3 giây.
+- Chữ nghĩa và IPA nhỏ gọn hơn.
+
 ## [5.3.4] - 2026-11-25
 - Nhại lại là tính năng tải về. Mã nguồn nằm trên máy chủ.
 - Ô trên trang chủ mờ khi chưa tải. Chạm vào ô để tải.

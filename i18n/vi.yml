@@ -363,3 +363,20 @@ vi:
   GAME_DEL_Q: 'Xóa trò chơi này?'
   GAME_DEL_OK: 'Xóa'
   GAME_DEL_DONE: 'Đã xóa trò chơi'
+  FEATURE_FAIL: 'Không tải được. Thử lại.'
+  FEATURE_WIFI: 'Kết nối Wi-Fi để tải tính năng'
+  SHADOW: Nhại lại
+  SHADOW_AGAIN: Nghe lại
+  SHADOW_FAIL: 'Không soạn được đoạn. Thử lại.'
+  SHADOW_IPA: IPA
+  SHADOW_LEN: Độ dài
+  SHADOW_LOADING: Đang soạn đoạn
+  SHADOW_LONG: Dài
+  SHADOW_MEANING: Nghĩa
+  SHADOW_MED: Vừa
+  SHADOW_NEED_MASTERED: 'Chưa có đoạn. Thêm trên web rồi đồng bộ.'
+  SHADOW_NEED_WIFI: 'Cần Wi-Fi để học Nhại'
+  SHADOW_NEW_DECK: 'Chế độ Từ mới không dùng cho Nhại. Chọn Tất cả hoặc Kết hợp.'
+  SHADOW_NEXT: Đoạn khác
+  SHADOW_SHORT: Ngắn
+  STATS_MOD_SESS: '%d phiên'

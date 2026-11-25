@@ -363,3 +363,20 @@ en:
   GAME_DEL_Q: 'Delete this game?'
   GAME_DEL_OK: 'Delete'
   GAME_DEL_DONE: 'Game deleted'
+  FEATURE_FAIL: 'Could not download. Try again.'
+  FEATURE_WIFI: 'Connect to Wi-Fi to download this feature'
+  SHADOW: Repeat
+  SHADOW_AGAIN: Replay
+  SHADOW_FAIL: 'Could not write a passage. Try again.'
+  SHADOW_IPA: IPA
+  SHADOW_LEN: Length
+  SHADOW_LOADING: 'Writing a passage'
+  SHADOW_LONG: Long
+  SHADOW_MEANING: Meaning
+  SHADOW_MED: Medium
+  SHADOW_NEED_MASTERED: 'No passages yet. Add one on the web, then sync.'
+  SHADOW_NEED_WIFI: 'Wi-Fi is needed for shadowing'
+  SHADOW_NEW_DECK: 'New words cannot be shadowed. Choose All or Combined.'
+  SHADOW_NEXT: Another
+  SHADOW_SHORT: Short
+  STATS_MOD_SESS: '%d sessions'

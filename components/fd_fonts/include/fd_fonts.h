@@ -10,6 +10,7 @@
  */
 #include "lvgl.h"
 
+LV_FONT_DECLARE(fd_font_noto_12);   /* nghia / IPA Nhại lại, cung dai glyph voi noto_14 */
 LV_FONT_DECLARE(fd_font_noto_14);
 LV_FONT_DECLARE(fd_font_noto_18);
 LV_FONT_DECLARE(fd_font_noto_32_title);   /* 32 px, chi glyph 'Cai dat' co dau (tieu de Cai dat) */
