@@ -13,6 +13,7 @@
 LV_FONT_DECLARE(fd_font_noto_12);   /* nghia / IPA Nhại lại, cung dai glyph voi noto_14 */
 LV_FONT_DECLARE(fd_font_noto_14);
 LV_FONT_DECLARE(fd_font_noto_18);
+LV_FONT_DECLARE(fd_font_noto_18_bold);   /* 5.4.7 cau dang doc trong Nhai lai, cung dai glyph voi noto_18 */
 LV_FONT_DECLARE(fd_font_noto_32_title);   /* 32 px, chi glyph 'Cai dat' co dau (tieu de Cai dat) */
 /* 23/10: Montserrat Medium 24/32 rieng (lv_font_conv, nen RLE): ASCII + ° + • + chi LV_SYMBOL_* firmware dung (thay lv_font_montserrat_24/32 built-in, giam ~50 KB) */
 LV_FONT_DECLARE(fd_font_mont_24);

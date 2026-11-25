@@ -37,7 +37,8 @@
  *     fd.session_begin(mod) | fd.event(kind) (chi "shadow") | fd.session_end() ghi phien hoc (man hinh ghi file)
  *     fd.tr(khoa) chuoi da dich cua firmware
  *     fd.roll_box(x, y, w, h) (h = 0 an) | fd.roll_clear() | fd.roll_add(chu, font, mau[, opa]) | fd.roll_run(est_ms[, silent])
- *       | fd.roll_focus(i, n[, est_ms[, silent]]): giu khoi item i..i+n-1 trong khung, cuon trong khoi neu dai hon man
+ *       | fd.roll_focus(i, n[, est_ms[, silent]]): cau dang doc (C in dam, cuon deu theo cac moc)
+ *       | fd.roll_mark(i, n, est_ms): them moc mot cau de cuon lien tuc
  *       | fd.roll_y(): khung chu cuon do C ve (cham dung, vuot tay, 3 giay tu cuon lai, khong nuot vuot mep)
  *     fd.hold_back(bool): true = vuot mep / giu Nut 1 goi back() trong script thay vi thoat man
  *     Lenh am thanh, phien hoc, ghi NVS xep hang, man hinh (task LVGL) thuc hien.
@@ -150,7 +151,9 @@ typedef enum {
 typedef struct { uint8_t type; char arg[16]; } fd_berry_cmd_t;
 #define FD_BERRY_LONG_MAX 2400
 #define FD_BERRY_ROLL_MAX 48
+#define FD_BERRY_MARK_MAX 16
 typedef struct { char txt[FD_BERRY_LINE_TXT]; uint8_t font, opa; int32_t color; } fd_berry_roll_item_t;
+typedef struct { int16_t i, n; int32_t est; } fd_berry_roll_mark_t;
 typedef struct {
     uint32_t ver, run_seq, focus_seq;
     int32_t est_ms, focus_est;
@@ -174,6 +177,7 @@ void fd_berry_set_busy(bool busy);
 void fd_berry_pref_flush(void);                     /* ghi NVS cac pref vua doi */
 void fd_berry_roll_get(fd_berry_roll_t *out);
 int fd_berry_roll_items(fd_berry_roll_item_t *out, int cap);
+int fd_berry_roll_marks(fd_berry_roll_mark_t *out, int cap);
 void fd_berry_roll_set_y(int y);
 bool fd_berry_hold_back(void);
 /* 4.9.5 do dac: thoi gian goi ham script (us) va bo nho dinh cua van gan nhat. */
