@@ -22,6 +22,7 @@ bool fd_tts_is_fr(void);
 /* Tong hop text (UTF-8, toi da ~60 ky tu) -> PCM 16-bit mono 16 kHz trong *out (malloc PSRAM, nguoi goi free).
  * Tieng Anh: chi ASCII in duoc. Tieng Phap: chap nhan chu Latin co dau (UTF-8). */
 esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count);
+esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t *count);
 
 #ifdef __cplusplus
 }

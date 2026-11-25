@@ -20,6 +20,7 @@ esp_err_t fd_audio_play_pcm(const int16_t *samples, size_t count);
 esp_err_t fd_audio_say(const char *text);
 /* Doc mot doan dai (Nhại). Pico cat thanh manh ngan trong task am thanh. Chuoi duoc sao chep, toi da 2400 byte. */
 esp_err_t fd_audio_say_long(const char *text);
+esp_err_t fd_audio_say_long_speed(const char *text, int speed_pct);
 /* Cat ngay doan dai: tat PA, bo manh con lai, khong de duoi tieng. */
 void fd_audio_say_stop(void);
 /* Phat file PCM cache (16-bit mono 16 kHz, doc theo khoi trong task am thanh) neu co; khong co -> Pico doc text roi goi

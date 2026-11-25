@@ -22,6 +22,7 @@
 #define VI_KEY  "sh_vi"
 #define IPA_KEY "sh_ipa"
 #define SND_KEY "sh_snd"
+#define SPD_KEY "sh_spd"
 #define HOLD_MS 3000
 
 typedef enum { V_LIST, V_PLAY } view_t;
@@ -33,6 +34,7 @@ static fd_sync_pass_line_t s_lines[FD_SYNC_PASS_LINES];
 static char s_say[2400];
 static int s_n, s_est, s_pick;
 static bool s_vi, s_ipa, s_snd, s_silent, s_gate;
+static uint8_t s_spd = 1;
 static bool s_arm, s_saw, s_heard, s_logged;
 static int64_t s_t0;
 static bool s_held, s_dragging;
@@ -64,19 +66,25 @@ static void pause_reset(void)
     s_resume_at = 0;
 }
 
+static int spd_pct(void) { return s_spd == 0 ? 75 : s_spd == 2 ? 125 : 100; }
+
+static const char *spd_label(void) { return s_spd == 0 ? "0.75x" : s_spd == 2 ? "1.25x" : "1x"; }
+
 static void prefs_load(void)
 {
     nvs_handle_t h;
-    uint8_t vi = 1, ipa = 0, snd = 0;
+    uint8_t vi = 1, ipa = 0, snd = 0, spd = 1;
     if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) {
         nvs_get_u8(h, VI_KEY, &vi);
         nvs_get_u8(h, IPA_KEY, &ipa);
         nvs_get_u8(h, SND_KEY, &snd);
+        nvs_get_u8(h, SPD_KEY, &spd);
         nvs_close(h);
     }
     s_vi = vi != 0;
     s_ipa = ipa != 0;
     s_snd = snd != 0;
+    s_spd = spd <= 2 ? spd : 1;
 }
 
 static void pref_save(const char *key, uint8_t v)
@@ -110,8 +118,8 @@ static void join_say(void)
         n += m;
         s_say[n] = 0;
     }
-    int est = (int)n * 90;
-    s_est = est < 8000 ? 8000 : est;
+    int est = (int)n * 90 * 100 / spd_pct();
+    s_est = est < 6000 ? 6000 : est;
 }
 
 static void note_session(void)
@@ -135,7 +143,7 @@ static void begin_audio(void)
         return;
     }
     s_silent = false;
-    if (fd_audio_say_long(s_say) != ESP_OK) return;
+    if (fd_audio_say_long_speed(s_say, spd_pct()) != ESP_OK) return;
     s_arm = true;
     s_saw = false;
 }
@@ -329,7 +337,8 @@ static void toggle_cb(lv_event_t *e)
     int which = (int)(intptr_t)lv_event_get_user_data(e);
     if (which == 1) { s_vi = !s_vi; pref_save(VI_KEY, s_vi ? 1 : 0); }
     else if (which == 2) { s_ipa = !s_ipa; pref_save(IPA_KEY, s_ipa ? 1 : 0); }
-    else { s_snd = !s_snd; pref_save(SND_KEY, s_snd ? 1 : 0); }
+    else if (which == 3) { s_snd = !s_snd; pref_save(SND_KEY, s_snd ? 1 : 0); }
+    else { s_spd = (uint8_t)((s_spd + 1) % 3); pref_save(SPD_KEY, s_spd); }
     show_list();
 }
 
@@ -363,16 +372,19 @@ static void show_list(void)
     lv_obj_set_width(opts, lv_pct(100));
     lv_obj_set_height(opts, 36);
     lv_obj_set_flex_flow(opts, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_column(opts, 6, 0);
+    lv_obj_set_style_pad_column(opts, 4, 0);
     lv_obj_t *vi = ui_gate_btn(opts, _("SHADOW_MEANING"), s_vi, NULL);
     lv_obj_t *ipa = ui_gate_btn(opts, _("SHADOW_IPA"), s_ipa, NULL);
     lv_obj_t *snd = ui_gate_btn(opts, _("SHADOW_SOUND"), s_snd, NULL);
+    lv_obj_t *spd = ui_gate_btn(opts, spd_label(), s_spd != 1, NULL);
     lv_obj_set_style_pad_hor(vi, 2, 0);
     lv_obj_set_style_pad_hor(ipa, 2, 0);
     lv_obj_set_style_pad_hor(snd, 2, 0);
+    lv_obj_set_style_pad_hor(spd, 2, 0);
     lv_obj_add_event_cb(vi, toggle_cb, LV_EVENT_CLICKED, (void *)(intptr_t)1);
     lv_obj_add_event_cb(ipa, toggle_cb, LV_EVENT_CLICKED, (void *)(intptr_t)2);
     lv_obj_add_event_cb(snd, toggle_cb, LV_EVENT_CLICKED, (void *)(intptr_t)3);
+    lv_obj_add_event_cb(spd, toggle_cb, LV_EVENT_CLICKED, (void *)(intptr_t)4);
     lv_obj_t *list = lv_obj_create(s_body);
     lv_obj_remove_style_all(list);
     lv_obj_set_width(list, lv_pct(100));
@@ -425,7 +437,7 @@ static void bapply(int i, const fd_berry_obj_t *o)
         s_bl[i] = l;
         memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
         s_bcur[i].font = 0xFF;
-        int idx = 0;   /* thu tu ve = thu tu id */
+        int idx = s_viewp ? 1 : 0;   /* giu khung chu cuon o day, cac hop Berry noi phia tren */
         for (int j = 0; j < i; j++) if (s_bo[j]) idx++;
         lv_obj_move_to_index(b, idx);
     }
@@ -464,6 +476,13 @@ static void bapply(int i, const fd_berry_obj_t *o)
         lv_obj_set_style_border_color(b, lv_color_hex((uint32_t)o->bc), 0);
     }
     if (first || c->radius != o->radius) lv_obj_set_style_radius(b, o->radius, 0);
+    if (first || c->radius != o->radius || c->bg != o->bg) {
+        bool pill = o->radius >= 16 && o->bg >= 0;
+        lv_obj_set_style_shadow_width(b, pill ? 8 : 0, 0);
+        lv_obj_set_style_shadow_opa(b, pill ? LV_OPA_10 : LV_OPA_TRANSP, 0);
+        lv_obj_set_style_shadow_offset_y(b, pill ? 2 : 0, 0);
+        lv_obj_set_style_shadow_color(b, lv_color_hex(0x000000), 0);
+    }
     if (first || c->pad != o->pad) lv_obj_set_style_pad_all(b, o->pad, 0);
     if (first || c->fg != o->fg) lv_obj_set_style_text_color(l, lv_color_hex((uint32_t)o->fg), 0);
     if (first || strcmp(c->txt, o->txt) != 0) lv_label_set_text(l, o->txt);
@@ -494,6 +513,7 @@ static void broll_apply(const fd_berry_roll_t *r)
         lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESSING, NULL);
         lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_RELEASED, NULL);
         lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESS_LOST, NULL);
+        lv_obj_move_to_index(s_viewp, 0);
         s_tmr = lv_timer_create(scroll_cb, 50, NULL);
     }
     bool on = r->h > 0 && r->w > 0;
@@ -524,8 +544,10 @@ static void bcmd(const fd_berry_cmd_t *c, bool audio)
     switch (c->type) {
     case FD_BERRY_CMD_SAY_LONG:
         if (audio && s_lbuf && fd_berry_long_text(s_lbuf, FD_BERRY_LONG_MAX) > 0) {
+            int spd = atoi(c->arg);
+            if (spd < 50 || spd > 200) spd = 100;
             fd_audio_say_stop();
-            fd_audio_say_long(s_lbuf);
+            fd_audio_say_long_speed(s_lbuf, spd);
         }
         break;
     case FD_BERRY_CMD_SAY_STOP: fd_audio_say_stop(); break;
@@ -598,7 +620,7 @@ static void btick_cb(lv_timer_t *t)
     if (r.ver != s_rver) { s_rver = r.ver; broll_apply(&r); }
     if (r.run_seq != s_rseq) {
         s_rseq = r.run_seq;
-        s_est = r.est_ms < 8000 ? 8000 : (int)r.est_ms;
+        s_est = r.est_ms < 5000 ? 5000 : (int)r.est_ms;
         s_silent = r.silent;
         pause_reset();
         if (s_viewp && s_roll) {

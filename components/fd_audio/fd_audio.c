@@ -62,6 +62,7 @@ typedef struct {
     char path[48];        /* khac rong: thu file PCM cache truoc (giong tot), thieu -> Pico text + bao miss */
     uint8_t flags;        /* FD_SAY_*: khac 0 -> di say_word du path rong */
     uint8_t reps;         /* so lan doc (1..2) */
+    uint8_t speed;        /* 50..200 (% toc do, 0 = 100) */
     unsigned id;          /* doan dai: khop s_play_id, say_stop lam id cu vo hieu */
 } req_t;
 
@@ -315,12 +316,12 @@ static void play_chime(void)
 }
 
 /* TTS (Pico) ngay trong task am thanh (khong chan LVGL); loi -> chuong. Bo dem PCM o PSRAM (malloc lon). */
-static void say_text(const char *text)
+static void say_text_speed(const char *text, int speed_pct)
 {
     int16_t *pcm = NULL;
     size_t n = 0;
     int64_t t0 = esp_timer_get_time();
-    esp_err_t e = fd_tts_synth(text, &pcm, &n);
+    esp_err_t e = fd_tts_synth_ex(text, speed_pct, &pcm, &n);
     ESP_LOGD(TAG, "tts \"%s\": %s, %u mau (%u ms am), tong hop %d ms, stack con %u B", text, esp_err_to_name(e), (unsigned)n,
              (unsigned)(n * 1000 / SAMPLE_RATE), (int)((esp_timer_get_time() - t0) / 1000), (unsigned)uxTaskGetStackHighWaterMark(NULL));
     if (e == ESP_OK && n && !out_aborted()) { lvl_buffer(pcm, n, LVL_GAIN_MAX); write_mono(pcm, n); }
@@ -328,8 +329,10 @@ static void say_text(const char *text)
     free(pcm);
 }
 
+static void say_text(const char *text) { say_text_speed(text, 100); }
+
 /* Pico chi nhan khoang 60 byte moi lan. Cat theo khoang trang, khong cat giua byte UTF-8. */
-static void play_long(char *text)
+static void play_long(char *text, int speed_pct)
 {
     static const int16_t gap[800] = {0};   /* ~50 ms giua cac manh */
     const char *p = text ? text : "";
@@ -358,7 +361,7 @@ static void play_long(char *text)
         memcpy(chunk, p, (size_t)end);
         chunk[end] = 0;
         if (any) write_mono(gap, 800);
-        say_text(chunk);
+        say_text_speed(chunk, speed_pct);
         any = true;
         p += end;
     }
@@ -574,7 +577,7 @@ static void audio_task(void *arg)
         static const int16_t z[CHUNK] = {0};
         if (s_run_long && (s_say_stop || s_play_id != s_run_id)) {
             /* thoat luc dang mo PA / cho bat dau: khong phat, khong duoi tieng */
-        } else if (r.count == REQ_LONG && r.pcm) play_long((char *)r.pcm);
+        } else if (r.count == REQ_LONG && r.pcm) play_long((char *)r.pcm, r.speed ? r.speed : 100);
         else if (!r.pcm && r.count == REQ_WAV) play_wav(r.path);
         else if (r.path[0] || r.flags) {
             for (int k = 0; k < (r.reps ? r.reps : 1); k++) {
@@ -654,10 +657,12 @@ esp_err_t fd_audio_play_pcm(const int16_t *samples, size_t count)
     ESP_RETURN_ON_FALSE(samples && count, ESP_ERR_INVALID_ARG, TAG, "pcm");
     return post(samples, count);
 }
-esp_err_t fd_audio_say_long(const char *text)
+esp_err_t fd_audio_say_long_speed(const char *text, int speed_pct)
 {
     ESP_RETURN_ON_FALSE(text && text[0], ESP_ERR_INVALID_ARG, TAG, "long");
     ESP_RETURN_ON_ERROR(start_task(), TAG, "start");
+    if (speed_pct < 50) speed_pct = 50;
+    if (speed_pct > 200) speed_pct = 200;
     size_t n = strlen(text);
     if (n > 2400) n = 2400;
     while (n > 0 && ((unsigned char)text[n - 1] & 0xC0) == 0x80) n--;
@@ -667,12 +672,17 @@ esp_err_t fd_audio_say_long(const char *text)
     memcpy(copy, text, n);
     copy[n] = 0;
     s_say_stop = false;
-    req_t r = {.pcm = (const int16_t *)copy, .count = REQ_LONG, .id = s_play_id};
+    req_t r = {.pcm = (const int16_t *)copy, .count = REQ_LONG, .speed = (uint8_t)speed_pct, .id = s_play_id};
     if (xQueueSend(s_q, &r, 0) != pdTRUE) {
         free(copy);
         return ESP_ERR_TIMEOUT;
     }
     return ESP_OK;
+}
+
+esp_err_t fd_audio_say_long(const char *text)
+{
+    return fd_audio_say_long_speed(text, 100);
 }
 
 void fd_audio_say_stop(void)

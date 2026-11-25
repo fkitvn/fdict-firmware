@@ -383,7 +383,7 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"SEN_DIR_VI_FR", "Vietnamese - French"},
     {"SPELL_BUILD_FR", "Vietnamese - French"},
     {"SPELL_PROMPT_FR", "Spell the French word"},
-    {"SHADOW", "Repeat"},
+    {"SHADOW", "Shadowing"},
     {"SHADOW_LEN", "Length"},
     {"SHADOW_SHORT", "Short"},
     {"SHADOW_MED", "Medium"},

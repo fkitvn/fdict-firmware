@@ -117,8 +117,8 @@ static fd_berry_roll_item_t *s_roll;     /* PSRAM FD_BERRY_ROLL_MAX */
 static fd_berry_roll_t s_rst;
 static volatile int s_roll_y;
 static fd_berry_line_t *s_lines;         /* PSRAM FD_BERRY_LINES, chi task VM */
-static const char *const PREF_K[] = {"sh_vi", "sh_ipa", "sh_snd"};
-static const uint8_t PREF_DEF[] = {1, 0, 0};
+static const char *const PREF_K[] = {"sh_vi", "sh_ipa", "sh_snd", "sh_spd"};
+static const uint8_t PREF_DEF[] = {1, 0, 0, 1};
 #define PREF_N ((int)(sizeof(PREF_K) / sizeof(PREF_K[0])))
 static uint8_t s_pref[PREF_N];
 static uint32_t s_pref_dirty;
@@ -651,12 +651,15 @@ static int f_align(bvm *vm)
 static int f_say_long(bvm *vm)
 {
     const char *t = args(vm, 1);
+    int spd = clampv(argi(vm, 2, 100), 50, 200);
+    char arg[16];
+    snprintf(arg, sizeof(arg), "%d", spd);
     if (!s_long) be_return_nil(vm);
     LOCK();
     ucpy(s_long, FD_BERRY_LONG_MAX, t);
     s_long_pend = true;
     UNLOCK();
-    cmd_push(FD_BERRY_CMD_SAY_LONG, NULL);
+    cmd_push(FD_BERRY_CMD_SAY_LONG, arg);
     be_return_nil(vm);
 }
 
