@@ -24,6 +24,11 @@ for SZ in 12 14 18; do
     --size $SZ --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_${SZ} $FB \
     -o components/fd_fonts/fd_font_noto_${SZ}.c
 done
+# Noto 18 dam: cau dang doc trong Nhai lai. Cung dai glyph, fallback Noto 18.
+npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Bold.ttf -r "$RANGES" \
+  --size 18 --bpp 4 --format lvgl --lv-include lvgl.h --lv-font-name fd_font_noto_18_bold \
+  --lv-fallback fd_font_noto_18 \
+  -o components/fd_fonts/fd_font_noto_18_bold.c
 # Tieu de 32 px (ui_screen_title): ASCII day du (tieu de tieng Anh, 1.3.0) + ky tu co dau cua tieu de tieng Viet.
 # --lv-fallback fd_font_noto_18: tieu de moi thieu glyph khong bi o vuong (ve Noto 18).
 npx -y lv_font_conv@1.5.3 --font assets/fonts/NotoSans-Regular.ttf -r 0x20-0x7E --symbols "àđặãĐáìĐềữáâạừậắếộ" \

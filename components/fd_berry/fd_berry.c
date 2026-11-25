@@ -115,6 +115,8 @@ static char *s_long;                     /* PSRAM FD_BERRY_LONG_MAX */
 static volatile bool s_long_pend, s_busy, s_hold_back;
 static fd_berry_roll_item_t *s_roll;     /* PSRAM FD_BERRY_ROLL_MAX */
 static fd_berry_roll_t s_rst;
+static fd_berry_roll_mark_t s_marks[FD_BERRY_MARK_MAX];
+static int s_nmark;
 static volatile int s_roll_y;
 static fd_berry_line_t *s_lines;         /* PSRAM FD_BERRY_LINES, chi task VM */
 static const char *const PREF_K[] = {"sh_vi", "sh_ipa", "sh_snd", "sh_spd"};
@@ -784,6 +786,7 @@ static int f_roll_clear(bvm *vm)
 {
     LOCK();
     s_rst.n = 0;
+    s_nmark = 0;
     s_rst.ver++;
     UNLOCK();
     be_return_nil(vm);
@@ -829,6 +832,20 @@ static int f_roll_focus(bvm *vm)
     s_rst.focus_est = be_top(vm) >= 3 ? clampv(argi(vm, 3, 0), 0, 600000) : 0;
     s_rst.silent = be_top(vm) >= 4 && be_tobool(vm, 4);
     s_rst.focus_seq++;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.roll_mark(i, n, est_ms) */
+static int f_roll_mark(bvm *vm)
+{
+    LOCK();
+    if (s_nmark < FD_BERRY_MARK_MAX) {
+        fd_berry_roll_mark_t *m = &s_marks[s_nmark++];
+        m->i = (int16_t)clampv(argi(vm, 1, 0), 0, FD_BERRY_ROLL_MAX - 1);
+        m->n = (int16_t)clampv(argi(vm, 2, 1), 1, FD_BERRY_ROLL_MAX);
+        m->est = clampv(argi(vm, 3, 0), 0, 600000);
+    }
     UNLOCK();
     be_return_nil(vm);
 }
@@ -903,6 +920,16 @@ int fd_berry_roll_items(fd_berry_roll_item_t *out, int cap)
     return n;
 }
 
+int fd_berry_roll_marks(fd_berry_roll_mark_t *out, int cap)
+{
+    if (!s_mx || !out || cap <= 0) return 0;
+    LOCK();
+    int n = s_nmark < cap ? s_nmark : cap;
+    if (n > 0) memcpy(out, s_marks, sizeof(*out) * (size_t)n);
+    UNLOCK();
+    return n;
+}
+
 void fd_berry_roll_set_y(int y) { s_roll_y = y; }
 bool fd_berry_hold_back(void) { return s_running && s_hold_back; }
 
@@ -918,7 +945,7 @@ static void reg_module(bvm *vm)
         {"pass_count", f_pass_count}, {"pass_at", f_pass_at}, {"pass_load", f_pass_load},
         {"pref_get", f_pref_get}, {"pref_set", f_pref_set}, {"session_begin", f_session_begin}, {"event", f_event},
         {"session_end", f_session_end}, {"tr", f_tr}, {"roll_box", f_roll_box}, {"roll_clear", f_roll_clear},
-        {"roll_add", f_roll_add}, {"roll_run", f_roll_run}, {"roll_focus", f_roll_focus}, {"roll_y", f_roll_y}, {"hold_back", f_hold_back},
+        {"roll_add", f_roll_add}, {"roll_run", f_roll_run}, {"roll_focus", f_roll_focus}, {"roll_mark", f_roll_mark}, {"roll_y", f_roll_y}, {"hold_back", f_hold_back},
     };
     be_newmodule(vm);
     for (size_t i = 0; i < sizeof(F) / sizeof(F[0]); i++) {
@@ -1100,6 +1127,8 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
     s_busy = false;
     s_hold_back = false;
     memset(&s_rst, 0, sizeof(s_rst));
+    memset(s_marks, 0, sizeof(s_marks));
+    s_nmark = 0;
     s_roll_y = 0;
     s_misc.over_right = -1;
     s_misc.state = FD_BERRY_RUNNING;

@@ -5,6 +5,10 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.4.7] - 2026-11-25
+- Câu đang đọc trong Nhại lại được in đậm và chữ cuộn đều theo nhịp đọc.
+- Chữ IPA và nghĩa to hơn một cỡ.
+
 ## [5.4.6] - 2026-11-25
 - Sửa Nhại lại bị ngắt nghỉ giữa câu khi máy đọc.
 - Chữ cuộn theo từng câu kể cả khi hiện IPA và nghĩa.

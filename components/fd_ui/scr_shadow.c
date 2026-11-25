@@ -31,8 +31,9 @@ static view_t s_view;
 static lv_obj_t *s_body, *s_viewp, *s_roll;
 static lv_timer_t *s_tmr;
 static fd_sync_pass_line_t s_lines[FD_SYNC_PASS_LINES];
-static int s_n, s_est, s_pick, s_cur, s_focus_i, s_focus_n;
+static int s_n, s_est, s_pick, s_cur, s_focus_i, s_focus_n, s_nmark;
 static int s_item0[FD_SYNC_PASS_LINES], s_itemn[FD_SYNC_PASS_LINES];
+static fd_berry_roll_mark_t s_marks[FD_BERRY_MARK_MAX];
 static bool s_vi, s_ipa, s_snd, s_silent, s_gate, s_focus_on;
 static uint8_t s_spd = 1;
 static bool s_arm, s_saw, s_heard, s_logged;
@@ -44,6 +45,7 @@ static int32_t s_press_y;
 
 static void show_list(void);
 static void note_session(void);
+static void apply_focus_bold(void);
 
 /* 5.4.0 man hinh Berry */
 static bool s_bmode;
@@ -145,6 +147,20 @@ static void note_session(void)
     s_arm = false;
 }
 
+static void apply_focus_bold(void)
+{
+    if (!s_roll) return;
+    int n = (int)lv_obj_get_child_count(s_roll);
+    for (int i = 0; i < n; i++) {
+        lv_obj_t *l = lv_obj_get_child(s_roll, i);
+        if (!l) continue;
+        const lv_font_t *f = lv_obj_get_style_text_font(l, 0);
+        if (f != &fd_font_noto_18 && f != &fd_font_noto_18_bold) continue;
+        bool on = s_focus_on && i == s_focus_i;
+        lv_obj_set_style_text_font(l, on ? &fd_font_noto_18_bold : &fd_font_noto_18, 0);
+    }
+}
+
 static void begin_sent(void)
 {
     while (s_cur < s_n && !s_lines[s_cur].text[0]) s_cur++;
@@ -153,6 +169,7 @@ static void begin_sent(void)
     s_focus_on = true;
     s_focus_i = s_item0[s_cur];
     s_focus_n = s_itemn[s_cur] > 0 ? s_itemn[s_cur] : 1;
+    apply_focus_bold();
     fd_audio_say_stop();
     if (!s_snd) {
         s_silent = true;
@@ -207,6 +224,58 @@ static int32_t focus_target(int32_t vh, float p)
     return FOCUS_PAD - y0 - (int32_t)(p * (float)(bh - room));
 }
 
+static bool mark_span(int k, int32_t *y0, int32_t *y1)
+{
+    if (k < 0 || k >= s_nmark || !s_roll) return false;
+    int n = (int)lv_obj_get_child_count(s_roll);
+    int i0 = s_marks[k].i, i1 = s_marks[k].i + s_marks[k].n - 1;
+    if (i0 < 0) i0 = 0;
+    if (i1 >= n) i1 = n - 1;
+    if (n <= 0 || i0 > i1) return false;
+    lv_obj_t *a = lv_obj_get_child(s_roll, i0);
+    lv_obj_t *b = lv_obj_get_child(s_roll, i1);
+    if (!a || !b) return false;
+    *y0 = lv_obj_get_y(a);
+    *y1 = lv_obj_get_y(b) + lv_obj_get_height(b);
+    return true;
+}
+
+static int32_t keep_y(int k, int32_t vh)
+{
+    (void)vh;
+    int32_t y0, y1;
+    if (!mark_span(k, &y0, &y1)) return lv_obj_get_y(s_roll);
+    return FOCUS_PAD - y0;
+}
+
+static int current_mark(void)
+{
+    for (int k = 0; k < s_nmark; k++) if (s_marks[k].i == s_focus_i) return k;
+    return -1;
+}
+
+/* Cuon deu tu cau hien tai toi cau ke, khong nhay khi doi cau. */
+static int32_t plan_target(int32_t vh, float p)
+{
+    if (s_nmark <= 0) return focus_target(vh, p);
+    int k = current_mark();
+    if (k < 0) return focus_target(vh, p);
+    if (p < 0) p = 0;
+    if (p > 1) p = 1;
+    int32_t y0 = keep_y(k, vh);
+    int32_t y1;
+    if (k + 1 < s_nmark) y1 = keep_y(k + 1, vh);
+    else {
+        int32_t a, b;
+        if (!mark_span(k, &a, &b)) return y0;
+        int32_t room = vh - FOCUS_PAD * 2;
+        if (room < 1) room = 1;
+        int32_t bh = b - a;
+        y1 = bh > room ? FOCUS_PAD - a - (bh - room) : y0;
+    }
+    return y0 + (int32_t)((float)(y1 - y0) * p);
+}
+
 static void scroll_cb(lv_timer_t *t)
 {
     (void)t;
@@ -252,12 +321,21 @@ static void scroll_cb(lv_timer_t *t)
             if (p > 1) p = 1;
         }
     }
-    int32_t target = s_focus_on ? focus_target(vh, p) : (vh - (int32_t)(p * (float)travel));
+    int32_t target = s_focus_on ? plan_target(vh, p) : (vh - (int32_t)(p * (float)travel));
     bool paused = s_held || (s_resume_at && now < s_resume_at);
     if (!paused) {
         int32_t cur = lv_obj_get_y(s_roll);
         int32_t d = target - cur;
-        if (i32abs(d) <= 3) cur = target;
+        if (s_focus_on) {
+            if (i32abs(d) <= 2) cur = target;
+            else {
+                int32_t step = (int32_t)((float)d * 0.4f);
+                if (step == 0) step = d > 0 ? 1 : -1;
+                if (step > 8) step = 8;
+                if (step < -8) step = -8;
+                cur += step;
+            }
+        } else if (i32abs(d) <= 3) cur = target;
         else {
             int32_t step = (int32_t)((float)d * 0.25f);
             if (step == 0) step = d > 0 ? 1 : -1;
@@ -317,7 +395,7 @@ static void touch_cb(lv_event_t *e)
 
 static lv_obj_t *muted(lv_obj_t *parent, const char *text)
 {
-    lv_obj_t *l = ui_label_create(parent, text, &fd_font_noto_12, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *l = ui_label_create(parent, text, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
     lv_obj_set_width(l, lv_pct(100));
     lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
@@ -382,6 +460,13 @@ static void show_play(void)
         idx++;
         if (s_ipa && s_lines[i].ipa[0]) { muted(s_roll, s_lines[i].ipa); s_itemn[i]++; idx++; }
         if (s_vi && s_lines[i].vi[0]) { muted(s_roll, s_lines[i].vi); s_itemn[i]++; idx++; }
+    }
+    s_nmark = 0;
+    for (int i = 0; i < s_n && s_nmark < FD_BERRY_MARK_MAX; i++) {
+        s_marks[s_nmark].i = (int16_t)s_item0[i];
+        s_marks[s_nmark].n = (int16_t)(s_itemn[i] > 0 ? s_itemn[i] : 1);
+        s_marks[s_nmark].est = line_est(i);
+        s_nmark++;
     }
     lv_obj_t *row = lv_obj_create(s_body);
     lv_obj_remove_style_all(row);
@@ -605,6 +690,7 @@ static void broll_apply(const fd_berry_roll_t *r)
         if (it[i].opa < 255) lv_obj_set_style_opa(l, it[i].opa, 0);
     }
     free(it);
+    apply_focus_bold();
 }
 
 static void bcmd(const fd_berry_cmd_t *c, bool audio)
@@ -687,6 +773,7 @@ static void btick_cb(lv_timer_t *t)
     if (m.sound >= 0) fd_audio_feedback(m.sound == 1);
     fd_berry_roll_t r;
     fd_berry_roll_get(&r);
+    s_nmark = fd_berry_roll_marks(s_marks, FD_BERRY_MARK_MAX);
     if (r.ver != s_rver) { s_rver = r.ver; broll_apply(&r); }
     if (r.run_seq != s_rseq) {
         s_rseq = r.run_seq;
@@ -708,6 +795,7 @@ static void btick_cb(lv_timer_t *t)
         }
     }
     if (r.focus_seq != s_fseq) {
+        bool first_focus = !s_focus_on;
         s_fseq = r.focus_seq;
         s_focus_on = r.focus_n > 0;
         s_focus_i = r.focus_i;
@@ -723,10 +811,12 @@ static void btick_cb(lv_timer_t *t)
             s_arm = true;
             s_saw = false;
         }
-        if (s_viewp && s_roll && s_focus_on) {
+        apply_focus_bold();
+        /* Chi dat vi tri lan dau, cac cau sau de chu cuon deu toi moc ke. */
+        if (first_focus && s_viewp && s_roll && s_focus_on) {
             lv_obj_update_layout(s_viewp);
             lv_obj_update_layout(s_roll);
-            lv_obj_set_y(s_roll, focus_target(lv_obj_get_height(s_viewp), 0));
+            lv_obj_set_y(s_roll, plan_target(lv_obj_get_height(s_viewp), 0));
         }
     }
     fd_berry_set_busy(fd_audio_busy());
