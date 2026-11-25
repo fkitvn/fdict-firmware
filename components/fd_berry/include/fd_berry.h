@@ -31,9 +31,9 @@
  *   print(...) ra log.
  *   5.4.0 tinh nang tai ve (Nhai lai, scr_shadow.c) dung chung may ao nay:
  *     fd.font(id, 12) Noto 12 | fd.align(id, 0 giua | 1 trai | 2 trai mot dong co dau ...)
- *     fd.say_long(chu) doc doan dai (<= 2400 byte) | fd.say_stop() | fd.busy() dang doc / con hang doi
+ *     fd.say_long(chu[, toc_do_pct]) doc doan dai (<= 2400 byte, 50..200%, mac dinh 100) | fd.say_stop() | fd.busy() dang doc / con hang doi
  *     fd.pass_count() | fd.pass_at(i) -> chu xem truoc | fd.pass_load(i) -> [[cau, nghia, ipa], ...] (doan da dong bo)
- *     fd.pref_get(k) | fd.pref_set(k, so) chi khoa trong danh sach cho phep (sh_vi, sh_ipa, sh_snd), luu NVS fd
+ *     fd.pref_get(k) | fd.pref_set(k, so) chi khoa trong danh sach cho phep (sh_vi, sh_ipa, sh_snd, sh_spd), luu NVS fd
  *     fd.session_begin(mod) | fd.event(kind) (chi "shadow") | fd.session_end() ghi phien hoc (man hinh ghi file)
  *     fd.tr(khoa) chuoi da dich cua firmware
  *     fd.roll_box(x, y, w, h) (h = 0 an) | fd.roll_clear() | fd.roll_add(chu, font, mau[, opa]) | fd.roll_run(est_ms[, silent])

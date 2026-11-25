@@ -5,6 +5,10 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.4.4] - 2026-11-25
+- Nhại lại thêm chỉnh tốc độ đọc không đổi cao độ và lưu lại lựa chọn.
+- Sửa nút nghe lại nổi rõ trên chữ cuộn và tên tiếng Anh thành Shadowing.
+
 ## [5.4.3] - 2026-11-25
 - Tự kiểm tra bản mới cho Nhại lại khi về Trang chủ, sau Đồng bộ và khi mở Nhại lại.
 - Hiện Cần cập nhật và tải bản mới trước khi mở giống Trò chơi.

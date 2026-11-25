@@ -1,5 +1,6 @@
 #include "fd_tts.h"
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "esp_heap_caps.h"
@@ -17,7 +18,7 @@ static const char *TAG = "fd_tts";
 #define SG_NAME   "/pico/sg.bin"
 #define VOICE     "FdVoice"
 #define TEXT_MAX  60
-#define OUT_MAX   (16000 * 6)   /* toi da 6 s */
+#define OUT_MAX   (16000 * 8)   /* toi da 8 s */
 #define TRIM_TH   300
 
 /* 23/10: du lieu giong o phan vung flash 'voice' (tools/mk_voice.py), mmap - khong sao chep vao RAM.
@@ -150,18 +151,21 @@ esp_err_t fd_tts_init(void)
     return ESP_OK;
 }
 
-esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count)
+esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t *count)
 {
     if (!text || !out || !count) return ESP_ERR_INVALID_ARG;
     *out = NULL;
     *count = 0;
+    if (speed_pct < 50) speed_pct = 50;
+    if (speed_pct > 200) speed_pct = 200;
     char in[TEXT_MAX + 2];
     size_t k = 0;
     const bool fr = fd_tts_is_fr();
     for (const char *p = text; *p && k < TEXT_MAX; p++) {
         unsigned char c = (unsigned char)*p;
-        /* en: ASCII in duoc. fr: them UTF-8 (byte cao) de qua chu Phap co dau. Bo dieu khien. */
-        if (c >= 0x20 && c < 0x7f) in[k++] = (char)c;
+        /* en: ASCII in duoc. fr: them UTF-8 (byte cao) de qua chu Phap co dau. Bo dieu khien va <> tranh nham the Pico. */
+        if (c == '<' || c == '>') in[k++] = ' ';
+        else if (c >= 0x20 && c < 0x7f) in[k++] = (char)c;
         else if (fr && c >= 0x80) in[k++] = (char)c;
     }
     in[k] = 0;
@@ -169,11 +173,21 @@ esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count)
     esp_err_t e = fd_tts_init();
     if (e != ESP_OK) return e;
 
+    char tagged[TEXT_MAX + 36];
+    const char *src = in;
+    if (speed_pct != 100) {
+        int m = snprintf(tagged, sizeof(tagged), "<speed level=\"%d\">%s</speed>", speed_pct, in);
+        if (m > 0 && (size_t)m < sizeof(tagged)) {
+            src = tagged;
+            k = (size_t)m;
+        }
+    }
+
     size_t cap = 16000, n = 0;
     int16_t *buf = heap_caps_malloc(cap * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!buf) return ESP_ERR_NO_MEM;
     int16_t tmp[64];
-    const pico_Char *p = (const pico_Char *)in;
+    const pico_Char *p = (const pico_Char *)src;
     pico_Int16 left = (pico_Int16)(k + 1), sent = 0, got = 0, type = 0;   /* +1: ky tu 0 -> flush */
     pico_Status st = PICO_OK;
     while (left > 0 && e == ESP_OK) {
@@ -216,4 +230,9 @@ esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count)
     *out = buf;
     *count = z - a;
     return ESP_OK;
+}
+
+esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count)
+{
+    return fd_tts_synth_ex(text, 100, out, count);
 }
