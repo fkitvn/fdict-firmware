@@ -968,7 +968,6 @@ static void run_game(void)
     s_sum_us = 0;
     s_max_us = 0;
     s_mem_peak = s_mem;
-    if (s_cfg.host) prefs_load();
     bvm *vm = be_vm_new();
     if (!vm) { set_err("memory_error", "khong tao duoc may ao"); goto out; }
     be_set_obs_hook(vm, obs_hook);
@@ -1058,6 +1057,10 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
         if (!s_roll) s_roll = heap_caps_calloc(FD_BERRY_ROLL_MAX, sizeof(fd_berry_roll_item_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (!s_lines) s_lines = heap_caps_calloc(FD_BERRY_LINES, sizeof(fd_berry_line_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         if (!s_long || !s_roll || !s_lines) return false;
+        /* Doc NVS o task goi (LVGL, stack noi bo). Task fd_berry co stack PSRAM: doc flash o do
+           tat cache va assert (5.4.0 khoi dong lai khi mo Nhai lai). Native trong VM khong duoc
+           cham flash, NVS, LittleFS: chi doc RAM hoac xep hang cho task LVGL. */
+        prefs_load();
     }
     if (!s_task &&
         xTaskCreatePinnedToCoreWithCaps(worker, "fd_berry", STACK_BYTES, NULL, 2, &s_task, tskNO_AFFINITY,
@@ -1081,7 +1084,6 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
     s_hold_back = false;
     memset(&s_rst, 0, sizeof(s_rst));
     s_roll_y = 0;
-    s_pref_dirty = 0;
     s_misc.over_right = -1;
     s_misc.state = FD_BERRY_RUNNING;
     s_misc.sound = -1;

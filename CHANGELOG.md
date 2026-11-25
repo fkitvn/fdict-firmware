@@ -5,6 +5,9 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.4.1] - 2026-11-25
+- Sửa lỗi máy khởi động lại khi mở Nhại lại.
+
 ## [5.4.0] - 2026-11-25
 - Nhại lại cập nhật được từ máy chủ, không cần nâng cấp máy.
 - Giao diện Nhại lại giữ nguyên như bản trước.
