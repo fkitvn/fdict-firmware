@@ -1,8 +1,15 @@
-/* Nhai lai: chon doan da dong bo, nghe Pico va cuon chu. Khong can mang de lay doan moi. */
+/* Nhai lai: chon doan da dong bo, nghe Pico va cuon chu. Khong can mang de lay doan moi.
+ * 5.4.0: neu goi tai ve (fd_feature_script("shadow")) co script Berry chay duoc va co init() thi man hinh do script
+ * dieu khien (may ao fd_berry, API fd mo rong); khong thi (goi cu 1.0.0, script loi) dung man hinh C ben duoi. */
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "esp_heap_caps.h"
+#include "esp_log.h"
 #include "esp_timer.h"
+#include "fd_berry.h"
+#include "fd_display.h"
 #include "fd_audio.h"
 #include "fd_fonts.h"
 #include "fd_ota.h"
@@ -34,6 +41,18 @@ static int32_t s_press_y;
 
 static void show_list(void);
 static void note_session(void);
+
+/* 5.4.0 man hinh Berry */
+static bool s_bmode;
+static lv_obj_t *s_cv;
+static lv_obj_t *s_bo[FD_BERRY_OBJ_MAX], *s_bl[FD_BERRY_OBJ_MAX];
+static fd_berry_obj_t s_bcur[FD_BERRY_OBJ_MAX];
+static lv_timer_t *s_btmr;
+static uint32_t s_rver, s_rseq;
+static bool s_sess_open;
+static char s_sess_mod[16];
+static char *s_lbuf;
+static const char *TAG = "shadow";
 
 static int32_t i32abs(int32_t v) { return v < 0 ? -v : v; }
 
@@ -113,7 +132,8 @@ static void begin_audio(void)
 static void scroll_cb(lv_timer_t *t)
 {
     (void)t;
-    if (s_view != V_PLAY || !s_viewp || !s_roll) return;
+    if ((!s_bmode && s_view != V_PLAY) || !s_viewp || !s_roll) return;
+    if (lv_obj_is_hidden(s_viewp)) return;
     lv_obj_update_layout(s_viewp);
     int32_t vh = lv_obj_get_height(s_viewp);
     int32_t ch = lv_obj_get_height(s_roll);
@@ -124,7 +144,7 @@ static void scroll_cb(lv_timer_t *t)
     if (s_arm && busy && !s_saw) {
         s_saw = true;
         s_t0 = now;
-        if (!s_heard) {
+        if (!s_bmode && !s_heard) {
             fd_sync_session_begin("shadow");
             s_heard = true;
             s_logged = false;
@@ -155,12 +175,13 @@ static void scroll_cb(lv_timer_t *t)
         }
         lv_obj_set_y(s_roll, cur);
     }
-    if (s_arm && s_saw && !busy) note_session();
+    if (s_bmode) fd_berry_roll_set_y((int)lv_obj_get_y(s_roll));
+    else if (s_arm && s_saw && !busy) note_session();
 }
 
 static void touch_cb(lv_event_t *e)
 {
-    if (s_view != V_PLAY || !s_viewp || !s_roll) return;
+    if ((!s_bmode && s_view != V_PLAY) || !s_viewp || !s_roll) return;
     lv_event_code_t code = lv_event_get_code(e);
     lv_indev_t *in = lv_event_get_indev(e);
     lv_point_t p = {0, 0};
@@ -330,6 +351,290 @@ static void show_list(void)
     }
 }
 
+/* ---------- 5.4.0 man hinh Berry ---------- */
+static const lv_font_t *bfont(uint8_t f)
+{
+    return f >= 32 ? &fd_font_mont_32 : f >= 18 ? &fd_font_noto_18 : f >= 14 ? &fd_font_noto_14 : &fd_font_noto_12;
+}
+
+static void btap_cb(lv_event_t *e)
+{
+    if (!s_bmode) return;
+    fd_berry_event(FD_BERRY_EV_TAP, (int)(intptr_t)lv_event_get_user_data(e));
+}
+
+static void bapply(int i, const fd_berry_obj_t *o)
+{
+    if (!s_cv) return;
+    if (!s_bo[i]) {
+        lv_obj_t *b = lv_obj_create(s_cv);
+        lv_obj_remove_style_all(b);
+        lv_obj_set_scrollable(b, false);
+        lv_obj_set_clickable(b, true);
+        lv_obj_add_event_cb(b, btap_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        lv_obj_t *l = lv_label_create(b);
+        lv_obj_set_clickable(l, false);
+        s_bo[i] = b;
+        s_bl[i] = l;
+        memset(&s_bcur[i], 0, sizeof(s_bcur[i]));
+        s_bcur[i].font = 0xFF;
+        int idx = 0;   /* thu tu ve = thu tu id */
+        for (int j = 0; j < i; j++) if (s_bo[j]) idx++;
+        lv_obj_move_to_index(b, idx);
+    }
+    lv_obj_t *b = s_bo[i], *l = s_bl[i];
+    fd_berry_obj_t *c = &s_bcur[i];
+    bool first = c->font == 0xFF;
+    lv_obj_set_hidden(b, !o->used || !o->vis);
+    if (first || c->x != o->x || c->y != o->y) lv_obj_set_pos(b, o->x, o->y);
+    if (first || c->opa != o->opa) lv_obj_set_style_opa(b, o->opa, 0);
+    if (first || c->font != o->font) lv_obj_set_style_text_font(l, bfont(o->font), 0);
+    if (first || c->w != o->w || c->h != o->h || c->align != o->align || c->font != o->font) {
+        lv_obj_set_width(b, o->w > 0 ? o->w : LV_SIZE_CONTENT);
+        lv_obj_set_height(b, o->h > 0 ? o->h : LV_SIZE_CONTENT);
+        lv_obj_set_style_text_align(l, o->align ? LV_TEXT_ALIGN_LEFT : LV_TEXT_ALIGN_CENTER, 0);
+        if (o->w > 0) {
+            lv_obj_set_width(l, lv_pct(100));
+            if (o->align == 2) {
+                lv_label_set_long_mode(l, LV_LABEL_LONG_DOT);
+                lv_obj_set_height(l, lv_font_get_line_height(bfont(o->font)));
+            } else {
+                lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+                lv_obj_set_height(l, LV_SIZE_CONTENT);
+            }
+        } else {
+            lv_obj_set_size(l, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+        }
+        if (o->align) lv_obj_align(l, LV_ALIGN_LEFT_MID, 0, 0);
+        else lv_obj_center(l);
+    }
+    if (first || c->bg != o->bg) {
+        lv_obj_set_style_bg_opa(b, o->bg < 0 ? LV_OPA_TRANSP : LV_OPA_COVER, 0);
+        if (o->bg >= 0) lv_obj_set_style_bg_color(b, lv_color_hex((uint32_t)o->bg), 0);
+    }
+    if (first || c->bw != o->bw || c->bc != o->bc) {
+        lv_obj_set_style_border_width(b, o->bw, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex((uint32_t)o->bc), 0);
+    }
+    if (first || c->radius != o->radius) lv_obj_set_style_radius(b, o->radius, 0);
+    if (first || c->pad != o->pad) lv_obj_set_style_pad_all(b, o->pad, 0);
+    if (first || c->fg != o->fg) lv_obj_set_style_text_color(l, lv_color_hex((uint32_t)o->fg), 0);
+    if (first || strcmp(c->txt, o->txt) != 0) lv_label_set_text(l, o->txt);
+    *c = *o;
+}
+
+/* khung chu cuon: tao mot lan, dung lai nhan khi script doi noi dung */
+static void broll_apply(const fd_berry_roll_t *r)
+{
+    if (!s_cv) return;
+    if (!s_viewp) {
+        s_viewp = lv_obj_create(s_cv);
+        lv_obj_remove_style_all(s_viewp);
+        lv_obj_set_scrollable(s_viewp, false);
+        lv_obj_set_clickable(s_viewp, true);
+        lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_PRESS_LOST, NULL);
+        s_roll = lv_obj_create(s_viewp);
+        lv_obj_remove_style_all(s_roll);
+        lv_obj_set_width(s_roll, lv_pct(100));
+        lv_obj_set_height(s_roll, LV_SIZE_CONTENT);
+        lv_obj_set_flex_flow(s_roll, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_style_pad_row(s_roll, 10, 0);
+        lv_obj_set_clickable(s_roll, true);
+        lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESS_LOST, NULL);
+        s_tmr = lv_timer_create(scroll_cb, 50, NULL);
+    }
+    bool on = r->h > 0 && r->w > 0;
+    lv_obj_set_hidden(s_viewp, !on);
+    lv_obj_set_scrollable(s_cv, !on);   /* khung chu dang hien: trang khong cuon, ve dau trang */
+    if (on) {
+        lv_obj_scroll_to_y(s_cv, 0, LV_ANIM_OFF);
+        lv_obj_set_pos(s_viewp, r->x, r->y);
+        lv_obj_set_size(s_viewp, r->w, r->h);
+    }
+    lv_obj_clean(s_roll);
+    lv_obj_set_y(s_roll, 0);
+    pause_reset();
+    fd_berry_roll_item_t *it = heap_caps_malloc(sizeof(*it) * FD_BERRY_ROLL_MAX, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    int n = it ? fd_berry_roll_items(it, FD_BERRY_ROLL_MAX) : 0;
+    for (int i = 0; i < n; i++) {
+        lv_obj_t *l = ui_label_create(s_roll, it[i].txt, bfont(it[i].font), (uint32_t)it[i].color);
+        lv_obj_set_width(l, lv_pct(100));
+        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+        if (it[i].opa < 255) lv_obj_set_style_opa(l, it[i].opa, 0);
+    }
+    free(it);
+}
+
+static void bcmd(const fd_berry_cmd_t *c, bool audio)
+{
+    switch (c->type) {
+    case FD_BERRY_CMD_SAY_LONG:
+        if (audio && s_lbuf && fd_berry_long_text(s_lbuf, FD_BERRY_LONG_MAX) > 0) {
+            fd_audio_say_stop();
+            fd_audio_say_long(s_lbuf);
+        }
+        break;
+    case FD_BERRY_CMD_SAY_STOP: fd_audio_say_stop(); break;
+    case FD_BERRY_CMD_SESS_BEGIN:
+        fd_sync_session_begin(c->arg);
+        strlcpy(s_sess_mod, c->arg, sizeof(s_sess_mod));
+        s_sess_open = true;
+        break;
+    case FD_BERRY_CMD_EVENT:
+        if (!strcmp(c->arg, "shadow")) fd_sync_event_shadow();
+        break;
+    case FD_BERRY_CMD_SESS_END:
+        fd_sync_session_end();
+        s_sess_open = false;
+        break;
+    default: break;
+    }
+}
+
+/* Dung may ao, thuc hien lenh con lai (tru doc), ket thuc phien dang mo, xoa giao dien Berry. */
+static void berry_teardown(void)
+{
+    if (!s_bmode) return;
+    if (s_btmr) { lv_timer_delete(s_btmr); s_btmr = NULL; }
+    fd_audio_say_stop();
+    fd_berry_stop();
+    fd_berry_cmd_t c;
+    while (fd_berry_cmd_take(&c)) bcmd(&c, false);
+    fd_audio_say_stop();
+    if (s_sess_open) {
+        if (!strcmp(s_sess_mod, "shadow")) fd_sync_event_shadow();
+        fd_sync_session_end();
+        s_sess_open = false;
+    }
+    fd_berry_pref_flush();
+    if (s_tmr) { lv_timer_delete(s_tmr); s_tmr = NULL; }
+    pause_reset();
+    s_bmode = false;
+    if (s_cv) lv_obj_delete(s_cv);
+    s_cv = s_viewp = s_roll = NULL;
+    memset(s_bo, 0, sizeof(s_bo));
+    memset(s_bl, 0, sizeof(s_bl));
+    free(s_lbuf);
+    s_lbuf = NULL;
+}
+
+static void fallback_async(void *a)
+{
+    (void)a;
+    if (!s_body || !s_bmode) return;
+    berry_teardown();
+    prefs_load();
+    show_list();
+}
+
+static void btick_cb(lv_timer_t *t)
+{
+    (void)t;
+    if (!s_bmode) return;
+    static fd_berry_obj_t objs[FD_BERRY_OBJ_MAX];
+    fd_berry_misc_t m;
+    uint32_t d = fd_berry_sync(objs, &m);
+    for (int i = 0; i < FD_BERRY_OBJ_MAX; i++)
+        if (d & (1u << i)) bapply(i, &objs[i]);
+    fd_berry_cmd_t c;
+    while (fd_berry_cmd_take(&c)) bcmd(&c, true);
+    if (m.sound >= 0) fd_audio_feedback(m.sound == 1);
+    fd_berry_roll_t r;
+    fd_berry_roll_get(&r);
+    if (r.ver != s_rver) { s_rver = r.ver; broll_apply(&r); }
+    if (r.run_seq != s_rseq) {
+        s_rseq = r.run_seq;
+        s_est = r.est_ms < 8000 ? 8000 : (int)r.est_ms;
+        pause_reset();
+        s_arm = true;
+        s_saw = false;
+    }
+    fd_berry_set_busy(fd_audio_busy());
+    fd_berry_pref_flush();
+    if (m.state == FD_BERRY_ERROR || m.state == FD_BERRY_OVER) {
+        ESP_LOGW(TAG, "script dung (%s), dung man hinh C", m.state == FD_BERRY_ERROR ? m.err : "over");
+        lv_timer_pause(s_btmr);
+        lv_async_call(fallback_async, NULL);
+    }
+}
+
+static bool bmeasure(const char *txt, int font, int maxw, int *w, int *h)
+{
+    if (!fd_display_lock(20)) return false;
+    lv_point_t sz;
+    lv_text_get_size(&sz, txt, bfont((uint8_t)font), 0, 0, maxw, LV_TEXT_FLAG_NONE);
+    fd_display_unlock();
+    *w = sz.x;
+    *h = sz.y;
+    return true;
+}
+
+static const char *h_tr(const char *k) { return _(k); }
+static int h_pass_count(void) { return fd_sync_passage_count(); }
+static bool h_pass_at(int i, char *out, size_t n) { return fd_sync_passage_at(i, out, n, NULL); }
+static int h_pass_load(int i, fd_berry_line_t *out, int cap)
+{
+    fd_sync_pass_line_t *ls = heap_caps_malloc(sizeof(*ls) * FD_SYNC_PASS_LINES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!ls) return 0;
+    int n = fd_sync_passage_load(i, ls, FD_SYNC_PASS_LINES);
+    if (n > cap) n = cap;
+    for (int k = 0; k < n; k++) {
+        strlcpy(out[k].text, ls[k].text, sizeof(out[k].text));
+        strlcpy(out[k].vi, ls[k].vi, sizeof(out[k].vi));
+        strlcpy(out[k].ipa, ls[k].ipa, sizeof(out[k].ipa));
+    }
+    free(ls);
+    return n;
+}
+
+static bool berry_begin(void)
+{
+    size_t len = 0;
+    char *sc = fd_feature_script("shadow", &len);
+    if (!sc) return false;
+    s_lbuf = heap_caps_malloc(FD_BERRY_LONG_MAX, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!s_lbuf) { free(sc); return false; }
+    s_cv = lv_obj_create(s_body);
+    lv_obj_remove_style_all(s_cv);
+    lv_obj_set_size(s_cv, lv_pct(100), lv_pct(100));
+    lv_obj_set_scroll_dir(s_cv, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(s_cv, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_update_layout(s_cv);
+    int32_t W = lv_obj_get_width(s_cv), H = lv_obj_get_height(s_cv);
+    static const fd_berry_host_t HOST = {
+        .tr = h_tr, .pass_count = h_pass_count, .pass_at = h_pass_at, .pass_load = h_pass_load,
+    };
+    static const char *const SIDE[] = {"top", "right", "bottom", "left"};
+    ui_btn_side_t side = ui_btn_side();
+    int si = side == UI_BTN_TOP ? 0 : side == UI_BTN_RIGHT ? 1 : side == UI_BTN_BOTTOM ? 2 : 3;
+    fd_berry_cfg_t cfg = {
+        .script = sc, .len = len, .words = NULL, .nwords = 0, .w = (int)W, .h = (int)H, .side = SIDE[si],
+        .measure = bmeasure, .host = &HOST, .need_init = true,
+    };
+    memset(s_bo, 0, sizeof(s_bo));
+    memset(s_bl, 0, sizeof(s_bl));
+    s_rver = s_rseq = 0;
+    s_sess_open = false;
+    if (!fd_berry_start(&cfg)) {
+        free(sc);
+        lv_obj_delete(s_cv);
+        s_cv = NULL;
+        free(s_lbuf);
+        s_lbuf = NULL;
+        return false;
+    }
+    s_bmode = true;
+    s_btmr = lv_timer_create(btick_cb, 30, NULL);
+    return true;
+}
+
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
@@ -341,11 +646,13 @@ static void build(lv_obj_t *scr)
     s_gate = !fd_ota_is_paired();
     if (s_gate) { ui_pair_gate(s_body); return; }
     prefs_load();
+    if (berry_begin()) return;
     show_list();
 }
 
 static void destroy(void)
 {
+    berry_teardown();
     fd_audio_say_stop();
     note_session();
     if (s_tmr) { lv_timer_delete(s_tmr); s_tmr = NULL; }
@@ -356,6 +663,12 @@ static void destroy(void)
 static bool on_back(void)
 {
     if (s_gate) return false;
+    if (s_bmode) {   /* 5.4.0: script giu quay lai (dang nghe) thi cat tieng ngay roi goi back() */
+        if (!fd_berry_hold_back()) return false;
+        fd_audio_say_stop();
+        fd_berry_event(FD_BERRY_EV_BACK, 0);
+        return true;
+    }
     if (s_view != V_LIST) { show_list(); return true; }
     return false;
 }

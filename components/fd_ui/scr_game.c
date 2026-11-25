@@ -682,7 +682,7 @@ static void berry_hud(const fd_berry_misc_t *m)
 
 static const lv_font_t *bfont(uint8_t f)
 {
-    return f >= 32 ? &fd_font_mont_32 : f >= 18 ? &fd_font_noto_18 : &fd_font_noto_14;
+    return f >= 32 ? &fd_font_mont_32 : f >= 18 ? &fd_font_noto_18 : f >= 14 ? &fd_font_noto_14 : &fd_font_noto_12;
 }
 
 /* 5.1.0 fd.deco: 1 vet sang (elip trang mo goc tren trai), 2 day treo, 4 nut that (mau nen) duoi doi tuong */

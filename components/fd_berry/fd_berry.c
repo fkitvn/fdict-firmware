@@ -13,6 +13,7 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "nvs.h"
 #include "fd_berry.h"
 
 static const char *TAG = "fd_berry";
@@ -105,6 +106,35 @@ static uint32_t s_calls, s_max_us;
 static uint64_t s_sum_us;
 
 typedef struct { uint8_t type; int16_t arg; } ev_t;
+
+/* 5.4.0 tinh nang tai ve: lenh cho man hinh, doan doc dai, pref, khung chu cuon */
+#define CMD_Q 16
+static fd_berry_cmd_t s_cmd[CMD_Q];
+static int s_cmd_h, s_cmd_n;
+static char *s_long;                     /* PSRAM FD_BERRY_LONG_MAX */
+static volatile bool s_long_pend, s_busy, s_hold_back;
+static fd_berry_roll_item_t *s_roll;     /* PSRAM FD_BERRY_ROLL_MAX */
+static fd_berry_roll_t s_rst;
+static volatile int s_roll_y;
+static fd_berry_line_t *s_lines;         /* PSRAM FD_BERRY_LINES, chi task VM */
+static const char *const PREF_K[] = {"sh_vi", "sh_ipa"};
+static const uint8_t PREF_DEF[] = {1, 0};
+#define PREF_N ((int)(sizeof(PREF_K) / sizeof(PREF_K[0])))
+static uint8_t s_pref[PREF_N];
+static uint32_t s_pref_dirty;
+
+/* chep chuoi, cat dung ranh gioi UTF-8 */
+static void ucpy(char *d, size_t cap, const char *s)
+{
+    if (!cap) return;
+    size_t n = s ? strlen(s) : 0;
+    if (n >= cap) {
+        n = cap - 1;
+        while (n > 0 && ((unsigned char)s[n] & 0xC0) == 0x80) n--;
+    }
+    if (n) memcpy(d, s, n);
+    d[n] = 0;
+}
 
 #define LOCK() xSemaphoreTake(s_mx, portMAX_DELAY)
 #define UNLOCK() xSemaphoreGive(s_mx)
@@ -235,7 +265,7 @@ static int f_text(bvm *vm)
     const char *t = be_top(vm) >= 2 ? be_tostring(vm, 2) : "";
     LOCK();
     fd_berry_obj_t *o = touch(id);
-    strlcpy(o->txt, t ? t : "", sizeof(o->txt));
+    ucpy(o->txt, sizeof(o->txt), t);
     UNLOCK();
     be_return_nil(vm);
 }
@@ -276,7 +306,7 @@ static int f_font(bvm *vm)
     int id = arg_id(vm);
     int f = argi(vm, 2, 18);
     LOCK();
-    touch(id)->font = (uint8_t)(f >= 32 ? 32 : f >= 18 ? 18 : 14);
+    touch(id)->font = (uint8_t)(f >= 32 ? 32 : f >= 18 ? 18 : f >= 14 ? 14 : 12);   /* 5.4.0 them 12 */
     UNLOCK();
     be_return_nil(vm);
 }
@@ -383,7 +413,7 @@ static int f_sub(bvm *vm)
     const char *t = be_top(vm) >= 2 ? be_tostring(vm, 2) : "";
     LOCK();
     fd_berry_obj_t *o = touch(id);
-    strlcpy(o->sub, t ? t : "", sizeof(o->sub));
+    ucpy(o->sub, sizeof(o->sub), t);
     UNLOCK();
     be_return_nil(vm);
 }
@@ -585,6 +615,280 @@ static int f_opt(bvm *vm)
     be_return_nil(vm);
 }
 
+/* ---------- 5.4.0 tinh nang tai ve ---------- */
+static void cmd_push(uint8_t type, const char *arg)
+{
+    LOCK();
+    if (s_cmd_n < CMD_Q) {
+        fd_berry_cmd_t *c = &s_cmd[(s_cmd_h + s_cmd_n) % CMD_Q];
+        c->type = type;
+        ucpy(c->arg, sizeof(c->arg), arg ? arg : "");
+        s_cmd_n++;
+    } else {
+        ESP_LOGW(TAG, "hang lenh day");
+    }
+    UNLOCK();
+}
+
+static const char *args(bvm *vm, int i)
+{
+    if (be_top(vm) < i) return "";
+    const char *t = be_tostring(vm, i);
+    return t ? t : "";
+}
+
+/* fd.align(id, 0 giua | 1 trai | 2 trai mot dong) */
+static int f_align(bvm *vm)
+{
+    int id = arg_id(vm);
+    int a = argi(vm, 2, 0);
+    LOCK();
+    touch(id)->align = (uint8_t)clampv(a, 0, 2);
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+static int f_say_long(bvm *vm)
+{
+    const char *t = args(vm, 1);
+    if (!s_long) be_return_nil(vm);
+    LOCK();
+    ucpy(s_long, FD_BERRY_LONG_MAX, t);
+    s_long_pend = true;
+    UNLOCK();
+    cmd_push(FD_BERRY_CMD_SAY_LONG, NULL);
+    be_return_nil(vm);
+}
+
+static int f_say_stop(bvm *vm)
+{
+    LOCK();
+    s_long_pend = false;
+    UNLOCK();
+    cmd_push(FD_BERRY_CMD_SAY_STOP, NULL);
+    be_return_nil(vm);
+}
+
+static int f_busy(bvm *vm)
+{
+    be_pushbool(vm, s_busy || s_long_pend);
+    be_return(vm);
+}
+
+static int f_pass_count(bvm *vm)
+{
+    const fd_berry_host_t *h = s_cfg.host;
+    be_pushint(vm, h && h->pass_count ? h->pass_count() : 0);
+    be_return(vm);
+}
+
+static int f_pass_at(bvm *vm)
+{
+    const fd_berry_host_t *h = s_cfg.host;
+    char t[FD_BERRY_TXT];
+    if (!h || !h->pass_at || !h->pass_at(argi(vm, 1, -1), t, sizeof(t))) be_return_nil(vm);
+    be_pushstring(vm, t);
+    be_return(vm);
+}
+
+/* fd.pass_load(i) -> [[cau, nghia, ipa], ...] (rong neu khong co) */
+static int f_pass_load(bvm *vm)
+{
+    const fd_berry_host_t *h = s_cfg.host;
+    int n = (h && h->pass_load && s_lines) ? h->pass_load(argi(vm, 1, -1), s_lines, FD_BERRY_LINES) : 0;
+    if (n < 0) n = 0;
+    if (n > FD_BERRY_LINES) n = FD_BERRY_LINES;
+    be_newobject(vm, "list");
+    for (int i = 0; i < n; i++) {
+        be_newobject(vm, "list");
+        const char *f[3] = {s_lines[i].text, s_lines[i].vi, s_lines[i].ipa};
+        for (int k = 0; k < 3; k++) {
+            be_pushstring(vm, f[k]);
+            be_data_push(vm, -2);
+            be_pop(vm, 1);
+        }
+        be_pop(vm, 1);
+        be_data_push(vm, -2);
+        be_pop(vm, 1);
+    }
+    be_pop(vm, 1);
+    be_return(vm);
+}
+
+static int pref_idx(const char *k)
+{
+    for (int i = 0; i < PREF_N; i++) if (k && !strcmp(k, PREF_K[i])) return i;
+    return -1;
+}
+
+static int f_pref_get(bvm *vm)
+{
+    int i = pref_idx(args(vm, 1));
+    if (i < 0) be_return_nil(vm);
+    be_pushint(vm, s_pref[i]);
+    be_return(vm);
+}
+
+static int f_pref_set(bvm *vm)
+{
+    int i = pref_idx(args(vm, 1));
+    if (i < 0) { be_pushbool(vm, false); be_return(vm); }
+    int v = clampv(argi(vm, 2, 0), 0, 255);
+    LOCK();
+    s_pref[i] = (uint8_t)v;
+    s_pref_dirty |= 1u << i;
+    UNLOCK();
+    be_pushbool(vm, true);
+    be_return(vm);
+}
+
+static void prefs_load(void)
+{
+    for (int i = 0; i < PREF_N; i++) s_pref[i] = PREF_DEF[i];
+    s_pref_dirty = 0;
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READONLY, &h) != ESP_OK) return;
+    for (int i = 0; i < PREF_N; i++) nvs_get_u8(h, PREF_K[i], &s_pref[i]);
+    nvs_close(h);
+}
+
+static int f_session_begin(bvm *vm) { cmd_push(FD_BERRY_CMD_SESS_BEGIN, args(vm, 1)); be_return_nil(vm); }
+static int f_event(bvm *vm) { cmd_push(FD_BERRY_CMD_EVENT, args(vm, 1)); be_return_nil(vm); }
+static int f_session_end(bvm *vm) { cmd_push(FD_BERRY_CMD_SESS_END, NULL); be_return_nil(vm); }
+
+static int f_tr(bvm *vm)
+{
+    const char *k = args(vm, 1);
+    const fd_berry_host_t *h = s_cfg.host;
+    const char *t = (h && h->tr) ? h->tr(k) : NULL;
+    be_pushstring(vm, t ? t : k);
+    be_return(vm);
+}
+
+static int f_roll_box(bvm *vm)
+{
+    LOCK();
+    s_rst.x = (int16_t)clampv(argi(vm, 1, 0), -1000, 2000);
+    s_rst.y = (int16_t)clampv(argi(vm, 2, 0), -1000, 2000);
+    s_rst.w = (int16_t)clampv(argi(vm, 3, 0), 0, 640);
+    s_rst.h = (int16_t)clampv(argi(vm, 4, 0), 0, 640);
+    s_rst.ver++;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+static int f_roll_clear(bvm *vm)
+{
+    LOCK();
+    s_rst.n = 0;
+    s_rst.ver++;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+/* fd.roll_add(chu, font, mau[, opa]) */
+static int f_roll_add(bvm *vm)
+{
+    const char *t = args(vm, 1);
+    int f = argi(vm, 2, 18), c = argi(vm, 3, 0x111827), o = argi(vm, 4, 255);
+    bool ok = false;
+    LOCK();
+    if (s_roll && s_rst.n < FD_BERRY_ROLL_MAX) {
+        fd_berry_roll_item_t *it = &s_roll[s_rst.n++];
+        ucpy(it->txt, sizeof(it->txt), t);
+        it->font = (uint8_t)(f >= 32 ? 32 : f >= 18 ? 18 : f >= 14 ? 14 : 12);
+        it->color = c & 0xFFFFFF;
+        it->opa = (uint8_t)clampv(o, 0, 255);
+        s_rst.ver++;
+        ok = true;
+    }
+    UNLOCK();
+    be_pushbool(vm, ok);
+    be_return(vm);
+}
+
+static int f_roll_run(bvm *vm)
+{
+    LOCK();
+    s_rst.est_ms = clampv(argi(vm, 1, 8000), 0, 600000);
+    s_rst.run_seq++;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
+static int f_roll_y(bvm *vm) { be_pushint(vm, s_roll_y); be_return(vm); }
+
+static int f_hold_back(bvm *vm)
+{
+    s_hold_back = be_top(vm) < 1 || be_tobool(vm, 1);
+    be_return_nil(vm);
+}
+
+bool fd_berry_cmd_take(fd_berry_cmd_t *out)
+{
+    if (!s_mx || !out) return false;
+    LOCK();
+    bool ok = s_cmd_n > 0;
+    if (ok) {
+        *out = s_cmd[s_cmd_h];
+        s_cmd_h = (s_cmd_h + 1) % CMD_Q;
+        s_cmd_n--;
+    }
+    UNLOCK();
+    return ok;
+}
+
+size_t fd_berry_long_text(char *out, size_t cap)
+{
+    if (!s_mx || !out || !cap) return 0;
+    LOCK();
+    ucpy(out, cap, s_long_pend && s_long ? s_long : "");
+    s_long_pend = false;
+    UNLOCK();
+    return strlen(out);
+}
+
+void fd_berry_set_busy(bool busy) { s_busy = busy; }
+
+void fd_berry_pref_flush(void)
+{
+    if (!s_mx) return;
+    LOCK();
+    uint32_t d = s_pref_dirty;
+    uint8_t v[PREF_N];
+    memcpy(v, s_pref, sizeof(v));
+    s_pref_dirty = 0;
+    UNLOCK();
+    if (!d) return;
+    nvs_handle_t h;
+    if (nvs_open("fd", NVS_READWRITE, &h) != ESP_OK) return;
+    for (int i = 0; i < PREF_N; i++) if (d & (1u << i)) nvs_set_u8(h, PREF_K[i], v[i]);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+void fd_berry_roll_get(fd_berry_roll_t *out)
+{
+    if (!out) return;
+    if (!s_mx) { memset(out, 0, sizeof(*out)); return; }
+    LOCK();
+    *out = s_rst;
+    UNLOCK();
+}
+
+int fd_berry_roll_items(fd_berry_roll_item_t *out, int cap)
+{
+    if (!s_mx || !out || !s_roll) return 0;
+    LOCK();
+    int n = s_rst.n < cap ? s_rst.n : cap;
+    if (n > 0) memcpy(out, s_roll, sizeof(*out) * (size_t)n);
+    UNLOCK();
+    return n;
+}
+
+void fd_berry_roll_set_y(int y) { s_roll_y = y; }
+bool fd_berry_hold_back(void) { return s_running && s_hold_back; }
+
 static void reg_module(bvm *vm)
 {
     static const struct { const char *name; bntvfunc f; } F[] = {
@@ -593,6 +897,11 @@ static void reg_module(bvm *vm)
         {"count", f_count}, {"en", f_en}, {"vi", f_vi}, {"style", f_style}, {"move", f_move}, {"stop", f_stop},
         {"measure", f_measure}, {"opt", f_opt}, {"ipa", f_ipa}, {"sub", f_sub},
         {"grad", f_grad}, {"opa", f_opa}, {"fx", f_fx}, {"sway", f_sway}, {"deco", f_deco}, {"burst", f_burst}, {"pos", f_pos},
+        {"align", f_align}, {"say_long", f_say_long}, {"say_stop", f_say_stop}, {"busy", f_busy},
+        {"pass_count", f_pass_count}, {"pass_at", f_pass_at}, {"pass_load", f_pass_load},
+        {"pref_get", f_pref_get}, {"pref_set", f_pref_set}, {"session_begin", f_session_begin}, {"event", f_event},
+        {"session_end", f_session_end}, {"tr", f_tr}, {"roll_box", f_roll_box}, {"roll_clear", f_roll_clear},
+        {"roll_add", f_roll_add}, {"roll_run", f_roll_run}, {"roll_y", f_roll_y}, {"hold_back", f_hold_back},
     };
     be_newmodule(vm);
     for (size_t i = 0; i < sizeof(F) / sizeof(F[0]); i++) {
@@ -659,6 +968,7 @@ static void run_game(void)
     s_sum_us = 0;
     s_max_us = 0;
     s_mem_peak = s_mem;
+    if (s_cfg.host) prefs_load();
     bvm *vm = be_vm_new();
     if (!vm) { set_err("memory_error", "khong tao duoc may ao"); goto out; }
     be_set_obs_hook(vm, obs_hook);
@@ -677,6 +987,11 @@ static void run_game(void)
     be_pop(vm, be_top(vm));
     free(s_cfg.script);   /* da bien dich, giai phong ma nguon som */
     s_cfg.script = NULL;
+    if (s_cfg.need_init) {   /* 5.4.0: goi tinh nang phai co init(), khong thi man hinh dung ban C */
+        bool has = be_getglobal(vm, "init") && be_isfunction(vm, -1);
+        be_pop(vm, 1);
+        if (!has) { set_err("no_init", NULL); goto out; }
+    }
     if (!call_fn(vm, "init", 0, 0, FD_BERRY_INIT_MS)) goto out;
     int64_t last = esp_timer_get_time();
     TickType_t wake = xTaskGetTickCount();
@@ -684,8 +999,8 @@ static void run_game(void)
         ev_t ev;
         while (!s_stop && xQueueReceive(s_q, &ev, 0) == pdTRUE) {
             if (s_paused) continue;
-            const char *fn = ev.type == FD_BERRY_EV_BUTTON ? "button" : "tap";
-            if (!call_fn(vm, fn, 1, ev.arg, FD_BERRY_FRAME_MS)) goto out;
+            const char *fn = ev.type == FD_BERRY_EV_BUTTON ? "button" : ev.type == FD_BERRY_EV_BACK ? "back" : "tap";
+            if (!call_fn(vm, fn, ev.type == FD_BERRY_EV_BACK ? 0 : 1, ev.arg, FD_BERRY_FRAME_MS)) goto out;
         }
         /* hoat hinh toi dich -> arrive(id) */
         if (!s_paused) {
@@ -738,6 +1053,12 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
         if (!s_mx || !s_done || !s_q) return false;
     }
     if (s_running) return false;
+    if (cfg->host) {   /* 5.4.0 bo dem tinh nang, cap mot lan, giu lai */
+        if (!s_long) s_long = heap_caps_calloc(1, FD_BERRY_LONG_MAX, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!s_roll) s_roll = heap_caps_calloc(FD_BERRY_ROLL_MAX, sizeof(fd_berry_roll_item_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!s_lines) s_lines = heap_caps_calloc(FD_BERRY_LINES, sizeof(fd_berry_line_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!s_long || !s_roll || !s_lines) return false;
+    }
     if (!s_task &&
         xTaskCreatePinnedToCoreWithCaps(worker, "fd_berry", STACK_BYTES, NULL, 2, &s_task, tskNO_AFFINITY,
                                         MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
@@ -754,6 +1075,13 @@ bool fd_berry_start(const fd_berry_cfg_t *cfg)
     s_arrived = 0;
     s_pause_acc = 0;
     s_pause_at = 0;
+    s_cmd_h = s_cmd_n = 0;
+    s_long_pend = false;
+    s_busy = false;
+    s_hold_back = false;
+    memset(&s_rst, 0, sizeof(s_rst));
+    s_roll_y = 0;
+    s_pref_dirty = 0;
     s_misc.over_right = -1;
     s_misc.state = FD_BERRY_RUNNING;
     s_misc.sound = -1;

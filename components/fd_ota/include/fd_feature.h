@@ -14,6 +14,7 @@ extern "C" {
 #define FD_FEAT_PATH_LEN 160
 #define FD_FEAT_LIST_MAX 8
 #define FD_FEAT_PKG_MAX (64 * 1024)
+#define FD_FEAT_SCRIPT_MAX (32 * 1024)   /* 5.4.0, khop server */
 
 typedef struct {
     char id[FD_FEAT_ID_LEN];
@@ -46,6 +47,8 @@ void fd_feature_list_fetch(void);
 void fd_feature_get(fd_feature_status_t *out);
 bool fd_feature_find(const char *id, fd_feature_entry_t *out);
 bool fd_feature_install(const fd_feature_entry_t *e);
+/* 5.4.0: ma nguon Berry cua goi id (PSRAM, nguoi goi free). NULL neu chua cai / hong. */
+char *fd_feature_script(const char *id, size_t *len);
 
 #ifdef __cplusplus
 }
