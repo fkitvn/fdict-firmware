@@ -755,6 +755,7 @@ static void err_back_cb(lv_event_t *e) { (void)e; ui_nav_back(); }
 
 static void show_berry_err(const char *err)
 {
+    fd_feature_mark_broken("shadow");
     berry_teardown();
     s_gate = false;
     s_bmode = false;

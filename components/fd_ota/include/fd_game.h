@@ -15,6 +15,7 @@
  *  - Thong so ngoai khoang hop le bi kep lai (khong tin du lieu tai ve). */
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,7 @@ typedef struct {
     char version[FD_GAME_VER_LEN];
     char min_fw[FD_GAME_VER_LEN];
     bool runnable;   /* firmware dang chay >= min_fw */
+    bool broken;     /* 5.4.9: goi tung gap loi kich ban Berry */
     int fall_ms;     /* thoi gian the di het san o toc do Vua, the dau tien */
     int min_ms;      /* nhanh nhat */
     int every;       /* moi every cau dung thi len cap */
@@ -61,8 +63,6 @@ typedef struct {
 
 typedef enum {
     FD_GAME_IDLE = 0,
-    FD_GAME_LISTING,
-    FD_GAME_LIST_READY,
     FD_GAME_DOWNLOADING,
     FD_GAME_DONE,        /* cai xong */
     FD_GAME_ERROR,
@@ -70,9 +70,10 @@ typedef enum {
 
 typedef struct {
     fd_game_state_t state;
-    bool install;        /* loi / tien do thuoc lan cai (false = lan tai danh sach) */
+    bool install;        /* loi / tien do thuoc lan cai */
     int pct;             /* 0..100 khi DOWNLOADING */
     int n;               /* so muc danh sach */
+    uint32_t list_seq;   /* tang moi khi danh sach dong bo thay doi */
     char err[24];        /* no_wifi, unpaired, none, http_NNN, net, format, sha256, min_fw, too_large, fs, nomem */
 } fd_game_status_t;
 
@@ -84,16 +85,19 @@ int fd_game_installed_list(fd_game_cfg_t *out, int cap);
 bool fd_game_load(const char *id, fd_game_cfg_t *out);
 /* Ma nguon Berry cua goi id (PSRAM, nguoi goi free). NULL neu chua cai / hong. */
 char *fd_game_script(const char *id, size_t *len);
-/* Danh sach may chu lan tai thanh cong gan nhat (cache LittleFS), dung khi vua mo man hoac khong mang. */
+/* Nap danh sach da luu vao RAM khi khoi dong. */
+void fd_game_load_cache(void);
+bool fd_game_has_list(void);
+bool fd_game_apply_sync(const char *buf, size_t len);
+void fd_game_mark_broken(const char *id);
+bool fd_game_is_broken(const char *id, const char *installed_ver);
+/* Danh sach da luu (doc tu RAM cache). */
 int fd_game_list_cached(fd_game_entry_t *out, int cap);
 /* Xoa moi goi da tai, slot cu va cache danh sach. */
 bool fd_game_reset(void);   /* 5.0.0: true = da xoa het (kiem lai thu muc rong) */
 /* 4.9.9 / 5.0.1: xoa slot /data/games/<id>/ (an toan khi dang tai); true = da xoa */
 bool fd_game_remove(const char *id);
-/* Tai danh sach (khong chan; ket qua qua fd_game_get / fd_game_list). */
-void fd_game_list_fetch(void);
 void fd_game_get(fd_game_status_t *out);
-int fd_game_list(fd_game_entry_t *out, int cap);
 /* Tai + kiem + cai 1 muc (khong chan). false neu dang ban hoac muc khong hop le. */
 bool fd_game_install(const fd_game_entry_t *e);
 

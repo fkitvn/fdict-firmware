@@ -11,7 +11,6 @@
 #include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
-#include "esp_timer.h"
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "freertos/FreeRTOS.h"
@@ -26,7 +25,6 @@ static const char *TAG = "fd_feat";
 #define DL_TMP "/data/feature.dl"
 #define LIST_TMP "/data/feature_list.tmp"
 #define LIST_MAX (16 * 1024)
-#define HW "fnk0104b"
 
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static SemaphoreHandle_t s_mx;
@@ -36,9 +34,9 @@ static EXT_RAM_BSS_ATTR fd_feature_entry_t s_list[FD_FEAT_LIST_MAX];
 static int s_n;
 static bool s_busy;
 static bool s_cache_loaded;
-static bool s_list_fresh;
-static int64_t s_list_ms;
-static int64_t s_try_ms;
+static bool s_have_list;
+static bool s_bad_loaded;
+static char s_bad_ver[FD_FEAT_VER_LEN];
 static fd_feature_entry_t s_job;
 
 static void ensure_mx(void)
@@ -84,17 +82,6 @@ static bool fw_ok(const char *min_fw)
     long have = ver_num(p ? p + 1 : v);
     long need = ver_num(min_fw);
     return need >= 0 && have >= need;
-}
-
-static void fw_semver(char *out, size_t n)
-{
-    const char *v = esp_app_get_description()->version;
-    const char *p = strrchr(v, ' ');
-    p = p ? p + 1 : v;
-    size_t k = strspn(p, "0123456789.");
-    if (k >= n) k = n - 1;
-    memcpy(out, p, k);
-    out[k] = 0;
 }
 
 static bool safe_id(const char *s)
@@ -171,6 +158,19 @@ static char *read_all(const char *path, size_t max, size_t *len)
     return buf;
 }
 
+static bool write_atomic(const char *tmp, const char *dst, const char *buf, size_t len)
+{
+    FILE *f = fopen(tmp, "wb");
+    if (!f) return false;
+    bool ok = len == 0 || fwrite(buf, 1, len, f) == len;
+    ok = (fflush(f) == 0) && ok;
+    ok = (fsync(fileno(f)) == 0) && ok;
+    ok = (fclose(f) == 0) && ok;
+    if (ok) ok = rename(tmp, dst) == 0;
+    if (!ok) unlink(tmp);
+    return ok;
+}
+
 static bool sha256_file(const char *path, char out[65])
 {
     FILE *f = fopen(path, "rb");
@@ -217,6 +217,13 @@ bool fd_feature_local(const char *id, char *version, size_t n)
     return ok;
 }
 
+static bool entry_eq(const fd_feature_entry_t *a, const fd_feature_entry_t *b)
+{
+    return !strcmp(a->id, b->id) && !strcmp(a->version, b->version) && !strcmp(a->min_fw, b->min_fw) &&
+           !strcmp(a->sha256, b->sha256) && !strcmp(a->path, b->path) && a->size == b->size &&
+           a->supported == b->supported;
+}
+
 static int parse_list(const char *buf, size_t len, fd_feature_entry_t *tmp, int cap)
 {
     cJSON *j = buf ? cJSON_ParseWithLength(buf, len) : NULL;
@@ -255,48 +262,6 @@ static int parse_list(const char *buf, size_t len, fd_feature_entry_t *tmp, int 
     return n;
 }
 
-static void list_task(void *arg)
-{
-    (void)arg;
-    char fw[16], path[128], err[24] = "", did[24] = "";
-    fw_semver(fw, sizeof(fw));
-    fd_ota_get_device_id(did, sizeof(did));
-    snprintf(path, sizeof(path), "/api/devices/features?hw=" HW "&fw=%.15s&device_id=%.23s", fw, did);
-    int code = fd_ota_api_get_file_qt(path, LIST_TMP, LIST_MAX, 3500, NULL, NULL);
-    ESP_LOGI(TAG, "list: HTTP %d", code);
-    fd_feature_entry_t tmp[FD_FEAT_LIST_MAX];
-    int n = 0;
-    if (code != 200) http_err(err, sizeof(err), code);
-    else {
-        size_t len = 0;
-        char *buf = read_all(LIST_TMP, LIST_MAX, &len);
-        n = parse_list(buf, len, tmp, FD_FEAT_LIST_MAX);
-        free(buf);
-        if (n < 0) { n = 0; strlcpy(err, "format", sizeof(err)); }
-    }
-    ensure_mx();
-    xSemaphoreTake(s_mx, portMAX_DELAY);
-    if (!err[0]) {
-        mkdir(ROOT, 0775);
-        unlink(LIST_CACHE);
-        rename(LIST_TMP, LIST_CACHE);
-        s_n = n;
-        if (n > 0) memcpy(s_list, tmp, sizeof(tmp[0]) * (size_t)n);
-        s_cache_loaded = true;
-    }
-    unlink(LIST_TMP);
-    xSemaphoreGive(s_mx);
-    if (!err[0]) {
-        taskENTER_CRITICAL(&s_mux);
-        s_list_fresh = true;
-        s_list_ms = esp_timer_get_time() / 1000;
-        s_st.list_seq++;
-        taskEXIT_CRITICAL(&s_mux);
-    }
-    set_state(err[0] ? FD_FEAT_ERROR : FD_FEAT_LIST_READY, err[0] ? err : NULL, false);
-    vTaskDelete(NULL);
-}
-
 static bool begin(fd_feature_state_t st, bool install)
 {
     taskENTER_CRITICAL(&s_mux);
@@ -310,64 +275,127 @@ static bool begin(fd_feature_state_t st, bool install)
     return true;
 }
 
+static void load_shadow_bad_locked(void)
+{
+    if (s_bad_loaded) return;
+    s_bad_loaded = true;
+    s_bad_ver[0] = 0;
+    size_t len = 0;
+    char *b = read_all("/data/features/shadow/bad", FD_FEAT_VER_LEN - 1, &len);
+    if (b) {
+        ucpy(s_bad_ver, sizeof(s_bad_ver), b);
+        free(b);
+    }
+}
+
 void fd_feature_load_cache(void)
 {
     ensure_mx();
     xSemaphoreTake(s_mx, portMAX_DELAY);
-    if (!s_cache_loaded && s_n == 0) {
+    if (!s_cache_loaded) {
         s_cache_loaded = true;
+        unlink(LIST_TMP);
         size_t len = 0;
         char *buf = read_all(LIST_CACHE, LIST_MAX, &len);
         if (buf) {
             fd_feature_entry_t tmp[FD_FEAT_LIST_MAX];
+            memset(tmp, 0, sizeof(tmp));
             int n = parse_list(buf, len, tmp, FD_FEAT_LIST_MAX);
             free(buf);
-            if (n > 0) {
+            if (n >= 0) {
                 s_n = n;
-                memcpy(s_list, tmp, sizeof(tmp[0]) * (size_t)n);
+                if (n > 0) memcpy(s_list, tmp, sizeof(tmp[0]) * (size_t)n);
+                s_have_list = true;
             }
         }
+        load_shadow_bad_locked();
     }
     xSemaphoreGive(s_mx);
 }
 
-bool fd_feature_list_stale(uint32_t ttl_ms)
+bool fd_feature_has_list(void)
 {
-    int64_t now = esp_timer_get_time() / 1000;
-    taskENTER_CRITICAL(&s_mux);
-    bool stale = !s_list_fresh || (now - s_list_ms) >= (int64_t)ttl_ms;
-    taskEXIT_CRITICAL(&s_mux);
-    return stale;
+    ensure_mx();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    bool have = s_have_list;
+    xSemaphoreGive(s_mx);
+    return have;
 }
 
-void fd_feature_list_invalidate(void)
+bool fd_feature_apply_sync(const char *buf, size_t len)
 {
-    taskENTER_CRITICAL(&s_mux);
-    s_list_fresh = false;
-    s_try_ms = 0;
-    taskEXIT_CRITICAL(&s_mux);
+    if (!buf || len == 0 || len > LIST_MAX) return false;
+    fd_feature_entry_t tmp[FD_FEAT_LIST_MAX];
+    memset(tmp, 0, sizeof(tmp));
+    int n = parse_list(buf, len, tmp, FD_FEAT_LIST_MAX);
+    if (n < 0) return false;
+    ensure_mx();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    unlink(LIST_TMP);
+    bool same = s_have_list && n == s_n;
+    for (int i = 0; same && i < n; i++) same = entry_eq(&s_list[i], &tmp[i]);
+    bool ok = true;
+    if (!same) {
+        mkdir(ROOT, 0775);
+        ok = write_atomic(LIST_TMP, LIST_CACHE, buf, len);
+        if (ok) {
+            s_n = n;
+            if (n > 0) memcpy(s_list, tmp, sizeof(tmp[0]) * (size_t)n);
+            s_have_list = true;
+            s_cache_loaded = true;
+        }
+    }
+    xSemaphoreGive(s_mx);
+    if (ok && !same) {
+        taskENTER_CRITICAL(&s_mux);
+        s_st.list_seq++;
+        taskEXIT_CRITICAL(&s_mux);
+    }
+    return ok;
 }
 
-bool fd_feature_should_poll(uint32_t ttl_ms)
+void fd_feature_mark_broken(const char *id)
 {
-    int64_t now = esp_timer_get_time() / 1000;
-    taskENTER_CRITICAL(&s_mux);
-    bool stale = !s_list_fresh || (now - s_list_ms) >= (int64_t)ttl_ms;
-    bool cool = s_try_ms > 0 && (now - s_try_ms) < (int64_t)ttl_ms;
-    bool busy = s_busy;
-    taskEXIT_CRITICAL(&s_mux);
-    return stale && !cool && !busy;
+    if (!safe_id(id)) return;
+    char ver[FD_FEAT_VER_LEN] = "";
+    if (!fd_feature_local(id, ver, sizeof(ver)) || !ver[0]) strlcpy(ver, "*", sizeof(ver));
+    char dir[64], bad[80], tmp[88];
+    snprintf(dir, sizeof(dir), ROOT "/%.31s", id);
+    snprintf(bad, sizeof(bad), ROOT "/%.31s/bad", id);
+    snprintf(tmp, sizeof(tmp), ROOT "/%.31s/bad.tmp", id);
+    ensure_mx();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    mkdir(ROOT, 0775);
+    mkdir(dir, 0775);
+    if (write_atomic(tmp, bad, ver, strlen(ver)) && !strcmp(id, "shadow")) {
+        s_bad_loaded = true;
+        ucpy(s_bad_ver, sizeof(s_bad_ver), ver);
+    }
+    xSemaphoreGive(s_mx);
 }
 
-void fd_feature_list_fetch(void)
+bool fd_feature_is_broken(const char *id, const char *installed_ver)
 {
-    if (!begin(FD_FEAT_LISTING, false)) return;
-    if (!fd_net_is_connected()) { set_state(FD_FEAT_ERROR, "no_wifi", false); return; }
-    if (!fd_ota_is_paired()) { set_state(FD_FEAT_ERROR, "unpaired", false); return; }
-    taskENTER_CRITICAL(&s_mux);
-    s_try_ms = esp_timer_get_time() / 1000;
-    taskEXIT_CRITICAL(&s_mux);
-    if (xTaskCreate(list_task, "fd_feat", 8192, NULL, 3, NULL) != pdPASS) set_state(FD_FEAT_ERROR, "nomem", false);
+    if (!safe_id(id)) return false;
+    ensure_mx();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (!strcmp(id, "shadow")) {
+        load_shadow_bad_locked();
+        bool b = s_bad_ver[0] != 0 && (!strcmp(s_bad_ver, "*") || !installed_ver || !installed_ver[0] || !strcmp(s_bad_ver, installed_ver));
+        xSemaphoreGive(s_mx);
+        return b;
+    }
+    char bad[80];
+    snprintf(bad, sizeof(bad), ROOT "/%.31s/bad", id);
+    size_t len = 0;
+    char *buf = read_all(bad, FD_FEAT_VER_LEN - 1, &len);
+    bool b = false;
+    if (buf) {
+        b = buf[0] != 0 && (!strcmp(buf, "*") || !installed_ver || !installed_ver[0] || !strcmp(buf, installed_ver));
+        free(buf);
+    }
+    xSemaphoreGive(s_mx);
+    return b;
 }
 
 void fd_feature_get(fd_feature_status_t *out)
@@ -404,6 +432,8 @@ static bool write_text(const char *path, const char *txt)
     if (!f) return false;
     size_t n = strlen(txt);
     bool ok = fwrite(txt, 1, n, f) == n;
+    ok = (fflush(f) == 0) && ok;
+    ok = (fsync(fileno(f)) == 0) && ok;
     ok = fclose(f) == 0 && ok;
     if (!ok) unlink(path);
     return ok;
@@ -439,9 +469,17 @@ static void install_task(void *arg)
         if ((mkdir(ROOT, 0775) != 0 && errno != EEXIST) || (mkdir(dir, 0775) != 0 && errno != EEXIST)) strlcpy(err, "fs", sizeof(err));
         else if (rename(DL_TMP, pkg) != 0) strlcpy(err, "fs", sizeof(err));
         else {
-            char body[96];
+            char body[96], bad[80];
             snprintf(body, sizeof(body), "{\"id\":\"%.31s\",\"version\":\"%.15s\",\"type\":\"shadow\"}", e->id, e->version);
             if (!write_text(meta, body)) strlcpy(err, "fs", sizeof(err));
+            else {
+                snprintf(bad, sizeof(bad), ROOT "/%.31s/bad", e->id);
+                unlink(bad);
+                ensure_mx();
+                xSemaphoreTake(s_mx, portMAX_DELAY);
+                if (!strcmp(e->id, "shadow")) { s_bad_loaded = true; s_bad_ver[0] = 0; }
+                xSemaphoreGive(s_mx);
+            }
         }
     }
     cJSON_Delete(j);

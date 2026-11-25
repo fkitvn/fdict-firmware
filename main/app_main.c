@@ -23,6 +23,7 @@
 #include "fd_events.h"
 #include "fd_net.h"
 #include "fd_feature.h"
+#include "fd_game.h"
 #include "fd_ota.h"
 #include "fd_store.h"
 #include "fd_ui.h"
@@ -62,7 +63,7 @@ static void run_app(void)
     ESP_ERROR_CHECK(fd_events_init());
 
     bool storage_ok = fd_store_mount() == ESP_OK && fd_store_selftest() == ESP_OK;   /* tu kiem tra OTA */
-    if (storage_ok) fd_feature_load_cache();
+    if (storage_ok) { fd_feature_load_cache(); fd_game_load_cache(); }
 
 #if CONFIG_FD_WIFI_INIT_BEFORE_DISPLAY
     ESP_LOGI(TAG, "boot order: wifi first");

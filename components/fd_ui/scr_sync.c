@@ -5,7 +5,6 @@
 #include <time.h>
 #include "fd_fonts.h"
 #include "fd_net.h"
-#include "fd_feature.h"
 #include "fd_ota.h"
 #include "fd_sync.h"
 #include "ui_priv.h"
@@ -74,10 +73,7 @@ static void refresh(void)
     lv_label_set_text(s_state, m);
     if (run) lv_obj_add_state(s_btn, LV_STATE_DISABLED);
     else lv_obj_remove_state(s_btn, LV_STATE_DISABLED);
-    if (st.state == FD_SYNC_OK && (s_prev_st != FD_SYNC_OK || st.last_sync != s_prev_sync)) {
-        fd_feature_list_invalidate();
-        if (fd_net_is_connected() && fd_ota_is_paired()) fd_feature_list_fetch();
-    }
+
     s_prev_st = st.state;
     s_prev_sync = st.last_sync;
 }

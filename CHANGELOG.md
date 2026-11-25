@@ -5,6 +5,12 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.4.9] - 2026-11-25
+- Gộp danh sách Nhại lại và Trò chơi vào bước đồng bộ định kỳ và lưu trên máy.
+- Mở Nhại lại và Trò chơi ngay lập tức bằng danh sách đã lưu mà không chờ kiểm tra phiên bản.
+- Khi có bản mới hơn sẽ tải một lần rồi mở và nếu tải lỗi sẽ mở bản cũ sẵn có.
+- Đánh dấu gói gặp lỗi kịch bản để tự tải lại khi máy chủ có phiên bản khác.
+
 ## [5.4.8] - 2026-11-25
 - Hiện vòng xoay khi kiểm tra và tải Nhại lại hoặc Trò chơi, không còn mở giao diện cũ khi script lỗi.
 - Sửa kiểm tra phiên bản module hết thời gian ngắn, tránh lặp tải và hỗ trợ khi mất mạng.
