@@ -19,7 +19,7 @@ SYMBOL_NUMBER_FONTS = {
 }
 
 # Font dung cho nhan chu (doi chieu test host render). LV_FONT_DEFAULT = noto_14.
-LABEL_FONTS = ("fd_font_noto_14", "fd_font_noto_18", "fd_font_mont_24", "fd_font_mont_32")
+LABEL_FONTS = ("fd_font_noto_12", "fd_font_noto_14", "fd_font_noto_18", "fd_font_mont_24", "fd_font_mont_32")
 TITLE_FONT = "fd_font_noto_32_title"
 
 

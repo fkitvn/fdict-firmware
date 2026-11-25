@@ -10,9 +10,11 @@
 #include "fd_feature.h"
 #include "nvs.h"
 #include "ui_priv.h"
+#include "ui_swipe.h"
 
 #define VI_KEY  "sh_vi"
 #define IPA_KEY "sh_ipa"
+#define HOLD_MS 3000
 
 typedef enum { V_LIST, V_PLAY } view_t;
 
@@ -25,10 +27,22 @@ static int s_n, s_est, s_pick;
 static bool s_vi, s_ipa, s_gate;
 static bool s_arm, s_saw, s_heard, s_logged;
 static int64_t s_t0;
+static bool s_held, s_dragging;
+static int64_t s_resume_at;
+static lv_point_t s_press_pt;
+static int32_t s_press_y;
 
 static void show_list(void);
 static void note_session(void);
-static void list_cb(lv_event_t *e);
+
+static int32_t i32abs(int32_t v) { return v < 0 ? -v : v; }
+
+static void pause_reset(void)
+{
+    s_held = false;
+    s_dragging = false;
+    s_resume_at = 0;
+}
 
 static void prefs_load(void)
 {
@@ -55,6 +69,7 @@ static void pref_save(const char *key, uint8_t v)
 static void body_clear(void)
 {
     if (s_tmr) { lv_timer_delete(s_tmr); s_tmr = NULL; }
+    pause_reset();
     s_viewp = s_roll = NULL;
     if (s_body) lv_obj_clean(s_body);
 }
@@ -125,13 +140,65 @@ static void scroll_cb(lv_timer_t *t)
         if (p < 0) p = 0;
         if (p > 1) p = 1;
     }
-    lv_obj_set_y(s_roll, vh - (int32_t)(p * (float)travel));
+    int32_t target = vh - (int32_t)(p * (float)travel);
+    bool paused = s_held || (s_resume_at && now < s_resume_at);
+    if (!paused) {
+        int32_t cur = lv_obj_get_y(s_roll);
+        int32_t d = target - cur;
+        if (i32abs(d) <= 3) cur = target;
+        else {
+            int32_t step = (int32_t)((float)d * 0.25f);
+            if (step == 0) step = d > 0 ? 1 : -1;
+            if (step > 24) step = 24;
+            if (step < -24) step = -24;
+            cur += step;
+        }
+        lv_obj_set_y(s_roll, cur);
+    }
     if (s_arm && s_saw && !busy) note_session();
+}
+
+static void touch_cb(lv_event_t *e)
+{
+    if (s_view != V_PLAY || !s_viewp || !s_roll) return;
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t *in = lv_event_get_indev(e);
+    lv_point_t p = {0, 0};
+    if (in) lv_indev_get_point(in, &p);
+    int32_t dw = lv_display_get_horizontal_resolution(NULL);
+    if (code == LV_EVENT_PRESSED) {
+        /* Vuot mep de quay lai: khong bat giu chu, de cu chi canh van chay. */
+        if (p.x < FD_SWIPE_EDGE_PX || p.x >= dw - FD_SWIPE_EDGE_PX) return;
+        s_dragging = false;
+        s_press_pt = p;
+        s_press_y = lv_obj_get_y(s_roll);
+        s_held = true;
+        s_resume_at = 0;
+    } else if (code == LV_EVENT_PRESSING && s_held) {
+        int32_t dy = p.y - s_press_pt.y;
+        int32_t dx = p.x - s_press_pt.x;
+        if (i32abs(dy) > i32abs(dx) && i32abs(dy) > 4) s_dragging = true;
+        if (s_dragging) {
+            lv_obj_update_layout(s_viewp);
+            int32_t vh = lv_obj_get_height(s_viewp);
+            int32_t ch = lv_obj_get_height(s_roll);
+            int32_t y = s_press_y + dy;
+            if (y > vh) y = vh;
+            if (y < -ch) y = -ch;
+            lv_obj_set_y(s_roll, y);
+        }
+    } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+        if (s_held) {
+            s_held = false;
+            s_dragging = false;
+            s_resume_at = esp_timer_get_time() / 1000 + HOLD_MS;
+        }
+    }
 }
 
 static lv_obj_t *muted(lv_obj_t *parent, const char *text)
 {
-    lv_obj_t *l = ui_label_create(parent, text, &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+    lv_obj_t *l = ui_label_create(parent, text, &fd_font_noto_12, FD_COLOR_TEXT_MUTED);
     lv_obj_set_width(l, lv_pct(100));
     lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
@@ -139,7 +206,7 @@ static lv_obj_t *muted(lv_obj_t *parent, const char *text)
     return l;
 }
 
-static void replay_cb(lv_event_t *e) { (void)e; begin_audio(); }
+static void replay_cb(lv_event_t *e) { (void)e; pause_reset(); begin_audio(); }
 
 static void show_play(void)
 {
@@ -149,6 +216,7 @@ static void show_play(void)
     s_logged = false;
     s_arm = false;
     s_saw = false;
+    pause_reset();
     join_say();
     s_view = V_PLAY;
     body_clear();
@@ -160,12 +228,22 @@ static void show_play(void)
     lv_obj_set_width(s_viewp, lv_pct(100));
     lv_obj_set_flex_grow(s_viewp, 1);
     lv_obj_set_scrollable(s_viewp, false);
+    lv_obj_set_clickable(s_viewp, true);
+    lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(s_viewp, touch_cb, LV_EVENT_PRESS_LOST, NULL);
     s_roll = lv_obj_create(s_viewp);
     lv_obj_remove_style_all(s_roll);
     lv_obj_set_width(s_roll, lv_pct(100));
     lv_obj_set_height(s_roll, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(s_roll, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(s_roll, 10, 0);
+    lv_obj_set_clickable(s_roll, true);
+    lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(s_roll, touch_cb, LV_EVENT_PRESS_LOST, NULL);
     for (int i = 0; i < s_n; i++) {
         lv_obj_t *t = ui_label_create(s_roll, s_lines[i].text, &fd_font_noto_18, FD_COLOR_TEXT);
         lv_obj_set_width(t, lv_pct(100));
@@ -178,11 +256,9 @@ static void show_play(void)
     lv_obj_remove_style_all(row);
     lv_obj_set_size(row, lv_pct(100), 40);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_t *again = ui_gate_btn(row, _("SHADOW_AGAIN"), false, replay_cb);
-    lv_obj_t *back = ui_gate_btn(row, _("BACK"), true, list_cb);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t *again = ui_gate_btn(row, _("SHADOW_AGAIN"), true, replay_cb);
     lv_obj_set_style_text_font(lv_obj_get_child(again, 0), &fd_font_noto_14, 0);
-    lv_obj_set_style_text_font(lv_obj_get_child(back, 0), &fd_font_noto_14, 0);
     s_tmr = lv_timer_create(scroll_cb, 50, NULL);
     begin_audio();
 }
@@ -203,8 +279,8 @@ static void toggle_cb(lv_event_t *e)
 
 static void show_list(void)
 {
-    note_session();
     fd_audio_say_stop();
+    note_session();
     s_view = V_LIST;
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
@@ -254,8 +330,6 @@ static void show_list(void)
     }
 }
 
-static void list_cb(lv_event_t *e) { (void)e; show_list(); }
-
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
@@ -275,6 +349,7 @@ static void destroy(void)
     fd_audio_say_stop();
     note_session();
     if (s_tmr) { lv_timer_delete(s_tmr); s_tmr = NULL; }
+    pause_reset();
     s_body = s_viewp = s_roll = NULL;
 }
 

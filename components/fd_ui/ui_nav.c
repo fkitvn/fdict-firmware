@@ -298,6 +298,7 @@ static void on_screen_off(void)
     if (!s_scr_off_us) s_scr_off_us = esp_timer_get_time();
     set_idle_refresh(true);
     fd_sync_pause_periodic(true);
+    fd_audio_say_stop();   /* tat den: cat doan dang doc, khong de duoi tieng */
 }
 
 static void on_screen_on(void)

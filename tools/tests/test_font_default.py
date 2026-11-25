@@ -131,7 +131,11 @@ class FontDefaultGuard(unittest.TestCase):
         miss18 = sorted((ch for ch in need if ord(ch) not in noto18), key=ord)
         self.assertEqual(miss14, [], "Noto 14 missing: " + " ".join(f"U+{ord(c):04X} {c}" for c in miss14))
         self.assertEqual(miss18, [], "Noto 18 missing: " + " ".join(f"U+{ord(c):04X} {c}" for c in miss18))
+        noto12 = font_codepoints("fd_font_noto_12")
+        miss12 = sorted((ch for ch in need if ord(ch) not in noto12), key=ord)
+        self.assertEqual(miss12, [], "Noto 12 missing: " + " ".join(f"U+{ord(c):04X} {c}" for c in miss12))
         title32 = font_codepoints("fd_font_noto_32_title")
+        title_have = title32 | noto18  # .fallback = noto_18: chu thieu (vd é trong Réglages) ve Noto 18, khong o vuong
         missing32 = sorted((ch for ch in need if ord(ch) not in title32), key=ord)
         # Title font is a small subset; record but only fail strings actually drawn with it.
         uses = []
@@ -149,7 +153,7 @@ class FontDefaultGuard(unittest.TestCase):
         for p in (ROOT / "components/fd_ui").glob("*.c"):
             for key in re.findall(r'ui_screen_title\([^;]*?_\("([A-Z0-9_]+)"\)', p.read_text(encoding="utf-8")):
                 for val in re.findall(r'\{"' + key + r'", "([^"]*)"\}', c):
-                    miss += ["%s %r U+%04X" % (key, val, ord(ch)) for ch in val if ord(ch) not in title32]
+                    miss += ["%s %r U+%04X" % (key, val, ord(ch)) for ch in val if ord(ch) not in title_have]
         self.assertEqual(miss, [], "Noto 32 title thieu glyph cho tieu de")
 
     def test_listen_hides_keyboard_only_when_solved(self):

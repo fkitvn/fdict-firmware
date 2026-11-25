@@ -2,6 +2,7 @@ name: OTA prod
 
 # push nhanh prod -> build mot app (ESP-IDF 6.1, esp32s3) + full.bin (Pico Anh) + full-fr.bin (Pico Phap)
 # -> dang app OTA kenh stable, tai ca hai anh USB. OTA khong doi giong.
+# OTA replaces only the application
 # URL may chu: Actions variable hoac secret DICT_API_URL; token: secret CI_RELEASE_TOKEN (environment production).
 # Khong ghi vao repo/log.
 

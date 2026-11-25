@@ -12,9 +12,9 @@ from test_font_default import font_codepoints, text  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "tools" / "tests" / "data"
 UI = ROOT / "components" / "fd_ui"
-NOTO = {"fd_font_noto_14", "fd_font_noto_18"}
+NOTO = {"fd_font_noto_12", "fd_font_noto_14", "fd_font_noto_18"}
 # Man co hien phien am. Them man moi co ipa -> them vao day va kiem font cua nhan.
-IPA_SCREENS = {"scr_dict.c", "scr_flashcard.c", "scr_practice.c", "scr_spell.c", "scr_sync_mcq.c"}
+IPA_SCREENS = {"scr_dict.c", "scr_flashcard.c", "scr_practice.c", "scr_spell.c", "scr_sync_mcq.c", "scr_shadow.c", "scr_game.c"}
 
 
 def sample_chars(name):
@@ -70,6 +70,10 @@ class IpaGlyphs(unittest.TestCase):
                 self.assertTrue(helper and "if (f) lv_obj_set_style_text_font" in helper.group(1),
                                 p.name + ": label(..., NULL) phai ke thua font man hinh")
         self.assertEqual(found, IPA_SCREENS, "man hien phien am thay doi: cap nhat IPA_SCREENS va kiem font")
+        # Nhại lại: nghĩa và IPA dùng Noto 14 (không có Noto nhỏ hơn còn đủ Việt + IPA).
+        sh = text("components/fd_ui/scr_shadow.c")
+        self.assertIn("ui_label_create(parent, text, &fd_font_noto_12, FD_COLOR_TEXT_MUTED)", sh)
+        self.assertIn("s_lines[i].ipa", sh)
         # Font man hinh (ke thua cho label NULL) = Noto 14.
         self.assertRegex(text("components/fd_ui/ui_nav.c"), r"lv_theme_default_init\([^;]*&fd_font_noto_14\)")
         # Lat tu: IPA o mat sau, con 1 khi mat truoc = Nghia, con 0 khi mat truoc = Tu.

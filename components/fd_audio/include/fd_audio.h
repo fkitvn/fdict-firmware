@@ -18,9 +18,9 @@ esp_err_t fd_audio_beep(void);
 esp_err_t fd_audio_play_pcm(const int16_t *samples, size_t count);
 /* Doc tu tieng Anh bang TTS tren may (Pico) trong task am thanh; loi tong hop -> chuong. text < 40 ky tu. */
 esp_err_t fd_audio_say(const char *text);
-/* Doc mot doan dai (Nhại). Pico cat thanh manh ngan trong task am thanh. Chuoi duoc sao chep, toi da 1400 byte. */
+/* Doc mot doan dai (Nhại). Pico cat thanh manh ngan trong task am thanh. Chuoi duoc sao chep, toi da 2400 byte. */
 esp_err_t fd_audio_say_long(const char *text);
-/* Dung doan dai o manh ke tiep. Manh dang doc van het. */
+/* Cat ngay doan dai: tat PA, bo manh con lai, khong de duoi tieng. */
 void fd_audio_say_stop(void);
 /* Phat file PCM cache (16-bit mono 16 kHz, doc theo khoi trong task am thanh) neu co; khong co -> Pico doc text roi goi
  * miss_cb(text) (tu task am thanh, phai khong chan). path < 48, text < 40 ky tu. */
