@@ -1,6 +1,6 @@
 #pragma once
 /* Tinh nang tai ve (cung kieu tro choi): ma nguon nam tren may chu.
- * GET /api/devices/features?hw=&fw=&device_id= -> { features: [{ id, version, sha256, path, ... }] }
+ * Danh sach nhan qua dong bo (/api/study/sync) va cache o /data/features/list.json.
  * Goi JSON co truong script. Slot /data/features/<id>/feature.json + meta.json. */
 #include <stdbool.h>
 #include <stddef.h>
@@ -29,8 +29,6 @@ typedef struct {
 
 typedef enum {
     FD_FEAT_IDLE = 0,
-    FD_FEAT_LISTING,
-    FD_FEAT_LIST_READY,
     FD_FEAT_DOWNLOADING,
     FD_FEAT_DONE,
     FD_FEAT_ERROR,
@@ -46,10 +44,10 @@ typedef struct {
 
 bool fd_feature_local(const char *id, char *version, size_t n);
 void fd_feature_load_cache(void);
-bool fd_feature_list_stale(uint32_t ttl_ms);
-void fd_feature_list_invalidate(void);
-bool fd_feature_should_poll(uint32_t ttl_ms);
-void fd_feature_list_fetch(void);
+bool fd_feature_has_list(void);
+bool fd_feature_apply_sync(const char *buf, size_t len);
+void fd_feature_mark_broken(const char *id);
+bool fd_feature_is_broken(const char *id, const char *installed_ver);
 void fd_feature_get(fd_feature_status_t *out);
 bool fd_feature_find(const char *id, fd_feature_entry_t *out);
 bool fd_feature_install(const fd_feature_entry_t *e);

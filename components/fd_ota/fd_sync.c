@@ -16,6 +16,7 @@
 #include "fd_batt.h"
 #include "fd_net.h"
 #include "fd_feature.h"
+#include "fd_game.h"
 #include "fd_ota.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -124,7 +125,38 @@ static void set_err(const char *e)
     strlcpy(s_st.err, e ? e : "", sizeof(s_st.err));
     s_st.state = (e && e[0]) ? FD_SYNC_ERROR : FD_SYNC_OK;
     unlock();
-    if (!e || !e[0]) fd_feature_list_invalidate();
+}
+
+/* 5.4.9: luu danh sach features/games di kem phan hoi dong bo vao LittleFS (chay tren task fd_sync). */
+static void apply_sync_modules(const cJSON *r)
+{
+    if (!r) return;
+    const cJSON *fa = cJSON_GetObjectItemCaseSensitive(r, "features");
+    if (cJSON_IsArray(fa)) {
+        cJSON *wrap = cJSON_CreateObject();
+        if (wrap) {
+            cJSON_AddItemReferenceToObject(wrap, "features", (cJSON *)fa);
+            char *txt = cJSON_PrintUnformatted(wrap);
+            if (txt) {
+                fd_feature_apply_sync(txt, strlen(txt));
+                cJSON_free(txt);
+            }
+            cJSON_Delete(wrap);
+        }
+    }
+    const cJSON *ga = cJSON_GetObjectItemCaseSensitive(r, "games");
+    if (cJSON_IsArray(ga)) {
+        cJSON *wrap = cJSON_CreateObject();
+        if (wrap) {
+            cJSON_AddItemReferenceToObject(wrap, "games", (cJSON *)ga);
+            char *txt = cJSON_PrintUnformatted(wrap);
+            if (txt) {
+                fd_game_apply_sync(txt, strlen(txt));
+                cJSON_free(txt);
+            }
+            cJSON_Delete(wrap);
+        }
+    }
 }
 
 static void code_err(int code, char *out, size_t n)
@@ -960,6 +992,7 @@ static int push_all(char *rx)
         free(body);
         if (code != 200) { ESP_LOGI(TAG, "push %d ket qua -> %d: giu, thu lai sau", n, code); break; }
         cJSON *r = cJSON_Parse(rx);
+        apply_sync_modules(r);
         const cJSON *ak = r ? cJSON_GetObjectItemCaseSensitive(r, "acked") : NULL;
         char *acked = ak ? cJSON_PrintUnformatted(ak) : NULL;   /* ["e..","e.."] -> tim "eid" */
         cJSON_Delete(r);
@@ -1031,6 +1064,7 @@ static int pull_all(char *rx, char *err, size_t errn)
                 break;
             }
             if (!f) {
+                apply_sync_modules(r);
                 strlcpy(rev, rv, sizeof(rev));
                 total = jint(r, "total");
                 f = fopen(STORE_TMP, "w");
@@ -1161,6 +1195,7 @@ static bool do_sync(char *rx, bool force)
         int c = fd_ota_api_post(SYNC_PATH, body, rx, RX_CAP);   /* rev trung -> {unchanged:true}: re */
         if (c != 200) { code_err(c, err, sizeof(err)); set_err(err); return false; }
         cJSON *r = cJSON_Parse(rx);
+        apply_sync_modules(r);
         const char *rv = r ? js(r, "rev") : "";
         lock();
         need = !rv[0] || !s_st.have || strcmp(rv, s_rev) != 0;

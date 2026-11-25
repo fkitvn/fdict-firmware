@@ -32,13 +32,15 @@ static const char *TAG = "fd_game";
 #define DL_TMP     "/data/game.dl"
 #define LIST_TMP   "/data/game_list.tmp"
 #define LIST_MAX (16 * 1024)
-#define HW       "fnk0104b"
 
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static SemaphoreHandle_t s_mx;            /* bao ve s_list (memcpy lon, khong dung critical) */
 static StaticSemaphore_t s_mx_buf;
 static fd_game_status_t s_st;
 static fd_game_entry_t *s_list;           /* PSRAM, FD_GAME_LIST_MAX */
+static int s_n;
+static bool s_cache_loaded;
+static bool s_have_list;
 static bool s_busy;
 static fd_game_entry_t s_job;             /* muc dang cai (ban sao) */
 static volatile uint32_t s_igen;          /* 5.0.1: tang khi Dat lai hoac xoa game dang tai -> task cai bo goi */
@@ -98,17 +100,6 @@ static long fw_num(void)
     const char *v = esp_app_get_description()->version;
     const char *p = strrchr(v, ' ');
     return ver_num(p ? p + 1 : v);
-}
-
-static void fw_semver(char *out, size_t n)
-{
-    const char *v = esp_app_get_description()->version;
-    const char *p = strrchr(v, ' ');
-    p = p ? p + 1 : v;
-    size_t k = strspn(p, "0123456789.");
-    if (k >= n) k = n - 1;
-    memcpy(out, p, k);
-    out[k] = 0;
 }
 
 static bool fw_ok(const char *min_fw)
@@ -290,21 +281,24 @@ static cJSON *load_json(const char *path, size_t max)
 }
 
 /* ghi file qua .tmp + rename (khong de file do dang khi mat dien) */
+static bool write_atomic_len(const char *tmp, const char *path, const char *buf, size_t n)
+{
+    FILE *f = fopen(tmp, "wb");
+    if (!f) return false;
+    bool ok = n == 0 || fwrite(buf, 1, n, f) == n;
+    ok = (fflush(f) == 0) && ok;
+    ok = (fsync(fileno(f)) == 0) && ok;
+    ok = (fclose(f) == 0) && ok;
+    if (ok) ok = rename(tmp, path) == 0;
+    if (!ok) unlink(tmp);
+    return ok;
+}
+
 static bool write_file(const char *path, const char *txt)
 {
     char tmp[96];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "wb");
-    if (!f) return false;
-    size_t n = strlen(txt);
-    bool ok = fwrite(txt, 1, n, f) == n;
-    ok = (fclose(f) == 0) && ok;
-    if (ok) {
-        unlink(path);
-        ok = rename(tmp, path) == 0;
-    }
-    if (!ok) unlink(tmp);
-    return ok;
+    return write_atomic_len(tmp, path, txt, strlen(txt));
 }
 
 /* meta.json = goi bo "script" (doc nhanh khi liet ke) */
@@ -339,6 +333,9 @@ static bool slot_put(const char *src, cJSON *pkg, const char *id)
         return false;
     }
     unlink(old);
+    char bad[80];
+    slot_file(bad, sizeof(bad), id, "bad");
+    unlink(bad);
     return write_meta(pkg, id);
 }
 
@@ -421,6 +418,7 @@ bool fd_game_load(const char *id, fd_game_cfg_t *out)
             cJSON_Delete(j);
         }
     }
+    if (ok) c.broken = fd_game_is_broken(c.id, c.version);
     if (out) *out = c;
     return ok;
 }
@@ -501,6 +499,9 @@ bool fd_game_reset(void)
     unlink(LIST_TMP);
     mkdir(GROOT, 0775);
     if (s_list) memset(s_list, 0, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+    s_n = 0;
+    s_have_list = false;
+    s_cache_loaded = true;
     /* kiem lai: GROOT phai rong */
     int left = 0;
     DIR *d = opendir(GROOT);
@@ -514,6 +515,7 @@ bool fd_game_reset(void)
     xSemaphoreGive(s_mx);
     taskENTER_CRITICAL(&s_mux);
     s_st.n = 0;
+    s_st.list_seq++;
     if (!s_busy) { s_st.state = FD_GAME_IDLE; s_st.err[0] = 0; }
     taskEXIT_CRITICAL(&s_mux);
     ESP_LOGI(TAG, "reset: xoa moi tro choi + cache: %s (con %d muc)", ok && left == 0 ? "ok" : "loi", left);
@@ -561,62 +563,136 @@ static int parse_list(const char *buf, size_t len, fd_game_entry_t *tmp, int cap
     return n;
 }
 
+static bool entry_eq(const fd_game_entry_t *a, const fd_game_entry_t *b)
+{
+    return !strcmp(a->id, b->id) && !strcmp(a->name, b->name) && !strcmp(a->version, b->version) &&
+           !strcmp(a->min_fw, b->min_fw) && !strcmp(a->sha256, b->sha256) && !strcmp(a->path, b->path) &&
+           !strcmp(a->icon, b->icon) && a->size == b->size && a->supported == b->supported && a->berry == b->berry;
+}
+
+void fd_game_load_cache(void)
+{
+    ensure_init();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (!s_cache_loaded) {
+        s_cache_loaded = true;
+        unlink(LIST_TMP);
+        size_t len = 0;
+        char *buf = read_all(LIST_CACHE, LIST_MAX, &len);
+        if (buf) {
+            fd_game_entry_t *tmp = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+            int n = tmp ? parse_list(buf, len, tmp, FD_GAME_LIST_MAX) : -1;
+            free(buf);
+            if (n >= 0) {
+                if (!s_list) s_list = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+                if (s_list) {
+                    memset(s_list, 0, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+                    if (n > 0) memcpy(s_list, tmp, sizeof(fd_game_entry_t) * (size_t)n);
+                    s_n = n;
+                    s_have_list = true;
+                    taskENTER_CRITICAL(&s_mux);
+                    s_st.n = n;
+                    taskEXIT_CRITICAL(&s_mux);
+                }
+            }
+            free(tmp);
+        }
+    }
+    xSemaphoreGive(s_mx);
+}
+
+bool fd_game_has_list(void)
+{
+    ensure_mx();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    bool have = s_have_list;
+    xSemaphoreGive(s_mx);
+    return have;
+}
+
+bool fd_game_apply_sync(const char *buf, size_t len)
+{
+    if (!buf || len == 0 || len > LIST_MAX) return false;
+    ensure_init();
+    uint32_t gen = s_gen;
+    fd_game_entry_t *tmp = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+    if (!tmp) return false;
+    int n = parse_list(buf, len, tmp, FD_GAME_LIST_MAX);
+    if (n < 0) { free(tmp); return false; }
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    unlink(LIST_TMP);
+    if (gen != s_gen) {
+        xSemaphoreGive(s_mx);
+        free(tmp);
+        return false;
+    }
+    if (!s_list) s_list = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+    bool same = s_have_list && n == s_n;
+    for (int i = 0; same && i < n && s_list; i++) same = entry_eq(&s_list[i], &tmp[i]);
+    bool ok = true;
+    if (!same) {
+        mkdir(GROOT, 0775);
+        ok = s_list && write_atomic_len(LIST_TMP, LIST_CACHE, buf, len);
+        if (ok) {
+            memset(s_list, 0, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
+            if (n > 0) memcpy(s_list, tmp, sizeof(fd_game_entry_t) * (size_t)n);
+            s_n = n;
+            s_have_list = true;
+            s_cache_loaded = true;
+        }
+    }
+    xSemaphoreGive(s_mx);
+    free(tmp);
+    if (ok && !same) {
+        taskENTER_CRITICAL(&s_mux);
+        s_st.n = n;
+        s_st.list_seq++;
+        taskEXIT_CRITICAL(&s_mux);
+    }
+    return ok;
+}
+
+void fd_game_mark_broken(const char *id)
+{
+    if (!id || !safe_id(id)) return;
+    fd_game_cfg_t c;
+    char ver[FD_GAME_VER_LEN] = "*";
+    if (fd_game_load(id, &c) && c.version[0]) strlcpy(ver, c.version, sizeof(ver));
+    ensure_init();
+    char dir[64], bad[80], tmp[88];
+    snprintf(dir, sizeof(dir), GROOT "/%s", id);
+    slot_file(bad, sizeof(bad), id, "bad");
+    snprintf(tmp, sizeof(tmp), "%s.tmp", bad);
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    mkdir(GROOT, 0775);
+    mkdir(dir, 0775);
+    write_atomic_len(tmp, bad, ver, strlen(ver));
+    xSemaphoreGive(s_mx);
+}
+
+bool fd_game_is_broken(const char *id, const char *installed_ver)
+{
+    if (!id || !safe_id(id)) return false;
+    char bad[80];
+    slot_file(bad, sizeof(bad), id, "bad");
+    size_t len = 0;
+    char *buf = read_all(bad, FD_GAME_VER_LEN - 1, &len);
+    if (!buf) return false;
+    bool b = buf[0] != 0 && (!strcmp(buf, "*") || !installed_ver || !installed_ver[0] || !strcmp(buf, installed_ver));
+    free(buf);
+    return b;
+}
+
 int fd_game_list_cached(fd_game_entry_t *out, int cap)
 {
     if (!out || cap <= 0) return 0;
-    ensure_init();
-    size_t len = 0;
-    char *buf = read_all(LIST_CACHE, LIST_MAX, &len);
-    int n = buf ? parse_list(buf, len, out, cap) : 0;
-    free(buf);
-    return n < 0 ? 0 : n;
-}
-
-static void list_task(void *arg)
-{
-    (void)arg;
-    ensure_init();
-    char fw[16], path[112], err[24] = "", did[24] = "";
-    uint32_t gen = s_gen;
-    fw_semver(fw, sizeof(fw));
-    fd_ota_get_device_id(did, sizeof(did));
-    snprintf(path, sizeof(path), "/api/devices/games?hw=" HW "&fw=%s&device_id=%s", fw, did);
-    int code = fd_ota_api_get_file_qt(path, LIST_TMP, LIST_MAX, 3500, NULL, NULL);
-    ESP_LOGI(TAG, "list: HTTP %d", code);
-    int n = 0;
-    fd_game_entry_t *tmp = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
-    if (code != 200) {
-        http_err(err, sizeof(err), code);
-    } else if (!tmp) {
-        strlcpy(err, "nomem", sizeof(err));
-    } else {
-        size_t len = 0;
-        char *buf = read_all(LIST_TMP, LIST_MAX, &len);
-        n = parse_list(buf, len, tmp, FD_GAME_LIST_MAX);
-        free(buf);
-        if (n < 0) { n = 0; strlcpy(err, "format", sizeof(err)); }
-    }
-    /* 4.9.7: giu ban moi nhat lam cache (mo man Tro choi hien ngay, khong mang van co danh sach).
-     * 5.0.0: ghi cache trong s_mx va chi khi khong co Dat lai trong luc tai (tranh cache song lai sau khi xoa). */
+    fd_game_load_cache();
     xSemaphoreTake(s_mx, portMAX_DELAY);
-    if (!err[0] && gen == s_gen) {
-        mkdir(GROOT, 0775);
-        unlink(LIST_CACHE);
-        if (rename(LIST_TMP, LIST_CACHE) != 0) ESP_LOGW(TAG, "khong luu duoc cache danh sach");
-    }
-    unlink(LIST_TMP);
-    if (gen != s_gen && !err[0]) strlcpy(err, "reset", sizeof(err));   /* Dat lai trong luc tai: bo danh sach */
-    if (!s_list) s_list = ps_calloc(sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
-    if (err[0]) { /* giu nguyen */ }
-    else if (s_list && tmp) memcpy(s_list, tmp, sizeof(fd_game_entry_t) * FD_GAME_LIST_MAX);
-    else if (!err[0]) strlcpy(err, "nomem", sizeof(err));
+    int n = s_n < cap ? s_n : cap;
+    if (n > 0 && s_list) memcpy(out, s_list, sizeof(fd_game_entry_t) * (size_t)n);
+    else n = 0;
     xSemaphoreGive(s_mx);
-    free(tmp);
-    taskENTER_CRITICAL(&s_mux);
-    s_st.n = err[0] ? 0 : n;
-    taskEXIT_CRITICAL(&s_mux);
-    set_state(err[0] ? FD_GAME_ERROR : FD_GAME_LIST_READY, err[0] ? err : NULL, false);
-    vTaskDelete(NULL);
+    return n;
 }
 
 static bool begin(fd_game_state_t st, bool install)
@@ -632,35 +708,12 @@ static bool begin(fd_game_state_t st, bool install)
     return true;
 }
 
-void fd_game_list_fetch(void)
-{
-    if (!begin(FD_GAME_LISTING, false)) return;
-    if (!fd_net_is_connected()) { set_state(FD_GAME_ERROR, "no_wifi", false); return; }
-    if (!fd_ota_is_paired()) { set_state(FD_GAME_ERROR, "unpaired", false); return; }
-    if (xTaskCreate(list_task, "fd_game", 8192, NULL, 3, NULL) != pdPASS) set_state(FD_GAME_ERROR, "nomem", false);
-}
-
 void fd_game_get(fd_game_status_t *out)
 {
     if (!out) return;
     taskENTER_CRITICAL(&s_mux);
     *out = s_st;
     taskEXIT_CRITICAL(&s_mux);
-}
-
-int fd_game_list(fd_game_entry_t *out, int cap)
-{
-    if (!out || cap <= 0) return 0;
-    fd_game_status_t st;
-    fd_game_get(&st);
-    int n = st.n < cap ? st.n : cap;
-    if (n <= 0) return 0;
-    ensure_mx();
-    xSemaphoreTake(s_mx, portMAX_DELAY);
-    if (s_list) memcpy(out, s_list, sizeof(fd_game_entry_t) * (size_t)n);
-    else n = 0;
-    xSemaphoreGive(s_mx);
-    return n;
 }
 
 /* ---------- cai ---------- */
