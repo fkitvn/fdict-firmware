@@ -23,7 +23,7 @@ TILES = [
     ("img_tile_picword", "Framed picture", "framed_picture_3d.png", "Đoán hình", None),
     ("img_tile_fillchar", "Input latin letters", "input_latin_letters_3d.png", "Điền chữ", None),
     ("img_tile_pron", "Speaker high volume", "speaker_high_volume_3d.png", "Phát âm", None),
-    ("img_tile_repeat", "Studio microphone", "studio_microphone_3d.png", "Nhại từ", None),
+    ("img_tile_repeat", "Studio microphone", "studio_microphone_3d.png", "Nhại lại", None),
     ("img_tile_sync", "Counterclockwise arrows button", "counterclockwise_arrows_button_3d.png", "Đồng bộ", None),
     ("img_tile_stats", "Bar chart", "bar_chart_3d.png", "Thống kê", None),
     ("img_tile_sentence", "Puzzle piece", "puzzle_piece_3d.png", "Sắp xếp câu", None),

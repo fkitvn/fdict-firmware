@@ -5,6 +5,12 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.3.3] - 2026-11-25
+- Nhại lại dùng đoạn văn đã lưu. Máy học không cần mạng.
+- Đoạn văn đồng bộ cùng bộ từ. Người học chọn đoạn có sẵn.
+- Ô Nhại lại dùng icon micro, khác ô Nghe.
+- Hàng thứ ba trên trang chủ là Lật từ, Nhại lại rồi Từ điển.
+
 ## [5.3.2] - 2026-11-24
 - Thêm module Nhại. Máy lấy đoạn văn ngắn từ các từ đã thuộc khi có mạng.
 - Người học nghe mẫu và nhại theo chữ cuộn lên. Có thể bật nghĩa và IPA.

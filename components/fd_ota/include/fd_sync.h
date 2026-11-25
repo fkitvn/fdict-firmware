@@ -16,6 +16,7 @@
  *   S<TAB>uu_tien_tu_moi(0/1)<TAB>uu_tien_chua_thuoc(0/1)<TAB>chu_de,chu_de[<TAB>target_lang en|fr]
  *   C<TAB>id<TAB>mac_dinh(0/1)<TAB>ten
  *   W<TAB>id<TAB>collection_id<TAB>status(0 new,1 learning,2 mastered)<TAB>created_epoch<TAB>en<TAB>ipa<TAB>vi<TAB>pos<TAB>(ex de trong)<TAB>n<TAB>(en<TAB>vi) x n
+ *   P<TAB>id_doan<TAB>cau<TAB>nghia<TAB>ipa   (Nhại lại, bo qua boi firmware cu)
  *   #END<TAB>so_tu<TAB>so_bo<TAB>so_cau   (thieu/sai = file hong -> bo, tai lai toan bo) */
 #include <stdbool.h>
 #include <stdint.h>
@@ -151,3 +152,14 @@ bool fd_sync_pick_col_on(int col_idx);
 /* Nhat tu theo cai dat bo tu chung. flags: FD_SYNC_PICK_F_SEN / F_TEXT. */
 int  fd_sync_pick_words(int *idx, int cap, unsigned flags);
 int  fd_sync_pick_count(unsigned flags);
+
+#define FD_SYNC_PASSAGES 12
+#define FD_SYNC_PASS_LINES 16
+typedef struct {
+    char text[141];
+    char vi[141];
+    char ipa[97];
+} fd_sync_pass_line_t;
+int fd_sync_passage_count(void);
+bool fd_sync_passage_at(int i, char *preview, size_t npreview, int *lines);
+int fd_sync_passage_load(int i, fd_sync_pass_line_t *out, int cap);

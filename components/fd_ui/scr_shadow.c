@@ -1,55 +1,43 @@
-/* Nhai: hoc online. Chon bo tu, do dai, nghia va IPA. Pico doc, chu cuon tu duoi len.
- * Chi ghi mot su kien lich su phien. Khong cham diem, khong doi tu da thuoc. */
+/* Nhai lai: chon doan da dong bo, nghe Pico va cuon chu. Khong can mang de lay doan moi. */
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "esp_timer.h"
 #include "fd_audio.h"
 #include "fd_fonts.h"
-#include "fd_net.h"
 #include "fd_ota.h"
-#include "fd_shadow.h"
 #include "fd_sync.h"
 #include "nvs.h"
 #include "ui_priv.h"
 
-#define LEN_KEY "sh_len"
 #define VI_KEY  "sh_vi"
 #define IPA_KEY "sh_ipa"
 
-typedef enum { V_SETUP, V_LOAD, V_MSG, V_PLAY } view_t;
+typedef enum { V_LIST, V_PLAY } view_t;
 
 static view_t s_view;
 static lv_obj_t *s_body, *s_viewp, *s_roll;
 static lv_timer_t *s_tmr;
-static fd_shadow_line_t s_lines[FD_SHADOW_LINES];
-static char s_say[1400];
-static char s_msg[96];
-static int s_n, s_len, s_est;
-static bool s_vi, s_ipa, s_gate, s_wifi;
+static fd_sync_pass_line_t s_lines[FD_SYNC_PASS_LINES];
+static char s_say[2400];
+static int s_n, s_est, s_pick;
+static bool s_vi, s_ipa, s_gate;
 static bool s_arm, s_saw, s_heard, s_logged;
 static int64_t s_t0;
-static fd_shadow_status_t s_net;
-static void wifi_cb(lv_event_t *e);
-static void back_setup_cb(lv_event_t *e);
 
-static const char *const LEN_NAME[] = {"short", "medium", "long"};
-static const char *const LEN_KEY_I18N[] = {"SHADOW_SHORT", "SHADOW_MED", "SHADOW_LONG"};
-
-static void show_setup(void);
-static void show_play(void);
+static void show_list(void);
 static void note_session(void);
+static void list_cb(lv_event_t *e);
 
 static void prefs_load(void)
 {
     nvs_handle_t h;
-    uint8_t len = 0, vi = 1, ipa = 0;
+    uint8_t vi = 1, ipa = 0;
     if (nvs_open("fd", NVS_READONLY, &h) == ESP_OK) {
-        nvs_get_u8(h, LEN_KEY, &len);
         nvs_get_u8(h, VI_KEY, &vi);
         nvs_get_u8(h, IPA_KEY, &ipa);
         nvs_close(h);
     }
-    s_len = len > 2 ? 0 : len;
     s_vi = vi != 0;
     s_ipa = ipa != 0;
 }
@@ -151,10 +139,16 @@ static lv_obj_t *muted(lv_obj_t *parent, const char *text)
 }
 
 static void replay_cb(lv_event_t *e) { (void)e; begin_audio(); }
-static void next_cb(lv_event_t *e);
 
 static void show_play(void)
 {
+    s_n = fd_sync_passage_load(s_pick, s_lines, FD_SYNC_PASS_LINES);
+    if (s_n <= 0) { show_list(); return; }
+    s_heard = false;
+    s_logged = false;
+    s_arm = false;
+    s_saw = false;
+    join_say();
     s_view = V_PLAY;
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
@@ -185,149 +179,81 @@ static void show_play(void)
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_t *again = ui_gate_btn(row, _("SHADOW_AGAIN"), false, replay_cb);
-    lv_obj_t *next = ui_gate_btn(row, _("SHADOW_NEXT"), true, next_cb);
+    lv_obj_t *back = ui_gate_btn(row, _("BACK"), true, list_cb);
     lv_obj_set_style_text_font(lv_obj_get_child(again, 0), &fd_font_noto_14, 0);
-    lv_obj_set_style_text_font(lv_obj_get_child(next, 0), &fd_font_noto_14, 0);
+    lv_obj_set_style_text_font(lv_obj_get_child(back, 0), &fd_font_noto_14, 0);
     s_tmr = lv_timer_create(scroll_cb, 50, NULL);
     begin_audio();
 }
 
-static void show_msg(void)
+static void play_cb(lv_event_t *e)
+{
+    s_pick = (int)(intptr_t)lv_event_get_user_data(e);
+    show_play();
+}
+
+static void toggle_cb(lv_event_t *e)
+{
+    int which = (int)(intptr_t)lv_event_get_user_data(e);
+    if (which == 1) { s_vi = !s_vi; pref_save(VI_KEY, s_vi ? 1 : 0); }
+    else { s_ipa = !s_ipa; pref_save(IPA_KEY, s_ipa ? 1 : 0); }
+    show_list();
+}
+
+static void show_list(void)
 {
     note_session();
     fd_audio_say_stop();
-    s_view = V_MSG;
-    body_clear();
-    lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_row(s_body, 8, 0);
-    lv_obj_t *l = ui_label_create(s_body, s_msg[0] ? s_msg : _("SHADOW_FAIL"), &fd_font_noto_14, FD_COLOR_TEXT);
-    lv_obj_set_width(l, lv_pct(100));
-    lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-    lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_t *row = lv_obj_create(s_body);
-    lv_obj_remove_style_all(row);
-    lv_obj_set_size(row, lv_pct(100), 40);
-    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
-    lv_obj_set_style_pad_column(row, 8, 0);
-    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_t *b = s_wifi ? ui_gate_btn(row, _("OPEN_WIFI"), true, wifi_cb) : NULL;
-    lv_obj_t *back = ui_gate_btn(row, _("BACK"), !s_wifi, back_setup_cb);
-    if (b) lv_obj_set_style_text_font(lv_obj_get_child(b, 0), &fd_font_noto_14, 0);
-    if (back) lv_obj_set_style_text_font(lv_obj_get_child(back, 0), &fd_font_noto_14, 0);
-}
-
-static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
-static void back_setup_cb(lv_event_t *e) { (void)e; show_setup(); }
-
-static void show_load(void)
-{
-    s_view = V_LOAD;
-    body_clear();
-    lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    ui_label_create(s_body, _("SHADOW_LOADING"), &fd_font_noto_18, FD_COLOR_TEXT_MUTED);
-}
-
-static void take_lines(const fd_shadow_status_t *st)
-{
-    s_n = st->n;
-    if (s_n > FD_SHADOW_LINES) s_n = FD_SHADOW_LINES;
-    memset(s_lines, 0, sizeof(s_lines));
-    if (s_n > 0) memcpy(s_lines, st->line, (size_t)s_n * sizeof(s_lines[0]));
-    s_heard = false;
-    s_logged = false;
-    s_arm = false;
-    s_saw = false;
-    join_say();
-}
-
-static void poll_load(void)
-{
-    if (s_view != V_LOAD) return;
-    fd_shadow_get(&s_net);
-    if (s_net.state == FD_SHADOW_LOADING || s_net.state == FD_SHADOW_IDLE) return;
-    if (s_net.state == FD_SHADOW_OK && s_net.n > 0) {
-        take_lines(&s_net);
-        show_play();
-        return;
-    }
-    s_wifi = s_net.http < 0;
-    if (s_net.message[0]) snprintf(s_msg, sizeof(s_msg), "%s", s_net.message);
-    else if (s_net.empty) snprintf(s_msg, sizeof(s_msg), "%s", _("SHADOW_NEED_MASTERED"));
-    else if (s_wifi) snprintf(s_msg, sizeof(s_msg), "%s", _("SHADOW_NEED_WIFI"));
-    else s_msg[0] = 0;
-    show_msg();
-}
-
-static void start(void)
-{
-    if (!fd_net_is_connected()) {
-        s_wifi = true;
-        snprintf(s_msg, sizeof(s_msg), "%s", _("SHADOW_NEED_WIFI"));
-        show_msg();
-        return;
-    }
-    fd_sync_pick_t pick;
-    fd_sync_pick_get(&pick);
-    if (pick.mode == FD_SYNC_PICK_NEW) {
-        s_wifi = false;
-        snprintf(s_msg, sizeof(s_msg), "%s", _("SHADOW_NEW_DECK"));
-        show_msg();
-        return;
-    }
-    char ids[FD_SYNC_MAX_COLS][FD_SYNC_WID_LEN];
-    int nids = 0;
-    if (pick.mode == FD_SYNC_PICK_COMBINED) {
-        nids = fd_sync_pick_sel(ids, FD_SYNC_MAX_COLS);
-        if (nids <= 0) { fd_ui_toast(_("NO_DECK_WORDS")); return; }
-    }
-    note_session();
-    fd_audio_say_stop();
-    s_heard = false;
-    s_logged = false;
-    if (!fd_shadow_start(LEN_NAME[s_len], nids ? ids : NULL, nids)) {
-        s_wifi = true;
-        snprintf(s_msg, sizeof(s_msg), "%s", _("SHADOW_NEED_WIFI"));
-        show_msg();
-        return;
-    }
-    show_load();
-}
-
-static void next_cb(lv_event_t *e) { (void)e; start(); }
-
-static void setup_async(void *arg) { (void)arg; if (s_body && s_view == V_SETUP) show_setup(); }
-
-static void opt_cb(lv_event_t *e)
-{
-    intptr_t ud = (intptr_t)lv_event_get_user_data(e);
-    int grp = (int)(ud >> 4);
-    int v = (int)(ud & 0xF);
-    if (grp == 0 && v >= 0 && v <= 2) { s_len = v; pref_save(LEN_KEY, (uint8_t)v); }
-    else if (grp == 1) { s_vi = v == 1; pref_save(VI_KEY, s_vi ? 1 : 0); }
-    else if (grp == 2) { s_ipa = v == 1; pref_save(IPA_KEY, s_ipa ? 1 : 0); }
-    lv_async_call(setup_async, NULL);
-}
-
-static void begin_cb(lv_event_t *e) { (void)e; start(); }
-
-static void show_setup(void)
-{
-    note_session();
-    fd_audio_say_stop();
-    s_view = V_SETUP;
+    s_view = V_LIST;
     body_clear();
     lv_obj_set_flex_flow(s_body, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(s_body, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_t *sc = ui_setup_begin(s_body, _("SHADOW"));
-    ui_setup_deck(sc, setup_async);
-    ui_setup_opt_row(sc, _("SHADOW_LEN"), LEN_KEY_I18N, 3, s_len, opt_cb, 0, 0);
-    static const char *const SW[] = {"OFF", "ON"};
-    ui_setup_opt_row(sc, _("SHADOW_MEANING"), SW, 2, s_vi ? 1 : 0, opt_cb, 1, 0);
-    ui_setup_opt_row(sc, _("SHADOW_IPA"), SW, 2, s_ipa ? 1 : 0, opt_cb, 2, 0);
-    ui_setup_start(s_body, begin_cb);
+    lv_obj_set_style_pad_row(s_body, 6, 0);
+    lv_obj_t *title = ui_label_create(s_body, _("SHADOW"), &fd_font_noto_18, FD_COLOR_TEXT);
+    lv_obj_set_width(title, lv_pct(100));
+    int n = fd_sync_passage_count();
+    if (n <= 0) {
+        lv_obj_t *l = ui_label_create(s_body, _("SHADOW_NEED_MASTERED"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+        lv_obj_set_width(l, lv_pct(100));
+        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+        return;
+    }
+    lv_obj_t *opts = lv_obj_create(s_body);
+    lv_obj_remove_style_all(opts);
+    lv_obj_set_width(opts, lv_pct(100));
+    lv_obj_set_height(opts, 36);
+    lv_obj_set_flex_flow(opts, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(opts, 8, 0);
+    lv_obj_t *vi = ui_gate_btn(opts, _("SHADOW_MEANING"), s_vi, NULL);
+    lv_obj_t *ipa = ui_gate_btn(opts, _("SHADOW_IPA"), s_ipa, NULL);
+    lv_obj_add_event_cb(vi, toggle_cb, LV_EVENT_CLICKED, (void *)(intptr_t)1);
+    lv_obj_add_event_cb(ipa, toggle_cb, LV_EVENT_CLICKED, (void *)(intptr_t)2);
+    lv_obj_t *list = lv_obj_create(s_body);
+    lv_obj_remove_style_all(list);
+    lv_obj_set_width(list, lv_pct(100));
+    lv_obj_set_flex_grow(list, 1);
+    lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(list, 6, 0);
+    lv_obj_add_flag(list, LV_OBJ_FLAG_SCROLLABLE);
+    for (int i = 0; i < n; i++) {
+        char preview[72];
+        if (!fd_sync_passage_at(i, preview, sizeof(preview), NULL)) continue;
+        lv_obj_t *b = lv_button_create(list);
+        lv_obj_set_width(b, lv_pct(100));
+        lv_obj_set_height(b, LV_SIZE_CONTENT);
+        lv_obj_set_style_bg_color(b, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_set_style_shadow_width(b, 0, 0);
+        lv_obj_set_style_border_width(b, 1, 0);
+        lv_obj_set_style_border_color(b, lv_color_hex(FD_COLOR_BORDER), 0);
+        lv_obj_set_style_radius(b, 8, 0);
+        lv_obj_add_event_cb(b, play_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        lv_obj_t *lab = ui_label_create(b, preview, &fd_font_noto_14, FD_COLOR_TEXT);
+        lv_obj_set_width(lab, lv_pct(100));
+        lv_label_set_long_mode(lab, LV_LABEL_LONG_DOT);
+    }
 }
+
+static void list_cb(lv_event_t *e) { (void)e; show_list(); }
 
 static void build(lv_obj_t *scr)
 {
@@ -335,27 +261,24 @@ static void build(lv_obj_t *scr)
     s_gate = !fd_ota_is_paired();
     if (s_gate) { ui_pair_gate(s_body); return; }
     prefs_load();
-    show_setup();
+    show_list();
 }
 
 static void destroy(void)
 {
-    fd_shadow_cancel();
     fd_audio_say_stop();
     note_session();
     if (s_tmr) { lv_timer_delete(s_tmr); s_tmr = NULL; }
     s_body = s_viewp = s_roll = NULL;
 }
 
-static void on_tick(void) { if (!s_gate) poll_load(); }
-
 static bool on_back(void)
 {
     if (s_gate) return false;
-    if (s_view != V_SETUP) { show_setup(); return true; }
+    if (s_view != V_LIST) { show_list(); return true; }
     return false;
 }
 
 const ui_screen_t g_scr_shadow = {
-    .name = "shadow", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_tick = on_tick, .on_back = on_back,
+    .name = "shadow", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_tick = NULL, .on_back = on_back,
 };
