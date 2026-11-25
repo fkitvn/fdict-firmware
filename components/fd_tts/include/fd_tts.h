@@ -24,6 +24,23 @@ bool fd_tts_is_fr(void);
 esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count);
 esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t *count);
 
+/* 5.4.6: tong hop tung buoc, chi goi tu task fd_audio. Bom (pump) trong luc phat manh truoc de khong ngat tieng. */
+#define FD_TTS_SRC_MAX 96
+typedef struct {
+    char src[FD_TTS_SRC_MAX];
+    const unsigned char *rp;
+    int16_t *buf;
+    size_t cap, n, left;
+    esp_err_t err;
+    uint8_t flags;
+} fd_tts_job_t;
+void fd_tts_job_init(fd_tts_job_t *job);
+esp_err_t fd_tts_job_start(fd_tts_job_t *job, const char *text, int speed_pct);
+bool fd_tts_job_pump(fd_tts_job_t *job);
+bool fd_tts_job_done(const fd_tts_job_t *job);
+esp_err_t fd_tts_job_take(fd_tts_job_t *job, int16_t **out, size_t *count);
+void fd_tts_job_abort(fd_tts_job_t *job);
+
 #ifdef __cplusplus
 }
 #endif

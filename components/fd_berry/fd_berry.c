@@ -820,6 +820,19 @@ static int f_roll_run(bvm *vm)
     be_return_nil(vm);
 }
 
+/* fd.roll_focus(i, n[, est_ms[, silent]]) */
+static int f_roll_focus(bvm *vm)
+{
+    LOCK();
+    s_rst.focus_i = (int16_t)clampv(argi(vm, 1, 0), 0, FD_BERRY_ROLL_MAX - 1);
+    s_rst.focus_n = (int16_t)clampv(argi(vm, 2, 1), 1, FD_BERRY_ROLL_MAX);
+    s_rst.focus_est = be_top(vm) >= 3 ? clampv(argi(vm, 3, 0), 0, 600000) : 0;
+    s_rst.silent = be_top(vm) >= 4 && be_tobool(vm, 4);
+    s_rst.focus_seq++;
+    UNLOCK();
+    be_return_nil(vm);
+}
+
 static int f_roll_y(bvm *vm) { be_pushint(vm, s_roll_y); be_return(vm); }
 
 static int f_hold_back(bvm *vm)
@@ -905,7 +918,7 @@ static void reg_module(bvm *vm)
         {"pass_count", f_pass_count}, {"pass_at", f_pass_at}, {"pass_load", f_pass_load},
         {"pref_get", f_pref_get}, {"pref_set", f_pref_set}, {"session_begin", f_session_begin}, {"event", f_event},
         {"session_end", f_session_end}, {"tr", f_tr}, {"roll_box", f_roll_box}, {"roll_clear", f_roll_clear},
-        {"roll_add", f_roll_add}, {"roll_run", f_roll_run}, {"roll_y", f_roll_y}, {"hold_back", f_hold_back},
+        {"roll_add", f_roll_add}, {"roll_run", f_roll_run}, {"roll_focus", f_roll_focus}, {"roll_y", f_roll_y}, {"hold_back", f_hold_back},
     };
     be_newmodule(vm);
     for (size_t i = 0; i < sizeof(F) / sizeof(F[0]); i++) {

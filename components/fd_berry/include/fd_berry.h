@@ -37,6 +37,7 @@
  *     fd.session_begin(mod) | fd.event(kind) (chi "shadow") | fd.session_end() ghi phien hoc (man hinh ghi file)
  *     fd.tr(khoa) chuoi da dich cua firmware
  *     fd.roll_box(x, y, w, h) (h = 0 an) | fd.roll_clear() | fd.roll_add(chu, font, mau[, opa]) | fd.roll_run(est_ms[, silent])
+ *       | fd.roll_focus(i, n[, est_ms[, silent]]): giu khoi item i..i+n-1 trong khung, cuon trong khoi neu dai hon man
  *       | fd.roll_y(): khung chu cuon do C ve (cham dung, vuot tay, 3 giay tu cuon lai, khong nuot vuot mep)
  *     fd.hold_back(bool): true = vuot mep / giu Nut 1 goi back() trong script thay vi thoat man
  *     Lenh am thanh, phien hoc, ghi NVS xep hang, man hinh (task LVGL) thuc hien.
@@ -150,7 +151,13 @@ typedef struct { uint8_t type; char arg[16]; } fd_berry_cmd_t;
 #define FD_BERRY_LONG_MAX 2400
 #define FD_BERRY_ROLL_MAX 48
 typedef struct { char txt[FD_BERRY_LINE_TXT]; uint8_t font, opa; int32_t color; } fd_berry_roll_item_t;
-typedef struct { uint32_t ver, run_seq; int32_t est_ms; int16_t x, y, w, h; int n; bool silent; } fd_berry_roll_t;
+typedef struct {
+    uint32_t ver, run_seq, focus_seq;
+    int32_t est_ms, focus_est;
+    int16_t x, y, w, h, focus_i, focus_n;
+    int n;
+    bool silent;
+} fd_berry_roll_t;
 
 bool fd_berry_start(const fd_berry_cfg_t *cfg);
 /* Dung VM (cho toi da ~500 ms). Goi duoc nhieu lan. */

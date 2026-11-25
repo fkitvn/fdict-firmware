@@ -271,7 +271,9 @@ static bool out_aborted(void)
     return !s_hw_ok || (s_run_long && (s_say_stop || s_play_id != s_run_id));
 }
 
-static void write_mono(const int16_t *m, size_t n)
+typedef void (*write_pump_fn)(void *ctx);
+
+static void write_mono_ex(const int16_t *m, size_t n, write_pump_fn pump, void *ctx)
 {
     int16_t st[CHUNK * 2];
     size_t total = 0, req = n * 4;
@@ -279,6 +281,7 @@ static void write_mono(const int16_t *m, size_t n)
     int64_t t0 = esp_timer_get_time();
     while (n) {
         if (out_aborted()) return;
+        if (pump) pump(ctx);
         size_t k = n > CHUNK ? CHUNK : n;
         for (size_t i = 0; i < k; i++) st[2 * i] = st[2 * i + 1] = lvl_sample(m[i]);   /* chuan hoa chung */
         size_t w = 0;
@@ -290,6 +293,20 @@ static void write_mono(const int16_t *m, size_t n)
     }
     if (!s_quiet) ESP_LOGD(TAG, "i2s write %s: %u/%u B, %d ms", esp_err_to_name(last), (unsigned)total, (unsigned)req,
              (int)((esp_timer_get_time() - t0) / 1000));
+}
+
+static void write_mono(const int16_t *m, size_t n)
+{
+    write_mono_ex(m, n, NULL, NULL);
+}
+
+static void pump_tts_job(void *ctx)
+{
+    fd_tts_job_t *job = ctx;
+    if (!job || fd_tts_job_done(job)) return;
+    for (int i = 0; i < 8; i++) {
+        if (fd_tts_job_pump(job)) break;
+    }
 }
 
 /* 2 not (E6 ~1319 Hz roi A5 ~880 Hz... dao lai cho de chiu: A5 -> E6), moi not 150 ms, bao duong mem.
@@ -331,40 +348,112 @@ static void say_text_speed(const char *text, int speed_pct)
 
 static void say_text(const char *text) { say_text_speed(text, 100); }
 
-/* Pico chi nhan khoang 60 byte moi lan. Cat theo khoang trang, khong cat giua byte UTF-8. */
+/* Pico chi nhan khoang 60 byte moi lan. Cat o dau cau hoac khoang trang, khong cat giua tu / UTF-8.
+ * Tong hop manh sau trong luc phat manh truoc de khong ngat tieng giua cau. */
+#define SAY_CHUNK 56
+
+static int utf8_w(unsigned char c)
+{
+    if ((c & 0xE0) == 0xC0) return 2;
+    if ((c & 0xF0) == 0xE0) return 3;
+    if ((c & 0xF8) == 0xF0) return 4;
+    return 1;
+}
+
+static int chunk_len(const char *p, bool *sent_end)
+{
+    *sent_end = false;
+    if (!p || !*p) return 0;
+    int n = 0, end = 0, sp = 0, se = 0;
+    while (p[n]) {
+        unsigned char c = (unsigned char)p[n];
+        int w = utf8_w(c);
+        if (n + w > SAY_CHUNK) break;
+        n += w;
+        end = n;
+        if (c == ' ' || c == '\t' || c == '\n') sp = n;
+        if (c == '.' || c == '!' || c == '?') se = n;
+    }
+    if (!p[end]) return end;
+    if (se >= 16) { *sent_end = true; return se; }
+    if (sp >= 8) return sp;
+    return end;
+}
+
+static const char *take_chunk(const char *p, char *out, size_t outsz, bool *sent_end)
+{
+    *sent_end = false;
+    out[0] = 0;
+    while (*p == ' ') p++;
+    if (!*p) return p;
+    int raw = chunk_len(p, sent_end);
+    if (raw <= 0) return p;
+    int n = raw;
+    if ((size_t)n >= outsz) n = (int)outsz - 1;
+    memcpy(out, p, (size_t)n);
+    out[n] = 0;
+    while (n > 0 && out[n - 1] == ' ') out[--n] = 0;
+    return p + raw;
+}
+
+static bool synth_chunk(fd_tts_job_t *job, const char *chunk, int speed_pct, int16_t **pcm, size_t *n, bool pump_now)
+{
+    *pcm = NULL;
+    *n = 0;
+    if (fd_tts_job_start(job, chunk, speed_pct) != ESP_OK) return false;
+    if (pump_now) {
+        while (!fd_tts_job_pump(job) && !out_aborted()) {}
+        if (out_aborted()) { fd_tts_job_abort(job); return false; }
+        if (fd_tts_job_take(job, pcm, n) != ESP_OK || !*n) { fd_tts_job_abort(job); return false; }
+    }
+    return true;
+}
+
 static void play_long(char *text, int speed_pct)
 {
-    static const int16_t gap[800] = {0};   /* ~50 ms giua cac manh */
+    static const int16_t gap[800] = {0};   /* ~50 ms chi o dau cau, khi manh sau da san sang */
     const char *p = text ? text : "";
-    bool any = false;
-    while (*p && !out_aborted()) {
-        while (*p == ' ') p++;
-        if (!*p) break;
-        int n = 0;
-        int end = 0;
-        int brk = 0;
-        while (p[n] && n < 56) {
-            unsigned char c = (unsigned char)p[n];
-            int w = 1;
-            if ((c & 0xE0) == 0xC0) w = 2;
-            else if ((c & 0xF0) == 0xE0) w = 3;
-            else if ((c & 0xF8) == 0xF0) w = 4;
-            if (n + w > 56) break;
-            n += w;
-            end = n;
-            if (c < 0x80) brk = n;
-        }
-        if (p[end] && brk > 0) end = brk;
-        while (end > 0 && p[end - 1] == ' ') end--;
-        if (end <= 0) break;
-        char chunk[64];
-        memcpy(chunk, p, (size_t)end);
-        chunk[end] = 0;
-        if (any) write_mono(gap, 800);
-        say_text_speed(chunk, speed_pct);
-        any = true;
-        p += end;
+    char cur[64];
+    bool cur_sent = false;
+    p = take_chunk(p, cur, sizeof(cur), &cur_sent);
+    if (!cur[0]) return;
+    fd_tts_job_t job;
+    fd_tts_job_init(&job);
+    int16_t *pcm = NULL;
+    size_t n = 0;
+    if (!synth_chunk(&job, cur, speed_pct, &pcm, &n, true)) {
+        if (!out_aborted()) play_chime();
+        return;
     }
+    while (!out_aborted()) {
+        char nxt[64];
+        bool nxt_sent = false;
+        const char *np = take_chunk(p, nxt, sizeof(nxt), &nxt_sent);
+        bool have = nxt[0] != 0;
+        fd_tts_job_t nxt_job;
+        fd_tts_job_init(&nxt_job);
+        if (have && fd_tts_job_start(&nxt_job, nxt, speed_pct) != ESP_OK) have = false;
+        lvl_buffer(pcm, n, LVL_GAIN_MAX);
+        write_mono_ex(pcm, n, have ? pump_tts_job : NULL, have ? &nxt_job : NULL);
+        free(pcm);
+        pcm = NULL;
+        n = 0;
+        if (out_aborted()) { fd_tts_job_abort(&nxt_job); return; }
+        if (!have) return;
+        p = np;
+        if (!fd_tts_job_done(&nxt_job)) {
+            while (!fd_tts_job_pump(&nxt_job) && !out_aborted()) {}
+        }
+        if (out_aborted()) { fd_tts_job_abort(&nxt_job); return; }
+        if (fd_tts_job_take(&nxt_job, &pcm, &n) != ESP_OK || !n) {
+            fd_tts_job_abort(&nxt_job);
+            if (!out_aborted()) play_chime();
+            return;
+        }
+        if (cur_sent) write_mono(gap, 800);
+        cur_sent = nxt_sent;
+    }
+    free(pcm);
 }
 
 static void free_long(const req_t *r)

@@ -18,8 +18,10 @@ static const char *TAG = "fd_tts";
 #define SG_NAME   "/pico/sg.bin"
 #define VOICE     "FdVoice"
 #define TEXT_MAX  60
-#define OUT_MAX   (16000 * 8)   /* toi da 8 s */
+#define OUT_MAX   (16000 * 16)  /* toi da 16 s (du cho 0.5x) */
 #define TRIM_TH   300
+#define JOB_STARTED 1
+#define JOB_DONE    4
 
 /* 23/10: du lieu giong o phan vung flash 'voice' (tools/mk_voice.py), mmap - khong sao chep vao RAM.
  * Byte 32..35 (sau header 32 B): ma ngon ngu ASCII 2 ky tu + \0\0 (vd "en\0\0", "fr\0\0"). */
@@ -151,11 +153,25 @@ esp_err_t fd_tts_init(void)
     return ESP_OK;
 }
 
-esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t *count)
+
+void fd_tts_job_init(fd_tts_job_t *job)
 {
-    if (!text || !out || !count) return ESP_ERR_INVALID_ARG;
-    *out = NULL;
-    *count = 0;
+    if (job) memset(job, 0, sizeof(*job));
+}
+
+void fd_tts_job_abort(fd_tts_job_t *job)
+{
+    if (!job) return;
+    if ((job->flags & JOB_STARTED) && !(job->flags & JOB_DONE) && s_ok && s_eng) pico_resetEngine(s_eng, PICO_RESET_SOFT);
+    if (job->buf) heap_caps_free(job->buf);
+    memset(job, 0, sizeof(*job));
+}
+
+esp_err_t fd_tts_job_start(fd_tts_job_t *job, const char *text, int speed_pct)
+{
+    if (!job) return ESP_ERR_INVALID_ARG;
+    fd_tts_job_abort(job);
+    if (!text) return ESP_ERR_INVALID_ARG;
     if (speed_pct < 50) speed_pct = 50;
     if (speed_pct > 200) speed_pct = 200;
     char in[TEXT_MAX + 2];
@@ -163,7 +179,6 @@ esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t
     const bool fr = fd_tts_is_fr();
     for (const char *p = text; *p && k < TEXT_MAX; p++) {
         unsigned char c = (unsigned char)*p;
-        /* en: ASCII in duoc. fr: them UTF-8 (byte cao) de qua chu Phap co dau. Bo dieu khien va <> tranh nham the Pico. */
         if (c == '<' || c == '>') in[k++] = ' ';
         else if (c >= 0x20 && c < 0x7f) in[k++] = (char)c;
         else if (fr && c >= 0x80) in[k++] = (char)c;
@@ -171,55 +186,113 @@ esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t
     in[k] = 0;
     if (!k) return ESP_ERR_INVALID_ARG;
     esp_err_t e = fd_tts_init();
-    if (e != ESP_OK) return e;
-
-    char tagged[TEXT_MAX + 36];
-    const char *src = in;
+    if (e != ESP_OK) { job->err = e; return e; }
     if (speed_pct != 100) {
-        int m = snprintf(tagged, sizeof(tagged), "<speed level=\"%d\">%s</speed>", speed_pct, in);
-        if (m > 0 && (size_t)m < sizeof(tagged)) {
-            src = tagged;
-            k = (size_t)m;
-        }
+        int m = snprintf(job->src, sizeof(job->src), "<speed level=\"%d\">%s</speed>", speed_pct, in);
+        if (m > 0 && (size_t)m < sizeof(job->src)) k = (size_t)m;
+        else memcpy(job->src, in, k + 1);
+    } else {
+        memcpy(job->src, in, k + 1);
     }
+    job->rp = (const unsigned char *)job->src;
+    job->left = k + 1;   /* +1: ky tu 0 -> flush */
+    job->cap = 16000;
+    job->n = 0;
+    job->buf = heap_caps_malloc(job->cap * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!job->buf) { job->err = ESP_ERR_NO_MEM; return job->err; }
+    job->err = ESP_OK;
+    job->flags = JOB_STARTED;
+    return ESP_OK;
+}
 
-    size_t cap = 16000, n = 0;
-    int16_t *buf = heap_caps_malloc(cap * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (!buf) return ESP_ERR_NO_MEM;
-    int16_t tmp[64];
-    const pico_Char *p = (const pico_Char *)src;
-    pico_Int16 left = (pico_Int16)(k + 1), sent = 0, got = 0, type = 0;   /* +1: ky tu 0 -> flush */
+bool fd_tts_job_done(const fd_tts_job_t *job)
+{
+    return !job || !(job->flags & JOB_STARTED) || (job->flags & JOB_DONE);
+}
+
+bool fd_tts_job_pump(fd_tts_job_t *job)
+{
+    if (!job || !(job->flags & JOB_STARTED) || (job->flags & JOB_DONE)) return true;
+    if (job->err != ESP_OK) { job->flags |= JOB_DONE; return true; }
+    pico_Int16 sent = 0, got = 0, type = 0;
     pico_Status st = PICO_OK;
-    while (left > 0 && e == ESP_OK) {
-        st = pico_putTextUtf8(s_eng, p, left, &sent);
-        if (st) { e = ESP_FAIL; break; }
-        left = (pico_Int16)(left - sent);
-        p += sent;
-        do {
-            st = pico_getData(s_eng, tmp, (pico_Int16)sizeof(tmp), &got, &type);
-            size_t m = got > 0 ? (size_t)got / 2 : 0;
-            if (m && n + m <= OUT_MAX) {
-                if (n + m > cap) {
-                    size_t nc = cap * 2;
-                    int16_t *nb = heap_caps_realloc(buf, nc * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-                    if (!nb) { e = ESP_ERR_NO_MEM; break; }
-                    buf = nb;
-                    cap = nc;
-                }
-                memcpy(buf + n, tmp, m * sizeof(int16_t));
-                n += m;
-            }
-        } while (st == PICO_STEP_BUSY);
-        if (e == ESP_OK && st != PICO_STEP_IDLE) e = ESP_FAIL;
+    if (job->left > 0) {
+        st = pico_putTextUtf8(s_eng, (const pico_Char *)job->rp, (pico_Int16)job->left, &sent);
+        if (st) {
+            char msg[PICO_RETSTRINGSIZE] = "";
+            pico_getEngineStatusMessage(s_eng, st, msg);
+            ESP_LOGE(TAG, "pico synth loi %d: %s", (int)st, msg);
+            pico_resetEngine(s_eng, PICO_RESET_SOFT);
+            job->err = ESP_FAIL;
+            job->flags |= JOB_DONE;
+            return true;
+        }
+        job->left = (size_t)((pico_Int16)job->left - sent);
+        job->rp += sent;
+        return false;
     }
-    if (e != ESP_OK) {
-        char msg[PICO_RETSTRINGSIZE] = "";
-        pico_getEngineStatusMessage(s_eng, st, msg);
-        ESP_LOGE(TAG, "pico synth loi %d: %s", (int)st, msg);
-        pico_resetEngine(s_eng, PICO_RESET_SOFT);
-        heap_caps_free(buf);
+    int16_t tmp[64];
+    int steps = 12;
+    do {
+        st = pico_getData(s_eng, tmp, (pico_Int16)sizeof(tmp), &got, &type);
+        size_t m = got > 0 ? (size_t)got / 2 : 0;
+        if (m && job->n + m <= OUT_MAX) {
+            if (job->n + m > job->cap) {
+                size_t nc = job->cap * 2;
+                if (nc > OUT_MAX) nc = OUT_MAX;
+                if (nc < job->n + m) nc = job->n + m;
+                int16_t *nb = heap_caps_realloc(job->buf, nc * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+                if (!nb) {
+                    pico_resetEngine(s_eng, PICO_RESET_SOFT);
+                    job->err = ESP_ERR_NO_MEM;
+                    job->flags |= JOB_DONE;
+                    return true;
+                }
+                job->buf = nb;
+                job->cap = nc;
+            }
+            memcpy(job->buf + job->n, tmp, m * sizeof(int16_t));
+            job->n += m;
+        } else if (m && job->n + m > OUT_MAX) {
+            if (!(job->flags & 8)) {
+                ESP_LOGW(TAG, "tts cat vi qua %d s", (int)(OUT_MAX / 16000));
+                job->flags |= 8;
+            }
+        }
+        if (st == PICO_STEP_IDLE) {
+            job->flags |= JOB_DONE;
+            return true;
+        }
+        if (st != PICO_STEP_BUSY) {
+            char msg[PICO_RETSTRINGSIZE] = "";
+            pico_getEngineStatusMessage(s_eng, st, msg);
+            ESP_LOGE(TAG, "pico synth loi %d: %s", (int)st, msg);
+            pico_resetEngine(s_eng, PICO_RESET_SOFT);
+            job->err = ESP_FAIL;
+            job->flags |= JOB_DONE;
+            return true;
+        }
+    } while (--steps > 0);
+    return false;
+}
+
+esp_err_t fd_tts_job_take(fd_tts_job_t *job, int16_t **out, size_t *count)
+{
+    if (!job || !out || !count) return ESP_ERR_INVALID_ARG;
+    *out = NULL;
+    *count = 0;
+    if (!(job->flags & JOB_DONE)) return ESP_ERR_INVALID_STATE;
+    if (job->err != ESP_OK) {
+        esp_err_t e = job->err;
+        fd_tts_job_abort(job);
         return e;
     }
+    int16_t *buf = job->buf;
+    size_t n = job->n;
+    job->buf = NULL;
+    job->flags = 0;
+    job->n = job->cap = job->left = 0;
+    if (!buf || !n) { if (buf) heap_caps_free(buf); return ESP_FAIL; }
     size_t a = 0, z = n;   /* cat im lang dau/cuoi (giu le ~20/60 ms) */
     while (a < n && abs(buf[a]) < TRIM_TH) a++;
     while (z > a && abs(buf[z - 1]) < TRIM_TH) z--;
@@ -230,6 +303,16 @@ esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t
     *out = buf;
     *count = z - a;
     return ESP_OK;
+}
+
+esp_err_t fd_tts_synth_ex(const char *text, int speed_pct, int16_t **out, size_t *count)
+{
+    fd_tts_job_t job;
+    fd_tts_job_init(&job);
+    esp_err_t e = fd_tts_job_start(&job, text, speed_pct);
+    if (e != ESP_OK) return e;
+    while (!fd_tts_job_pump(&job)) {}
+    return fd_tts_job_take(&job, out, count);
 }
 
 esp_err_t fd_tts_synth(const char *text, int16_t **out, size_t *count)
