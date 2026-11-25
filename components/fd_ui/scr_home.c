@@ -29,6 +29,9 @@ static lv_obj_t *s_wifi;
 static lv_obj_t *s_batt;
 static lv_obj_t *s_shadow_btn;
 static lv_obj_t *s_shadow_lbl;
+static lv_obj_t *s_feat_ovl;
+static lv_obj_t *s_feat_lbl;
+static lv_timer_t *s_feat_tmr;
 static fd_feature_state_t s_feat_seen;
 static uint32_t s_feat_seq;
 static bool s_feat_pend;
@@ -114,43 +117,66 @@ static void shadow_paint_sync(void)
     shadow_paint(!ready, ready || !have ? _("SHADOW") : _("GAME_NEED_UPDATE"));
 }
 
-static void open_shadow_async(void *arg) { (void)arg; fd_ui_show(FD_SCR_SHADOW); }
+static void feature_tick(void);
+
+static void feat_tmr_cb(lv_timer_t *t) { (void)t; feature_tick(); }
+
+static void feat_ovl_start(const char *msg)
+{
+    if (!s_feat_ovl) s_feat_ovl = ui_loading_open(msg, &s_feat_lbl);
+    else ui_loading_set(s_feat_lbl, msg);
+    if (!s_feat_tmr) s_feat_tmr = lv_timer_create(feat_tmr_cb, 100, NULL);
+}
+
+static void feat_ovl_close(void)
+{
+    if (s_feat_tmr) { lv_timer_delete(s_feat_tmr); s_feat_tmr = NULL; }
+    ui_loading_close(&s_feat_ovl);
+    s_feat_lbl = NULL;
+    s_feat_pend = false;
+}
+
+static void open_shadow_async(void *arg)
+{
+    (void)arg;
+    if (!s_shadow_btn) return;
+    fd_ui_show(FD_SCR_SHADOW);
+}
 
 static void shadow_start_install(const fd_feature_entry_t *e)
 {
     if (!e->supported) {
+        feat_ovl_close();
         char t[64];
         snprintf(t, sizeof(t), _("GAME_NEED_FW"), e->min_fw[0] ? e->min_fw : "?");
         fd_ui_toast(t);
         return;
     }
     s_feat_toast = false;
-    if (fd_feature_install(e)) s_feat_seen = FD_FEAT_DOWNLOADING;
-    else fd_ui_toast(_("GAME_BUSY"));
+    if (fd_feature_install(e)) {
+        s_feat_seen = FD_FEAT_DOWNLOADING;
+        char t[48];
+        snprintf(t, sizeof(t), _("GAME_DL_PCT"), 0);
+        feat_ovl_start(t);
+    } else {
+        feat_ovl_close();
+        fd_ui_toast(_("GAME_BUSY"));
+    }
 }
 
 static void shadow_click(void)
 {
+    if (s_feat_ovl || s_feat_pend) return;
     fd_feature_status_t st;
     fd_feature_get(&st);
-    if (st.state == FD_FEAT_DOWNLOADING) { fd_ui_toast(_("GAME_BUSY")); return; }
-    if (st.state == FD_FEAT_LISTING) { s_feat_pend = true; return; }
-    if (fd_net_is_connected() && fd_ota_is_paired() && fd_feature_list_stale(FEAT_LIST_TTL_MS)) {
-        s_feat_pend = true;
-        fd_feature_list_fetch();
+    if (st.state == FD_FEAT_DOWNLOADING) {
+        char t[48];
+        snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
+        feat_ovl_start(t);
         return;
     }
     char local[FD_FEAT_VER_LEN];
     bool have = fd_feature_local("shadow", local, sizeof(local));
-    fd_feature_entry_t e;
-    bool found = fd_feature_find("shadow", &e);
-    if (found && !e.supported) {
-        char t[64];
-        snprintf(t, sizeof(t), _("GAME_NEED_FW"), e.min_fw[0] ? e.min_fw : "?");
-        fd_ui_toast(t);
-        return;
-    }
-    if (shadow_ready()) { fd_ui_show(FD_SCR_SHADOW); return; }
     if (!fd_net_is_connected()) {
         if (have) { fd_ui_show(FD_SCR_SHADOW); return; }
         fd_ui_toast(_("FEATURE_WIFI"));
@@ -161,8 +187,28 @@ static void shadow_click(void)
         fd_ui_toast(_("PAIR_TO_STUDY"));
         return;
     }
+    if (st.state == FD_FEAT_LISTING || fd_feature_list_stale(FEAT_LIST_TTL_MS)) {
+        s_feat_pend = true;
+        feat_ovl_start(_("MOD_CHECKING"));
+        if (st.state != FD_FEAT_LISTING) {
+            s_feat_seen = FD_FEAT_IDLE;
+            fd_feature_list_fetch();
+        }
+        return;
+    }
+    fd_feature_entry_t e;
+    bool found = fd_feature_find("shadow", &e);
+    if (found && !e.supported) {
+        char t[64];
+        snprintf(t, sizeof(t), _("GAME_NEED_FW"), e.min_fw[0] ? e.min_fw : "?");
+        fd_ui_toast(t);
+        return;
+    }
+    if (shadow_ready()) { fd_ui_show(FD_SCR_SHADOW); return; }
     if (!found) {
         s_feat_pend = true;
+        s_feat_seen = FD_FEAT_IDLE;
+        feat_ovl_start(_("MOD_CHECKING"));
         fd_feature_list_fetch();
         return;
     }
@@ -184,9 +230,11 @@ static void feature_tick(void)
         char t[48];
         snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
         shadow_paint(true, t);
+        if (s_feat_lbl) ui_loading_set(s_feat_lbl, t);
         return;
     }
     if (st.state == FD_FEAT_DONE) {
+        feat_ovl_close();
         shadow_paint_sync();
         lv_async_call(open_shadow_async, NULL);
         return;
@@ -197,9 +245,14 @@ static void feature_tick(void)
             s_feat_pend = false;
             fd_feature_entry_t e;
             if (fd_feature_find("shadow", &e)) {
-                if (e.supported && shadow_ready()) lv_async_call(open_shadow_async, NULL);
-                else shadow_start_install(&e);
+                if (e.supported && shadow_ready()) {
+                    feat_ovl_close();
+                    lv_async_call(open_shadow_async, NULL);
+                } else {
+                    shadow_start_install(&e);
+                }
             } else {
+                feat_ovl_close();
                 char local[FD_FEAT_VER_LEN];
                 if (fd_feature_local("shadow", local, sizeof(local))) lv_async_call(open_shadow_async, NULL);
                 else fd_ui_toast(_("FEATURE_FAIL"));
@@ -209,7 +262,7 @@ static void feature_tick(void)
     }
     if (st.state == FD_FEAT_ERROR) {
         if (s_feat_pend && !st.install) {
-            s_feat_pend = false;
+            feat_ovl_close();
             char local[FD_FEAT_VER_LEN];
             if (fd_feature_local("shadow", local, sizeof(local))) {
                 shadow_paint_sync();
@@ -217,9 +270,13 @@ static void feature_tick(void)
                 return;
             }
             fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
-        } else if (st.install && !s_feat_toast) {
-            s_feat_toast = true;
-            fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
+        } else if (st.install) {
+            bool had_ovl = s_feat_ovl != NULL;
+            feat_ovl_close();
+            if (had_ovl || !s_feat_toast) {
+                s_feat_toast = true;
+                fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
+            }
         }
         shadow_paint_sync();
         return;
@@ -412,10 +469,12 @@ static void build(lv_obj_t *scr)
     refresh();
 }
 
-static void destroy(void) { s_stat = s_hint = s_ok = s_wifi = s_batt = s_shadow_btn = s_shadow_lbl = NULL; s_feat_pend = false; }
+static void destroy(void) { feat_ovl_close(); s_stat = s_hint = s_ok = s_wifi = s_batt = s_shadow_btn = s_shadow_lbl = NULL; }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
 static void on_tick(void) { refresh(); feature_tick(); }
+static bool on_back(void) { if (s_feat_ovl || s_feat_pend) { feat_ovl_close(); return true; } return false; }
 
 const ui_screen_t g_scr_home = {
     .name = "home", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_event = on_event, .on_tick = on_tick,
+    .on_back = on_back,
 };

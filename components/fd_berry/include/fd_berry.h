@@ -57,7 +57,8 @@ extern "C" {
 #define FD_BERRY_SUB       64
 #define FD_BERRY_MEM_CAP   (512 * 1024)
 #define FD_BERRY_FRAME_MS  40
-#define FD_BERRY_INIT_MS   1500
+#define FD_BERRY_EVENT_MS  250
+#define FD_BERRY_INIT_MS   4000
 #define FD_BERRY_TICK_MS   33
 
 typedef struct {

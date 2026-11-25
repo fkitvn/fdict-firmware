@@ -3,6 +3,7 @@
  * Mat khau KHONG bao gio duoc log.
  */
 #include "esp_mac.h"
+#include "esp_attr.h"
 #include "esp_heap_caps.h"
 #include "wifi_retry.h"
 #include <string.h>
@@ -60,11 +61,11 @@ static esp_timer_handle_t s_retry_timer;
 static saved_net_t s_saved[FD_NET_MAX_SAVED];
 static int s_saved_n;
 
-static fd_net_ap_t s_scan[FD_NET_MAX_SCAN];
+static EXT_RAM_BSS_ATTR fd_net_ap_t s_scan[FD_NET_MAX_SCAN];
 static int s_scan_n;
-static uint8_t s_scan_bssid[FD_NET_MAX_SCAN][6];   /* AP manh nhat cua moi SSID */
-static uint8_t s_scan_ch[FD_NET_MAX_SCAN];
-static uint8_t s_scan_auth[FD_NET_MAX_SCAN];
+static EXT_RAM_BSS_ATTR uint8_t s_scan_bssid[FD_NET_MAX_SCAN][6];   /* AP manh nhat cua moi SSID */
+static EXT_RAM_BSS_ATTR uint8_t s_scan_ch[FD_NET_MAX_SCAN];
+static EXT_RAM_BSS_ATTR uint8_t s_scan_auth[FD_NET_MAX_SCAN];
 static volatile bool s_scanning;
 
 static volatile fd_net_state_t s_state = FD_NET_IDLE;
@@ -82,7 +83,7 @@ static volatile int64_t s_dbg_last_us, s_dbg_next_retry_us;
 
 /* LOG: moi AP (BSSID) khop SSID muc tieu/da luu trong lan quet gan nhat (on_scan_done chi giu 1 AP / SSID) */
 #define CAND_MAX FD_NET_MAX_SCAN   /* moi BSSID trong lan quet (de tra kenh/authmode theo BSSID) */
-static struct { char ssid[33]; uint8_t bssid[6]; uint8_t ch; int8_t rssi; uint8_t auth; } s_cand[CAND_MAX];
+static EXT_RAM_BSS_ATTR struct { char ssid[33]; uint8_t bssid[6]; uint8_t ch; int8_t rssi; uint8_t auth; } s_cand[CAND_MAX];
 static int s_cand_n;
 
 static void log_sta_mac(const char *where)

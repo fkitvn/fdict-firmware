@@ -1242,7 +1242,8 @@ static esp_err_t gx_evt(esp_http_client_event_t *e)
  * Tra HTTP status; -1 mang/URL, -2 qua max_bytes, -3 loi file/bo nho. 401 -> xoa token (auth_401).
  * Loi giua chung: giu phan da ghi (de noi tiep) khi resume, nguoc lai xoa dst. */
 static int get_file_impl(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,
-                         char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx, bool quiet)
+                         char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx,
+                         bool quiet, int timeout_ms)
 {
     if (etag_out && etag_cap) etag_out[0] = 0;
     if (!path || !dst || max_bytes <= 0 || !fd_net_is_connected()) return -1;
@@ -1257,7 +1258,7 @@ static int get_file_impl(const char *path, const char *dst, int max_bytes, bool 
     }
     gx_t g = {.etag = etag_out, .cap = etag_cap};
     esp_http_client_config_t c;
-    http_cfg(&c, url, HTTP_TIMEOUT_MS);
+    http_cfg(&c, url, timeout_ms > 0 ? timeout_ms : HTTP_TIMEOUT_MS);
     c.method = HTTP_METHOD_GET;
     c.event_handler = gx_evt;
     c.user_data = &g;
@@ -1330,13 +1331,19 @@ static int get_file_impl(const char *path, const char *dst, int max_bytes, bool 
 int fd_ota_api_get_file_ex(const char *path, const char *dst, int max_bytes, bool resume, const char *etag_in,
                            char *etag_out, size_t etag_cap, void (*prog)(int got, int total, void *ctx), void *ctx)
 {
-    return get_file_impl(path, dst, max_bytes, resume, etag_in, etag_out, etag_cap, prog, ctx, false);
+    return get_file_impl(path, dst, max_bytes, resume, etag_in, etag_out, etag_cap, prog, ctx, false, HTTP_TIMEOUT_MS);
 }
 
 int fd_ota_api_get_file_q(const char *path, const char *dst, int max_bytes, void (*prog)(int got, int total, void *ctx),
                           void *ctx)
 {
-    return get_file_impl(path, dst, max_bytes, false, NULL, NULL, 0, prog, ctx, true);
+    return get_file_impl(path, dst, max_bytes, false, NULL, NULL, 0, prog, ctx, true, HTTP_TIMEOUT_MS);
+}
+
+int fd_ota_api_get_file_qt(const char *path, const char *dst, int max_bytes, int timeout_ms,
+                           void (*prog)(int got, int total, void *ctx), void *ctx)
+{
+    return get_file_impl(path, dst, max_bytes, false, NULL, NULL, 0, prog, ctx, true, timeout_ms);
 }
 
 /* Ban don gian (fd_voice): khong ETag / Range. */
