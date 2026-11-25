@@ -29,6 +29,17 @@
  *     fd.burst(x, y, mau[, so_hat]) chum hat (toi da 16) bay toa ra roi roi, C tinh, khong ton bo nho script
  *     fd.pos(id) -> [x, y] vi tri hien tai cua doi tuong (ke ca khi dang fd.move)
  *   print(...) ra log.
+ *   5.4.0 tinh nang tai ve (Nhai lai, scr_shadow.c) dung chung may ao nay:
+ *     fd.font(id, 12) Noto 12 | fd.align(id, 0 giua | 1 trai | 2 trai mot dong co dau ...)
+ *     fd.say_long(chu) doc doan dai (<= 2400 byte) | fd.say_stop() | fd.busy() dang doc / con hang doi
+ *     fd.pass_count() | fd.pass_at(i) -> chu xem truoc | fd.pass_load(i) -> [[cau, nghia, ipa], ...] (doan da dong bo)
+ *     fd.pref_get(k) | fd.pref_set(k, so) chi khoa trong danh sach cho phep (sh_vi, sh_ipa), luu NVS fd
+ *     fd.session_begin(mod) | fd.event(kind) (chi "shadow") | fd.session_end() ghi phien hoc (man hinh ghi file)
+ *     fd.tr(khoa) chuoi da dich cua firmware
+ *     fd.roll_box(x, y, w, h) (h = 0 an) | fd.roll_clear() | fd.roll_add(chu, font, mau[, opa]) | fd.roll_run(est_ms)
+ *       | fd.roll_y(): khung chu cuon do C ve (cham dung, vuot tay, 3 giay tu cuon lai, khong nuot vuot mep)
+ *     fd.hold_back(bool): true = vuot mep / giu Nut 1 goi back() trong script thay vi thoat man
+ *     Lenh am thanh, phien hoc, ghi NVS xep hang, man hinh (task LVGL) thuc hien.
  * Gioi han: bo nho 512 KB (PSRAM), moi lan goi ham script toi da FD_BERRY_FRAME_MS (init FD_BERRY_INIT_MS), qua han
  * -> loi timeout, tro choi dung lai va bao loi. Khong file, mang, os, sys. */
 #include <stdbool.h>
@@ -62,6 +73,23 @@ typedef struct {
 /* Do kich thuoc chu (chay trong task VM; ham phai tu khoa LVGL, that bai thi tra false). */
 typedef bool (*fd_berry_measure_fn)(const char *txt, int font, int maxw, int *w, int *h);
 
+/* 5.4.0 du lieu tu man hinh chu (tinh nang tai ve). Ham chay trong task VM, phai an toan da luong. */
+#define FD_BERRY_LINE_TXT 160
+#define FD_BERRY_LINE_IPA 112
+#define FD_BERRY_LINES    16
+typedef struct {
+    char text[FD_BERRY_LINE_TXT];
+    char vi[FD_BERRY_LINE_TXT];
+    char ipa[FD_BERRY_LINE_IPA];
+} fd_berry_line_t;
+
+typedef struct {
+    const char *(*tr)(const char *key);
+    int (*pass_count)(void);
+    bool (*pass_at)(int i, char *out, size_t n);
+    int (*pass_load)(int i, fd_berry_line_t *out, int cap);
+} fd_berry_host_t;
+
 typedef struct {
     char *script;               /* PSRAM, fd_berry nhan quyen so huu (free khi dung) */
     size_t len;
@@ -71,6 +99,8 @@ typedef struct {
     const char *side;
     fd_berry_opts_t opts;
     fd_berry_measure_fn measure;
+    const fd_berry_host_t *host;    /* 5.4.0, NULL = tro choi */
+    bool need_init;                 /* 5.4.0: thieu init() -> loi no_init */
 } fd_berry_cfg_t;
 
 typedef struct {
@@ -90,6 +120,7 @@ typedef struct {
     uint8_t opa_now;            /* do dac thuc te (opa x hieu ung) */
     int16_t ox;                 /* lech ngang hien thi (sway, rung) */
     uint16_t scale;             /* 256 = 100 % */
+    uint8_t align;              /* 5.4.0: 0 giua, 1 trai, 2 trai mot dong */
 } fd_berry_obj_t;
 
 #define FD_BERRY_BURST_Q 4
@@ -109,7 +140,17 @@ typedef struct {
     fd_berry_burst_t burst[FD_BERRY_BURST_Q];
 } fd_berry_misc_t;
 
-typedef enum { FD_BERRY_EV_BUTTON = 1, FD_BERRY_EV_TAP } fd_berry_ev_t;
+typedef enum { FD_BERRY_EV_BUTTON = 1, FD_BERRY_EV_TAP, FD_BERRY_EV_BACK } fd_berry_ev_t;
+
+/* 5.4.0 lenh cho man hinh (task LVGL) */
+typedef enum {
+    FD_BERRY_CMD_SAY_LONG = 1, FD_BERRY_CMD_SAY_STOP, FD_BERRY_CMD_SESS_BEGIN, FD_BERRY_CMD_EVENT, FD_BERRY_CMD_SESS_END,
+} fd_berry_cmd_type_t;
+typedef struct { uint8_t type; char arg[16]; } fd_berry_cmd_t;
+#define FD_BERRY_LONG_MAX 2400
+#define FD_BERRY_ROLL_MAX 48
+typedef struct { char txt[FD_BERRY_LINE_TXT]; uint8_t font, opa; int32_t color; } fd_berry_roll_item_t;
+typedef struct { uint32_t ver, run_seq; int32_t est_ms; int16_t x, y, w, h; int n; } fd_berry_roll_t;
 
 bool fd_berry_start(const fd_berry_cfg_t *cfg);
 /* Dung VM (cho toi da ~500 ms). Goi duoc nhieu lan. */
@@ -119,6 +160,15 @@ void fd_berry_pause(bool paused);
 /* Lay doi tuong thay doi tu lan truoc (out[FD_BERRY_OBJ_MAX], tra mat na bit) va trang thai chung (xoa co sound / say / hud). */
 uint32_t fd_berry_sync(fd_berry_obj_t *out, fd_berry_misc_t *misc);
 size_t fd_berry_mem_used(void);
+/* 5.4.0 (goi tu task LVGL) */
+bool fd_berry_cmd_take(fd_berry_cmd_t *out);
+size_t fd_berry_long_text(char *out, size_t cap);   /* lay doan say_long dang cho (xoa co cho) */
+void fd_berry_set_busy(bool busy);
+void fd_berry_pref_flush(void);                     /* ghi NVS cac pref vua doi */
+void fd_berry_roll_get(fd_berry_roll_t *out);
+int fd_berry_roll_items(fd_berry_roll_item_t *out, int cap);
+void fd_berry_roll_set_y(int y);
+bool fd_berry_hold_back(void);
 /* 4.9.5 do dac: thoi gian goi ham script (us) va bo nho dinh cua van gan nhat. */
 typedef struct { uint32_t calls, max_us, avg_us; size_t peak_mem; } fd_berry_perf_t;
 void fd_berry_perf(fd_berry_perf_t *out);

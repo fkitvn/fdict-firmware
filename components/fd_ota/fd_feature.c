@@ -386,3 +386,29 @@ bool fd_feature_install(const fd_feature_entry_t *e)
     if (xTaskCreate(install_task, "fd_feat", 8192, NULL, 3, NULL) != pdPASS) set_state(FD_FEAT_ERROR, "nomem", true);
     return true;
 }
+
+/* 5.4.0: ma nguon Berry cua goi da cai (PSRAM, nguoi goi free). NULL neu chua cai, hong hoac rong. */
+char *fd_feature_script(const char *id, size_t *len)
+{
+    if (len) *len = 0;
+    if (!safe_id(id)) return NULL;
+    char path[80];
+    snprintf(path, sizeof(path), "/data/features/%.31s/feature.json", id);
+    size_t n = 0;
+    char *buf = read_all(path, FD_FEAT_PKG_MAX, &n);
+    if (!buf) return NULL;
+    cJSON *j = cJSON_ParseWithLength(buf, n);
+    free(buf);
+    const char *sc = j ? jstr(j, "script") : "";
+    size_t sl = strlen(sc);
+    char *out = NULL;
+    if (sl > 0 && sl <= FD_FEAT_SCRIPT_MAX) {
+        out = heap_caps_malloc(sl + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (out) {
+            memcpy(out, sc, sl + 1);
+            if (len) *len = sl;
+        }
+    }
+    cJSON_Delete(j);
+    return out;
+}
