@@ -306,7 +306,7 @@ static int f_font(bvm *vm)
     int id = arg_id(vm);
     int f = argi(vm, 2, 18);
     LOCK();
-    touch(id)->font = (uint8_t)(f >= 32 ? 32 : f >= 18 ? 18 : f >= 14 ? 14 : 12);   /* 5.4.0 them 12 */
+    touch(id)->font = (uint8_t)(f >= 32 ? 32 : f >= 24 ? 24 : f >= 18 ? 18 : f >= 14 ? 14 : 12);   /* 5.4.5 them 24 */
     UNLOCK();
     be_return_nil(vm);
 }
@@ -799,7 +799,7 @@ static int f_roll_add(bvm *vm)
     if (s_roll && s_rst.n < FD_BERRY_ROLL_MAX) {
         fd_berry_roll_item_t *it = &s_roll[s_rst.n++];
         ucpy(it->txt, sizeof(it->txt), t);
-        it->font = (uint8_t)(f >= 32 ? 32 : f >= 18 ? 18 : f >= 14 ? 14 : 12);
+        it->font = (uint8_t)(f >= 32 ? 32 : f >= 24 ? 24 : f >= 18 ? 18 : f >= 14 ? 14 : 12);
         it->color = c & 0xFFFFFF;
         it->opa = (uint8_t)clampv(o, 0, 255);
         s_rst.ver++;

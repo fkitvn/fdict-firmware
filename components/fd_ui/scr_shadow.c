@@ -66,9 +66,34 @@ static void pause_reset(void)
     s_resume_at = 0;
 }
 
-static int spd_pct(void) { return s_spd == 0 ? 75 : s_spd == 2 ? 125 : 100; }
+static int spd_pct(void)
+{
+    switch (s_spd) {
+    case 50: case 75: case 100: case 125: case 150: return s_spd;
+    case 0: return 75;
+    case 2: return 125;
+    default: return 100;
+    }
+}
 
-static const char *spd_label(void) { return s_spd == 0 ? "0.75x" : s_spd == 2 ? "1.25x" : "1x"; }
+static const char *spd_label(void)
+{
+    switch (spd_pct()) {
+    case 50: return "0.5x";
+    case 75: return "0.75x";
+    case 125: return "1.25x";
+    case 150: return "1.5x";
+    default: return "1x";
+    }
+}
+
+static void spd_cycle(void)
+{
+    static const uint8_t seq[] = {50, 75, 100, 125, 150};
+    int p = spd_pct(), i = 2;
+    for (int k = 0; k < 5; k++) if (seq[k] == (uint8_t)p) { i = k; break; }
+    s_spd = seq[(i + 1) % 5];
+}
 
 static void prefs_load(void)
 {
@@ -84,7 +109,7 @@ static void prefs_load(void)
     s_vi = vi != 0;
     s_ipa = ipa != 0;
     s_snd = snd != 0;
-    s_spd = spd <= 2 ? spd : 1;
+    s_spd = spd;
 }
 
 static void pref_save(const char *key, uint8_t v)
@@ -338,7 +363,7 @@ static void toggle_cb(lv_event_t *e)
     if (which == 1) { s_vi = !s_vi; pref_save(VI_KEY, s_vi ? 1 : 0); }
     else if (which == 2) { s_ipa = !s_ipa; pref_save(IPA_KEY, s_ipa ? 1 : 0); }
     else if (which == 3) { s_snd = !s_snd; pref_save(SND_KEY, s_snd ? 1 : 0); }
-    else { s_spd = (uint8_t)((s_spd + 1) % 3); pref_save(SPD_KEY, s_spd); }
+    else { spd_cycle(); pref_save(SPD_KEY, s_spd); }
     show_list();
 }
 
@@ -376,7 +401,7 @@ static void show_list(void)
     lv_obj_t *vi = ui_gate_btn(opts, _("SHADOW_MEANING"), s_vi, NULL);
     lv_obj_t *ipa = ui_gate_btn(opts, _("SHADOW_IPA"), s_ipa, NULL);
     lv_obj_t *snd = ui_gate_btn(opts, _("SHADOW_SOUND"), s_snd, NULL);
-    lv_obj_t *spd = ui_gate_btn(opts, spd_label(), s_spd != 1, NULL);
+    lv_obj_t *spd = ui_gate_btn(opts, spd_label(), spd_pct() != 100, NULL);
     lv_obj_set_style_pad_hor(vi, 2, 0);
     lv_obj_set_style_pad_hor(ipa, 2, 0);
     lv_obj_set_style_pad_hor(snd, 2, 0);
@@ -413,7 +438,7 @@ static void show_list(void)
 /* ---------- 5.4.0 man hinh Berry ---------- */
 static const lv_font_t *bfont(uint8_t f)
 {
-    return f >= 32 ? &fd_font_mont_32 : f >= 18 ? &fd_font_noto_18 : f >= 14 ? &fd_font_noto_14 : &fd_font_noto_12;
+    return f >= 32 ? &fd_font_mont_32 : f >= 24 ? &fd_font_mont_24 : f >= 18 ? &fd_font_noto_18 : f >= 14 ? &fd_font_noto_14 : &fd_font_noto_12;
 }
 
 static void btap_cb(lv_event_t *e)
