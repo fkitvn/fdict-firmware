@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "cJSON.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"

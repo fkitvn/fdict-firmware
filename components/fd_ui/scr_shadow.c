@@ -235,7 +235,7 @@ static void show_list(void)
     lv_obj_set_flex_grow(list, 1);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(list, 6, 0);
-    lv_obj_add_flag(list, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_scrollable(list, true);
     for (int i = 0; i < n; i++) {
         char preview[72];
         if (!fd_sync_passage_at(i, preview, sizeof(preview), NULL)) continue;
