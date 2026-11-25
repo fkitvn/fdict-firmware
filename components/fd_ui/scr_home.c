@@ -19,6 +19,7 @@
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "fd_sync.h"
+#include "fd_feature.h"
 #include "ui_priv.h"
 
 static lv_obj_t *s_stat;   /* hang trang thai (chu + icon): vung cham + ext 10 px, clickable tru khi READY */
@@ -26,6 +27,12 @@ static lv_obj_t *s_hint;   /* chu trang thai */
 static lv_obj_t *s_ok;     /* emoji 👌 (anh 16x16), chi hien khi READY */
 static lv_obj_t *s_wifi;
 static lv_obj_t *s_batt;
+static lv_obj_t *s_shadow_btn;
+static lv_obj_t *s_shadow_lbl;
+static fd_feature_state_t s_feat_seen;
+static bool s_feat_asked;
+static bool s_feat_pend;
+static bool s_feat_toast;
 
 LV_IMAGE_DECLARE(img_logo);   /* mark FD 28x28 (img_logo.c, dung chung bang nhanh) */
 LV_IMAGE_DECLARE(img_ok_hand);   /* U+1F44C 16x16 (img_ok_hand.c, Noto Emoji Apache-2.0) - font khong co glyph emoji */
@@ -65,9 +72,93 @@ static const struct {
     {&img_tile_settings, "SETTINGS", FD_SCR_SETTINGS},
 };
 
+static long feat_ver(const char *s)
+{
+    unsigned a = 0, b = 0, c = 0;
+    if (!s || sscanf(s, "%u.%u.%u", &a, &b, &c) != 3) return -1;
+    return (long)a * 1000000L + (long)b * 1000L + (long)c;
+}
+
+static bool shadow_ready(void)
+{
+    char local[FD_FEAT_VER_LEN];
+    if (!fd_feature_local("shadow", local, sizeof(local))) return false;
+    fd_feature_entry_t e;
+    if (!fd_feature_find("shadow", &e)) return true;
+    long have = feat_ver(local), need = feat_ver(e.version);
+    return have < 0 || need < 0 || have >= need;
+}
+
+static void shadow_paint(bool dim, const char *label)
+{
+    if (!s_shadow_btn) return;
+    lv_obj_set_style_opa(s_shadow_btn, dim ? LV_OPA_40 : LV_OPA_COVER, 0);
+    if (s_shadow_lbl && label) lv_label_set_text(s_shadow_lbl, label);
+}
+
+static void open_shadow_async(void *arg) { (void)arg; fd_ui_show(FD_SCR_SHADOW); }
+
+static void shadow_click(void)
+{
+    fd_feature_status_t st;
+    fd_feature_get(&st);
+    if (st.state == FD_FEAT_DOWNLOADING || st.state == FD_FEAT_LISTING) return;
+    if (shadow_ready()) { fd_ui_show(FD_SCR_SHADOW); return; }
+    if (!fd_net_is_connected()) { fd_ui_toast(_("FEATURE_WIFI")); return; }
+    if (!fd_ota_is_paired()) { fd_ui_toast(_("PAIR_TO_STUDY")); return; }
+    fd_feature_entry_t e;
+    if (!fd_feature_find("shadow", &e)) {
+        s_feat_pend = true;
+        fd_feature_list_fetch();
+        return;
+    }
+    if (!fd_feature_install(&e)) fd_ui_toast(_("GAME_BUSY"));
+}
+
+static void feature_tick(void)
+{
+    if (!s_shadow_btn) return;
+    if (!s_feat_asked && fd_net_is_connected() && fd_ota_is_paired()) {
+        s_feat_asked = true;
+        fd_feature_list_fetch();
+    }
+    fd_feature_status_t st;
+    fd_feature_get(&st);
+    if (st.state == s_feat_seen && st.state != FD_FEAT_DOWNLOADING) return;
+    s_feat_seen = st.state;
+    if (st.state == FD_FEAT_DOWNLOADING) {
+        char t[48];
+        snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
+        shadow_paint(true, t);
+        return;
+    }
+    if (st.state == FD_FEAT_DONE) {
+        shadow_paint(false, _("SHADOW"));
+        lv_async_call(open_shadow_async, NULL);
+        return;
+    }
+    if (st.state == FD_FEAT_LIST_READY && s_feat_pend) {
+        s_feat_pend = false;
+        fd_feature_entry_t e;
+        if (fd_feature_find("shadow", &e)) fd_feature_install(&e);
+    }
+    if (st.state == FD_FEAT_ERROR && st.install && !s_feat_toast) {
+        s_feat_toast = true;
+        fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
+    }
+    {
+        char local[FD_FEAT_VER_LEN];
+        bool have = fd_feature_local("shadow", local, sizeof(local));
+        bool ready = shadow_ready();
+        shadow_paint(!ready, ready || !have ? _("SHADOW") : _("GAME_NEED_UPDATE"));
+    }
+}
+
 static void go_cb(lv_event_t *e)
 {
-    fd_ui_show((fd_scr_t)(intptr_t)lv_event_get_user_data(e));
+    fd_scr_t target = (fd_scr_t)(intptr_t)lv_event_get_user_data(e);
+    if (target == FD_SCR_SHADOW) { shadow_click(); return; }
+    fd_ui_show(target);
 }
 
 static void refresh(void)
@@ -157,6 +248,11 @@ static void tile(lv_obj_t *grid, int i, int32_t tile_w)
     lv_obj_set_width(l, lv_pct(100)); lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP); lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);   /* 4.1.6: ca doc lan ngang: xuong dong o khoang trang, toi da 2 dong can giua (khong cat "..." / giua tu) */
     lv_obj_set_style_text_line_space(l, -4, 0);   /* 2 dong ten sat hon */
     lv_label_set_text(l, _(TILES[i].label));
+    if (!strcmp(TILES[i].label, "SHADOW")) {
+        s_shadow_btn = b;
+        s_shadow_lbl = l;
+        if (!shadow_ready()) lv_obj_set_style_opa(b, LV_OPA_40, 0);
+    }
     lv_obj_add_event_cb(b, go_cb, LV_EVENT_CLICKED, (void *)(intptr_t)TILES[i].target);
 }
 
@@ -225,12 +321,15 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_pad_row(grid, (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL)) ? TILE_GAP_ROW_PORT : TILE_GAP_ROW, 0);
     lv_obj_set_style_pad_column(grid, TILE_GAP_COL, 0);
     for (int i = 0; i < (int)(sizeof(TILES) / sizeof(TILES[0])); i++) tile(grid, i, tile_w);
+    fd_feature_status_t st;
+    fd_feature_get(&st);
+    s_feat_seen = st.state;
     refresh();
 }
 
-static void destroy(void) { s_stat = s_hint = s_ok = s_wifi = s_batt = NULL; }
+static void destroy(void) { s_stat = s_hint = s_ok = s_wifi = s_batt = s_shadow_btn = s_shadow_lbl = NULL; }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
-static void on_tick(void) { refresh(); }
+static void on_tick(void) { refresh(); feature_tick(); }
 
 const ui_screen_t g_scr_home = {
     .name = "home", .parent = FD_SCR_HOME, .build = build, .destroy = destroy, .on_event = on_event, .on_tick = on_tick,

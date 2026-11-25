@@ -396,6 +396,8 @@ static const lv_i18n_phrase_t en_singulars[] = {
     {"SHADOW_AGAIN", "Replay"},
     {"SHADOW_NEXT", "Another"},
     {"SHADOW_FAIL", "Could not write a passage. Try again."},
+    {"FEATURE_WIFI", "Connect to Wi-Fi to download this feature"},
+    {"FEATURE_FAIL", "Could not download. Try again."},
     {"STATS_MOD_SESS", "%d sessions"},
     {NULL, NULL} // End mark
 };
@@ -798,6 +800,8 @@ static const lv_i18n_phrase_t vi_singulars[] = {
     {"SHADOW_AGAIN", "Nghe lại"},
     {"SHADOW_NEXT", "Đoạn khác"},
     {"SHADOW_FAIL", "Không soạn được đoạn. Thử lại."},
+    {"FEATURE_WIFI", "Kết nối Wi-Fi để tải tính năng"},
+    {"FEATURE_FAIL", "Không tải được. Thử lại."},
     {"STATS_MOD_SESS", "%d phiên"},
     {NULL, NULL} // End mark
 };
@@ -1198,6 +1202,8 @@ static const lv_i18n_phrase_t fr_singulars[] = {
     {"SHADOW_AGAIN", "Réécouter"},
     {"SHADOW_NEXT", "Autre texte"},
     {"SHADOW_FAIL", "Impossible de préparer le texte."},
+    {"FEATURE_WIFI", "Connectez le Wi-Fi pour télécharger"},
+    {"FEATURE_FAIL", "Téléchargement impossible. Réessayez."},
     {"STATS_MOD_SESS", "%d sess."},
     {NULL, NULL} // End mark
 };
