@@ -189,8 +189,8 @@ static bool sha256_file(const char *path, char out[65])
 
 static void slot_paths(const char *id, char *dir, size_t dn, char *meta, size_t mn)
 {
-    snprintf(dir, dn, ROOT "/%s", id);
-    snprintf(meta, mn, ROOT "/%s/meta.json", id);
+    snprintf(dir, dn, "/data/features/%.31s", id);
+    snprintf(meta, mn, "/data/features/%.31s/meta.json", id);
 }
 
 bool fd_feature_local(const char *id, char *version, size_t n)
@@ -198,7 +198,7 @@ bool fd_feature_local(const char *id, char *version, size_t n)
     if (version && n) version[0] = 0;
     if (!safe_id(id)) return false;
     char meta[80];
-    snprintf(meta, sizeof(meta), ROOT "/%s/meta.json", id);
+    snprintf(meta, sizeof(meta), "/data/features/%.31s/meta.json", id);
     size_t len = 0;
     char *buf = read_all(meta, 512, &len);
     if (!buf) return false;
@@ -247,7 +247,7 @@ static void list_task(void *arg)
     char fw[16], path[128], err[24] = "", did[24] = "";
     fw_semver(fw, sizeof(fw));
     fd_ota_get_device_id(did, sizeof(did));
-    snprintf(path, sizeof(path), "/api/devices/features?hw=" HW "&fw=%s&device_id=%s", fw, did);
+    snprintf(path, sizeof(path), "/api/devices/features?hw=" HW "&fw=%.15s&device_id=%.23s", fw, did);
     int code = fd_ota_api_get_file_q(path, LIST_TMP, LIST_MAX, NULL, NULL);
     ESP_LOGI(TAG, "list: HTTP %d", code);
     fd_feature_entry_t tmp[FD_FEAT_LIST_MAX];
@@ -361,12 +361,12 @@ static void install_task(void *arg)
     if (!err[0]) {
         char dir[64], meta[80], pkg[80];
         slot_paths(e->id, dir, sizeof(dir), meta, sizeof(meta));
-        snprintf(pkg, sizeof(pkg), "%s/feature.json", dir);
+        snprintf(pkg, sizeof(pkg), "%.46s/feature.json", dir);
         if ((mkdir(ROOT, 0775) != 0 && errno != EEXIST) || (mkdir(dir, 0775) != 0 && errno != EEXIST)) strlcpy(err, "fs", sizeof(err));
         else if (rename(DL_TMP, pkg) != 0) strlcpy(err, "fs", sizeof(err));
         else {
             char body[96];
-            snprintf(body, sizeof(body), "{\"id\":\"%s\",\"version\":\"%s\",\"type\":\"shadow\"}", e->id, e->version);
+            snprintf(body, sizeof(body), "{\"id\":\"%.31s\",\"version\":\"%.15s\",\"type\":\"shadow\"}", e->id, e->version);
             if (!write_text(meta, body)) strlcpy(err, "fs", sizeof(err));
         }
     }
