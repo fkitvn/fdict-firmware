@@ -5,6 +5,7 @@
 #include <time.h>
 #include "fd_fonts.h"
 #include "fd_net.h"
+#include "fd_feature.h"
 #include "fd_ota.h"
 #include "fd_sync.h"
 #include "ui_priv.h"
@@ -12,6 +13,8 @@
 
 static lv_obj_t *s_body, *s_v[6], *s_state, *s_btn;
 static bool s_gate;
+static fd_sync_state_t s_prev_st;
+static time_t s_prev_sync;
 
 static void wifi_cb(lv_event_t *e) { (void)e; fd_ui_show(FD_SCR_WIFI); }
 static void now_cb(lv_event_t *e) { (void)e; fd_sync_force(); }
@@ -71,6 +74,12 @@ static void refresh(void)
     lv_label_set_text(s_state, m);
     if (run) lv_obj_add_state(s_btn, LV_STATE_DISABLED);
     else lv_obj_remove_state(s_btn, LV_STATE_DISABLED);
+    if (st.state == FD_SYNC_OK && (s_prev_st != FD_SYNC_OK || st.last_sync != s_prev_sync)) {
+        fd_feature_list_invalidate();
+        if (fd_net_is_connected() && fd_ota_is_paired()) fd_feature_list_fetch();
+    }
+    s_prev_st = st.state;
+    s_prev_sync = st.last_sync;
 }
 
 static void build(lv_obj_t *scr)
@@ -99,6 +108,12 @@ static void build(lv_obj_t *scr)
     lv_obj_set_style_pad_column(r, 8, 0);
     if (!fd_net_is_connected()) ui_gate_btn(r, _("OPEN_WIFI"), false, wifi_cb);
     s_btn = ui_gate_btn(r, _("SYNC_NOW"), true, now_cb);
+    {
+        fd_sync_status_t init_st;
+        fd_sync_get(&init_st);
+        s_prev_st = init_st.state;
+        s_prev_sync = init_st.last_sync;
+    }
     refresh();
     /* Vao man la dong bo ngay (giong nut Dong bo ngay), neu da co Wi-Fi va chua dang chay. */
     if (fd_net_is_connected()) {

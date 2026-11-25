@@ -15,6 +15,7 @@
 #include "esp_ota_ops.h"
 #include "fd_batt.h"
 #include "fd_net.h"
+#include "fd_feature.h"
 #include "fd_ota.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -123,6 +124,7 @@ static void set_err(const char *e)
     strlcpy(s_st.err, e ? e : "", sizeof(s_st.err));
     s_st.state = (e && e[0]) ? FD_SYNC_ERROR : FD_SYNC_OK;
     unlock();
+    if (!e || !e[0]) fd_feature_list_invalidate();
 }
 
 static void code_err(int code, char *out, size_t n)

@@ -4,6 +4,7 @@
  * Goi JSON co truong script. Slot /data/features/<id>/feature.json + meta.json. */
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,9 +41,14 @@ typedef struct {
     bool install;
     int pct;
     char err[24];
+    uint32_t list_seq;
 } fd_feature_status_t;
 
 bool fd_feature_local(const char *id, char *version, size_t n);
+void fd_feature_load_cache(void);
+bool fd_feature_list_stale(uint32_t ttl_ms);
+void fd_feature_list_invalidate(void);
+bool fd_feature_should_poll(uint32_t ttl_ms);
 void fd_feature_list_fetch(void);
 void fd_feature_get(fd_feature_status_t *out);
 bool fd_feature_find(const char *id, fd_feature_entry_t *out);

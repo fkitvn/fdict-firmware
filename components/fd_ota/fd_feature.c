@@ -10,6 +10,7 @@
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "fd_net.h"
 #include "fd_ota.h"
 #include "freertos/FreeRTOS.h"
@@ -33,6 +34,10 @@ static fd_feature_status_t s_st;
 static fd_feature_entry_t s_list[FD_FEAT_LIST_MAX];
 static int s_n;
 static bool s_busy;
+static bool s_cache_loaded;
+static bool s_list_fresh;
+static int64_t s_list_ms;
+static int64_t s_try_ms;
 static fd_feature_entry_t s_job;
 
 static void ensure_mx(void)
@@ -268,9 +273,17 @@ static void list_task(void *arg)
         rename(LIST_TMP, LIST_CACHE);
         s_n = n;
         if (n > 0) memcpy(s_list, tmp, sizeof(tmp[0]) * (size_t)n);
+        s_cache_loaded = true;
     }
     unlink(LIST_TMP);
     xSemaphoreGive(s_mx);
+    if (!err[0]) {
+        taskENTER_CRITICAL(&s_mux);
+        s_list_fresh = true;
+        s_list_ms = esp_timer_get_time() / 1000;
+        s_st.list_seq++;
+        taskEXIT_CRITICAL(&s_mux);
+    }
     set_state(err[0] ? FD_FEAT_ERROR : FD_FEAT_LIST_READY, err[0] ? err : NULL, false);
     vTaskDelete(NULL);
 }
@@ -288,11 +301,63 @@ static bool begin(fd_feature_state_t st, bool install)
     return true;
 }
 
+void fd_feature_load_cache(void)
+{
+    ensure_mx();
+    xSemaphoreTake(s_mx, portMAX_DELAY);
+    if (!s_cache_loaded && s_n == 0) {
+        s_cache_loaded = true;
+        size_t len = 0;
+        char *buf = read_all(LIST_CACHE, LIST_MAX, &len);
+        if (buf) {
+            fd_feature_entry_t tmp[FD_FEAT_LIST_MAX];
+            int n = parse_list(buf, len, tmp, FD_FEAT_LIST_MAX);
+            free(buf);
+            if (n > 0) {
+                s_n = n;
+                memcpy(s_list, tmp, sizeof(tmp[0]) * (size_t)n);
+            }
+        }
+    }
+    xSemaphoreGive(s_mx);
+}
+
+bool fd_feature_list_stale(uint32_t ttl_ms)
+{
+    int64_t now = esp_timer_get_time() / 1000;
+    taskENTER_CRITICAL(&s_mux);
+    bool stale = !s_list_fresh || (now - s_list_ms) >= (int64_t)ttl_ms;
+    taskEXIT_CRITICAL(&s_mux);
+    return stale;
+}
+
+void fd_feature_list_invalidate(void)
+{
+    taskENTER_CRITICAL(&s_mux);
+    s_list_fresh = false;
+    s_try_ms = 0;
+    taskEXIT_CRITICAL(&s_mux);
+}
+
+bool fd_feature_should_poll(uint32_t ttl_ms)
+{
+    int64_t now = esp_timer_get_time() / 1000;
+    taskENTER_CRITICAL(&s_mux);
+    bool stale = !s_list_fresh || (now - s_list_ms) >= (int64_t)ttl_ms;
+    bool cool = s_try_ms > 0 && (now - s_try_ms) < (int64_t)ttl_ms;
+    bool busy = s_busy;
+    taskEXIT_CRITICAL(&s_mux);
+    return stale && !cool && !busy;
+}
+
 void fd_feature_list_fetch(void)
 {
     if (!begin(FD_FEAT_LISTING, false)) return;
     if (!fd_net_is_connected()) { set_state(FD_FEAT_ERROR, "no_wifi", false); return; }
     if (!fd_ota_is_paired()) { set_state(FD_FEAT_ERROR, "unpaired", false); return; }
+    taskENTER_CRITICAL(&s_mux);
+    s_try_ms = esp_timer_get_time() / 1000;
+    taskEXIT_CRITICAL(&s_mux);
     if (xTaskCreate(list_task, "fd_feat", 8192, NULL, 3, NULL) != pdPASS) set_state(FD_FEAT_ERROR, "nomem", false);
 }
 

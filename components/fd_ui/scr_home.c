@@ -30,9 +30,10 @@ static lv_obj_t *s_batt;
 static lv_obj_t *s_shadow_btn;
 static lv_obj_t *s_shadow_lbl;
 static fd_feature_state_t s_feat_seen;
-static bool s_feat_asked;
+static uint32_t s_feat_seq;
 static bool s_feat_pend;
 static bool s_feat_toast;
+#define FEAT_LIST_TTL_MS 60000
 
 LV_IMAGE_DECLARE(img_logo);   /* mark FD 28x28 (img_logo.c, dung chung bang nhanh) */
 LV_IMAGE_DECLARE(img_ok_hand);   /* U+1F44C 16x16 (img_ok_hand.c, Noto Emoji Apache-2.0) - font khong co glyph emoji */
@@ -96,36 +97,89 @@ static void shadow_paint(bool dim, const char *label)
     if (s_shadow_lbl && label) lv_label_set_text(s_shadow_lbl, label);
 }
 
+static void shadow_paint_sync(void)
+{
+    if (!s_shadow_btn) return;
+    char local[FD_FEAT_VER_LEN];
+    bool have = fd_feature_local("shadow", local, sizeof(local));
+    fd_feature_entry_t e;
+    bool found = fd_feature_find("shadow", &e);
+    if (found && !e.supported) {
+        char nm[48];
+        snprintf(nm, sizeof(nm), _("GAME_NEED_FW"), e.min_fw[0] ? e.min_fw : "?");
+        shadow_paint(true, nm);
+        return;
+    }
+    bool ready = shadow_ready();
+    shadow_paint(!ready, ready || !have ? _("SHADOW") : _("GAME_NEED_UPDATE"));
+}
+
 static void open_shadow_async(void *arg) { (void)arg; fd_ui_show(FD_SCR_SHADOW); }
+
+static void shadow_start_install(const fd_feature_entry_t *e)
+{
+    if (!e->supported) {
+        char t[64];
+        snprintf(t, sizeof(t), _("GAME_NEED_FW"), e->min_fw[0] ? e->min_fw : "?");
+        fd_ui_toast(t);
+        return;
+    }
+    s_feat_toast = false;
+    if (fd_feature_install(e)) s_feat_seen = FD_FEAT_DOWNLOADING;
+    else fd_ui_toast(_("GAME_BUSY"));
+}
 
 static void shadow_click(void)
 {
     fd_feature_status_t st;
     fd_feature_get(&st);
-    if (st.state == FD_FEAT_DOWNLOADING || st.state == FD_FEAT_LISTING) return;
-    if (shadow_ready()) { fd_ui_show(FD_SCR_SHADOW); return; }
-    if (!fd_net_is_connected()) { fd_ui_toast(_("FEATURE_WIFI")); return; }
-    if (!fd_ota_is_paired()) { fd_ui_toast(_("PAIR_TO_STUDY")); return; }
-    fd_feature_entry_t e;
-    if (!fd_feature_find("shadow", &e)) {
+    if (st.state == FD_FEAT_DOWNLOADING) { fd_ui_toast(_("GAME_BUSY")); return; }
+    if (st.state == FD_FEAT_LISTING) { s_feat_pend = true; return; }
+    if (fd_net_is_connected() && fd_ota_is_paired() && fd_feature_list_stale(FEAT_LIST_TTL_MS)) {
         s_feat_pend = true;
         fd_feature_list_fetch();
         return;
     }
-    if (!fd_feature_install(&e)) fd_ui_toast(_("GAME_BUSY"));
+    char local[FD_FEAT_VER_LEN];
+    bool have = fd_feature_local("shadow", local, sizeof(local));
+    fd_feature_entry_t e;
+    bool found = fd_feature_find("shadow", &e);
+    if (found && !e.supported) {
+        char t[64];
+        snprintf(t, sizeof(t), _("GAME_NEED_FW"), e.min_fw[0] ? e.min_fw : "?");
+        fd_ui_toast(t);
+        return;
+    }
+    if (shadow_ready()) { fd_ui_show(FD_SCR_SHADOW); return; }
+    if (!fd_net_is_connected()) {
+        if (have) { fd_ui_show(FD_SCR_SHADOW); return; }
+        fd_ui_toast(_("FEATURE_WIFI"));
+        return;
+    }
+    if (!fd_ota_is_paired()) {
+        if (have) { fd_ui_show(FD_SCR_SHADOW); return; }
+        fd_ui_toast(_("PAIR_TO_STUDY"));
+        return;
+    }
+    if (!found) {
+        s_feat_pend = true;
+        fd_feature_list_fetch();
+        return;
+    }
+    shadow_start_install(&e);
 }
 
 static void feature_tick(void)
 {
     if (!s_shadow_btn) return;
-    if (!s_feat_asked && fd_net_is_connected() && fd_ota_is_paired()) {
-        s_feat_asked = true;
+    if (fd_net_is_connected() && fd_ota_is_paired() && fd_feature_should_poll(FEAT_LIST_TTL_MS)) {
         fd_feature_list_fetch();
     }
     fd_feature_status_t st;
     fd_feature_get(&st);
-    if (st.state == s_feat_seen && st.state != FD_FEAT_DOWNLOADING) return;
+    if (st.state == s_feat_seen && st.list_seq == s_feat_seq && st.state != FD_FEAT_DOWNLOADING) return;
     s_feat_seen = st.state;
+    s_feat_seq = st.list_seq;
     if (st.state == FD_FEAT_DOWNLOADING) {
         char t[48];
         snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
@@ -133,25 +187,44 @@ static void feature_tick(void)
         return;
     }
     if (st.state == FD_FEAT_DONE) {
-        shadow_paint(false, _("SHADOW"));
+        shadow_paint_sync();
         lv_async_call(open_shadow_async, NULL);
         return;
     }
-    if (st.state == FD_FEAT_LIST_READY && s_feat_pend) {
-        s_feat_pend = false;
-        fd_feature_entry_t e;
-        if (fd_feature_find("shadow", &e)) fd_feature_install(&e);
+    if (st.state == FD_FEAT_LIST_READY) {
+        shadow_paint_sync();
+        if (s_feat_pend) {
+            s_feat_pend = false;
+            fd_feature_entry_t e;
+            if (fd_feature_find("shadow", &e)) {
+                if (e.supported && shadow_ready()) lv_async_call(open_shadow_async, NULL);
+                else shadow_start_install(&e);
+            } else {
+                char local[FD_FEAT_VER_LEN];
+                if (fd_feature_local("shadow", local, sizeof(local))) lv_async_call(open_shadow_async, NULL);
+                else fd_ui_toast(_("FEATURE_FAIL"));
+            }
+        }
+        return;
     }
-    if (st.state == FD_FEAT_ERROR && st.install && !s_feat_toast) {
-        s_feat_toast = true;
-        fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
+    if (st.state == FD_FEAT_ERROR) {
+        if (s_feat_pend && !st.install) {
+            s_feat_pend = false;
+            char local[FD_FEAT_VER_LEN];
+            if (fd_feature_local("shadow", local, sizeof(local))) {
+                shadow_paint_sync();
+                lv_async_call(open_shadow_async, NULL);
+                return;
+            }
+            fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
+        } else if (st.install && !s_feat_toast) {
+            s_feat_toast = true;
+            fd_ui_toast(!strcmp(st.err, "no_wifi") ? _("FEATURE_WIFI") : _("FEATURE_FAIL"));
+        }
+        shadow_paint_sync();
+        return;
     }
-    {
-        char local[FD_FEAT_VER_LEN];
-        bool have = fd_feature_local("shadow", local, sizeof(local));
-        bool ready = shadow_ready();
-        shadow_paint(!ready, ready || !have ? _("SHADOW") : _("GAME_NEED_UPDATE"));
-    }
+    shadow_paint_sync();
 }
 
 static void go_cb(lv_event_t *e)
@@ -251,13 +324,14 @@ static void tile(lv_obj_t *grid, int i, int32_t tile_w)
     if (!strcmp(TILES[i].label, "SHADOW")) {
         s_shadow_btn = b;
         s_shadow_lbl = l;
-        if (!shadow_ready()) lv_obj_set_style_opa(b, LV_OPA_40, 0);
+        shadow_paint_sync();
     }
     lv_obj_add_event_cb(b, go_cb, LV_EVENT_CLICKED, (void *)(intptr_t)TILES[i].target);
 }
 
 static void build(lv_obj_t *scr)
 {
+    fd_feature_load_cache();
     lv_obj_t *body = ui_page_create(scr);
     lv_obj_set_style_pad_row(body, (lv_display_get_horizontal_resolution(NULL) < lv_display_get_vertical_resolution(NULL)) ? 4 : 6, 0);   /* ngang: 28 + 6 + 20 + 6 + 168 = 228 px; doc: khe 4 */
     lv_obj_set_scrollable(body, true);   /* 20/10: Home cuon doc (luoi 3 hang) */
@@ -324,10 +398,21 @@ static void build(lv_obj_t *scr)
     fd_feature_status_t st;
     fd_feature_get(&st);
     s_feat_seen = st.state;
+    s_feat_seq = st.list_seq;
+    s_feat_pend = false;
+    s_feat_toast = false;
+    if (st.state == FD_FEAT_DOWNLOADING) {
+        char t[48];
+        snprintf(t, sizeof(t), _("GAME_DL_PCT"), st.pct);
+        shadow_paint(true, t);
+    }
+    if (fd_net_is_connected() && fd_ota_is_paired() && fd_feature_list_stale(FEAT_LIST_TTL_MS)) {
+        fd_feature_list_fetch();
+    }
     refresh();
 }
 
-static void destroy(void) { s_stat = s_hint = s_ok = s_wifi = s_batt = s_shadow_btn = s_shadow_lbl = NULL; }
+static void destroy(void) { s_stat = s_hint = s_ok = s_wifi = s_batt = s_shadow_btn = s_shadow_lbl = NULL; s_feat_pend = false; }
 static void on_event(int32_t id, void *data) { (void)id; (void)data; refresh(); }
 static void on_tick(void) { refresh(); feature_tick(); }
 
