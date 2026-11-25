@@ -5,6 +5,11 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
+## [5.3.4] - 2026-11-25
+- Nhại lại là tính năng tải về. Mã nguồn nằm trên máy chủ.
+- Ô trên trang chủ mờ khi chưa tải. Chạm vào ô để tải.
+- Sau khi tải, học đoạn văn không cần mạng.
+
 ## [5.3.3] - 2026-11-25
 - Nhại lại dùng đoạn văn đã lưu. Máy học không cần mạng.
 - Đoạn văn đồng bộ cùng bộ từ. Người học chọn đoạn có sẵn.

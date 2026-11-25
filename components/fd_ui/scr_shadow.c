@@ -7,6 +7,7 @@
 #include "fd_fonts.h"
 #include "fd_ota.h"
 #include "fd_sync.h"
+#include "fd_feature.h"
 #include "nvs.h"
 #include "ui_priv.h"
 
@@ -258,6 +259,11 @@ static void list_cb(lv_event_t *e) { (void)e; show_list(); }
 static void build(lv_obj_t *scr)
 {
     s_body = ui_page_create(scr);
+    if (!fd_feature_local("shadow", NULL, 0)) {
+        s_gate = true;
+        ui_label_create(s_body, _("FEATURE_WIFI"), &fd_font_noto_14, FD_COLOR_TEXT_MUTED);
+        return;
+    }
     s_gate = !fd_ota_is_paired();
     if (s_gate) { ui_pair_gate(s_body); return; }
     prefs_load();
