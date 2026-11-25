@@ -33,10 +33,10 @@
  *     fd.font(id, 12) Noto 12 | fd.align(id, 0 giua | 1 trai | 2 trai mot dong co dau ...)
  *     fd.say_long(chu) doc doan dai (<= 2400 byte) | fd.say_stop() | fd.busy() dang doc / con hang doi
  *     fd.pass_count() | fd.pass_at(i) -> chu xem truoc | fd.pass_load(i) -> [[cau, nghia, ipa], ...] (doan da dong bo)
- *     fd.pref_get(k) | fd.pref_set(k, so) chi khoa trong danh sach cho phep (sh_vi, sh_ipa), luu NVS fd
+ *     fd.pref_get(k) | fd.pref_set(k, so) chi khoa trong danh sach cho phep (sh_vi, sh_ipa, sh_snd), luu NVS fd
  *     fd.session_begin(mod) | fd.event(kind) (chi "shadow") | fd.session_end() ghi phien hoc (man hinh ghi file)
  *     fd.tr(khoa) chuoi da dich cua firmware
- *     fd.roll_box(x, y, w, h) (h = 0 an) | fd.roll_clear() | fd.roll_add(chu, font, mau[, opa]) | fd.roll_run(est_ms)
+ *     fd.roll_box(x, y, w, h) (h = 0 an) | fd.roll_clear() | fd.roll_add(chu, font, mau[, opa]) | fd.roll_run(est_ms[, silent])
  *       | fd.roll_y(): khung chu cuon do C ve (cham dung, vuot tay, 3 giay tu cuon lai, khong nuot vuot mep)
  *     fd.hold_back(bool): true = vuot mep / giu Nut 1 goi back() trong script thay vi thoat man
  *     Lenh am thanh, phien hoc, ghi NVS xep hang, man hinh (task LVGL) thuc hien.
@@ -150,7 +150,7 @@ typedef struct { uint8_t type; char arg[16]; } fd_berry_cmd_t;
 #define FD_BERRY_LONG_MAX 2400
 #define FD_BERRY_ROLL_MAX 48
 typedef struct { char txt[FD_BERRY_LINE_TXT]; uint8_t font, opa; int32_t color; } fd_berry_roll_item_t;
-typedef struct { uint32_t ver, run_seq; int32_t est_ms; int16_t x, y, w, h; int n; } fd_berry_roll_t;
+typedef struct { uint32_t ver, run_seq; int32_t est_ms; int16_t x, y, w, h; int n; bool silent; } fd_berry_roll_t;
 
 bool fd_berry_start(const fd_berry_cfg_t *cfg);
 /* Dung VM (cho toi da ~500 ms). Goi duoc nhieu lan. */
