@@ -60,9 +60,9 @@ Flash 16 MB, xem `partitions.csv`:
 | otadata  | data/ota      | 0x19000  | 8 KB                         |
 | phy_init | data/phy      | 0x1B000  | 4 KB                         |
 | nvs_keys | data/nvs_keys | 0x1C000  | 4 KB                         |
-| ota_0    | app           | 0x20000  | 3 MiB                         |
-| ota_1    | app           | 0x320000 | 3 MiB                         |
-| storage  | data/littlefs | 0x620000 | ~8,06 MiB                     |
+| ota_0    | app           | 0x20000  | 3 MiB                        |
+| ota_1    | app           | 0x320000 | 3 MiB                        |
+| storage  | data/littlefs | 0x620000 | ~8,06 MiB                    |
 | voice    | data/0x40     | 0xE30000 | 1,75 MB (dữ liệu giọng Pico) |
 | coredump | data/coredump | 0xFF0000 | 64 KB                        |
 
@@ -81,7 +81,7 @@ Mỗi slot ứng dụng 3 MiB, nên file ứng dụng `.bin` phải nhỏ hơn 3
 Firmware có chứa địa chỉ máy chủ:
 
 - URL production (`CONFIG_FD_OTA_BASE_URL`, HTTPS, không kèm `/api`; `CONFIG_FD_PAIR_WEB_URL`; `CONFIG_FD_API_BASE_URL`) đặt trong `idf.py menuconfig` hoặc `sdkconfig` (file này nằm trong `.gitignore`, không commit). Trong Kconfig, mặc định là placeholder `https://your-server.example`. Khi build CI (push nhánh `prod`), script phủ overlay tạm từ `DICT_BASE` (`DICT_API_URL`) để gán URL production.
-- URL Lab (`CONFIG_FD_OTA_LAB_BASE_URL`, mặc định `https://fdict-dev.joinnow.vn`; `CONFIG_FD_PAIR_LAB_WEB_URL`) nằm trong `components/fd_ota/Kconfig`.
+- URL Lab (`CONFIG_FD_OTA_LAB_BASE_URL`, mặc định `https://fdict-dev.fkit.vn`; `CONFIG_FD_PAIR_LAB_WEB_URL`) nằm trong `components/fd_ota/Kconfig`.
 
 _Chế độ nhà phát triển_ (trong Cài đặt, mặc định tắt) có thể trỏ thiết bị tới Lab, nhưng **quy trình dev hiện tại không dùng OTA**. Trên nhánh dev, firmware chỉ build và nạp qua cáp USB (`idf.py build`, `idf.py -p <PORT> flash monitor`, hoặc `tools\flash-monitor.ps1`). Không phát bản OTA cho Lab. Xem [Quy tắc build firmware: dev và prod](#quy-tắc-build-firmware-dev-và-prod).
 
@@ -91,11 +91,11 @@ Không commit token, mật khẩu Wi-Fi hay `sdkconfig` chứa thông tin riêng
 
 Một app cho mọi máy. Giọng Pico nằm ở phân vùng `voice` (1,75 MB), chỉ chứa một ngôn ngữ. Cờ CMake `FD_VOICE_LANG` là `en` hoặc `fr`. Giá trị ghi vào cache của thư mục build và giữ nguyên cho lần build sau nếu không truyền lại.
 
-| Môi trường | Cách build | File nạp | OTA |
-|---|---|---|---|
-| Dev, máy tiếng Anh | `idf.py -B build-en -DFD_VOICE_LANG=en build` rồi flash | USB, giọng Anh | Không phát hành |
-| Dev, máy tiếng Pháp | `idf.py -B build-fr -DFD_VOICE_LANG=fr build` rồi flash | USB, giọng Pháp | Không phát hành |
-| Prod | Push nhánh `prod`. Workflow build app một lần, rồi ghép hai ảnh USB | `full.bin` (Anh) và `full-fr.bin` (Pháp) | Một `app.bin`, không đổi giọng |
+| Môi trường          | Cách build                                                          | File nạp                                 | OTA                            |
+| ------------------- | ------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ |
+| Dev, máy tiếng Anh  | `idf.py -B build-en -DFD_VOICE_LANG=en build` rồi flash             | USB, giọng Anh                           | Không phát hành                |
+| Dev, máy tiếng Pháp | `idf.py -B build-fr -DFD_VOICE_LANG=fr build` rồi flash             | USB, giọng Pháp                          | Không phát hành                |
+| Prod                | Push nhánh `prod`. Workflow build app một lần, rồi ghép hai ảnh USB | `full.bin` (Anh) và `full-fr.bin` (Pháp) | Một `app.bin`, không đổi giọng |
 
 `idf.py build` không kèm cờ dùng thư mục `build/` và mặc định `en`. `tools\flash-monitor.ps1` chỉ nạp đúng giọng đang có trong thư mục `build/`. Muốn nạp Pháp thì build với `-DFD_VOICE_LANG=fr` trước, hoặc dùng thư mục `build-fr` và nạp bằng `idf.py -B build-fr -p <PORT> flash`.
 
@@ -148,7 +148,7 @@ esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>
 esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x0 fdict-firmware-v<ver>-<build>-full-fr.bin
 ```
 
-Cách dễ nhất: mở <https://fkit.vn/fdict/firmware> bằng Chrome/Edge, chọn ngôn ngữ, rồi bấm *Nạp firmware* (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)).
+Cách dễ nhất: mở <https://fkit.vn/fdict/firmware> bằng Chrome/Edge, chọn ngôn ngữ, rồi bấm _Nạp firmware_ (xem [Nạp firmware qua USB từ trình duyệt](#nạp-firmware-qua-usb-từ-trình-duyệt)).
 
 Khi đổi bảng phân vùng, dữ liệu LittleFS cũ không được giữ. Firmware không tự format; sau khi nạp full.bin qua USB, xác nhận Khôi phục cài đặt gốc để tạo lại LittleFS (xóa NVS và dữ liệu, cần ghép lại).
 
@@ -179,30 +179,30 @@ esptool --chip esp32s3 -p <PORT> -b 460800 write_flash 0x20000 fdict-firmware-v<
 
 ## app.bin và full.bin
 
-| | app.bin | full.bin | full-fr.bin |
-|---|---|---|---|
-| Tên file | `fdict-firmware-vX.Y.Z-<build_id>-app.bin` | `...-full.bin` | `...-full-fr.bin` |
-| Kích thước | ~1,5 MB (phải < 3 MiB) | ≤ 16 MiB | ≤ 16 MiB |
-| Giọng Pico | không chứa giọng | Anh | Pháp |
-| Nạp bằng | OTA | USB tại `0x0` | USB tại `0x0` |
+|            | app.bin                                    | full.bin       | full-fr.bin       |
+| ---------- | ------------------------------------------ | -------------- | ----------------- |
+| Tên file   | `fdict-firmware-vX.Y.Z-<build_id>-app.bin` | `...-full.bin` | `...-full-fr.bin` |
+| Kích thước | ~1,5 MB (phải < 3 MiB)                     | ≤ 16 MiB       | ≤ 16 MiB          |
+| Giọng Pico | không chứa giọng                           | Anh            | Pháp              |
+| Nạp bằng   | OTA                                        | USB tại `0x0`  | USB tại `0x0`     |
 
 - **app.bin**: chỉ chương trình FDict One, dùng cho OTA; được ghi vào `ota_0` hoặc `ota_1` (mỗi phân vùng 3 MiB) nên phải < 3 MiB. Không đụng bootloader, `/data` (LittleFS) hay `voice`. **KHÔNG** nạp app.bin ở offset `0x0`.
 - **full.bin**: ảnh gộp (merged image) nạp từ `0x0` qua USB, gồm:
 
-| Offset | Thành phần |
-|---|---|
-| `0x0` | bootloader |
-| `0x8000` | bảng phân vùng (partition table) |
-| `0x19000` | otadata |
-| `0x20000` | ứng dụng (`ota_0`) |
+| Offset     | Thành phần                                               |
+| ---------- | -------------------------------------------------------- |
+| `0x0`      | bootloader                                               |
+| `0x8000`   | bảng phân vùng (partition table)                         |
+| `0x19000`  | otadata                                                  |
+| `0x20000`  | ứng dụng (`ota_0`)                                       |
 | `0xE30000` | dữ liệu giọng `voice` (Pico Anh hoặc Pháp, tùy file USB) |
 
 **Khi nào dùng cái nào:** máy mới hoặc máy đổi giọng → nạp `full.bin` hoặc `full-fr.bin` qua USB. Máy đang chạy, giữ nguyên giọng → OTA chỉ nhận `app.bin`. Prod tạo cả ba file từ một lần build app và đẩy lên máy chủ (`/api/admin/releases` cho app, `/api/admin/releases/full` cho ảnh Anh, cùng endpoint với `voice=fr` cho ảnh Pháp). File nằm trên object storage (S3/MinIO).
 
 ## Ngôn ngữ giao diện (vi/en)
 
-Chuỗi giao diện dùng [lv_i18n](https://github.com/lvgl/lv_i18n): trong code viết `_("SETTINGS")` – khoá là tiếng Anh VIẾT_HOA_GẠCH_DƯỚI (chỉ A-Z, 0-9, `_`;
-chuỗi có `%s`/`%d` dùng khoá mô tả, vd `WIFI_CONNECTING_TO`). Mỗi khoá phải có giá trị đầy đủ ở cả `i18n/vi.yml` và `i18n/en.yml`. `components/fd_i18n/lv_i18n.c/.h` là file **sinh ra** nhưng được commit,
+Chuỗi giao diện dùng [lv_i18n](https://github.com/lvgl/lv_i18n): trong code viết `_("SETTINGS")` – khoá là tiếng Anh VIẾT*HOA_GẠCH_DƯỚI (chỉ A-Z, 0-9, `*`;
+chuỗi có `%s`/`%d`dùng khoá mô tả, vd`WIFI_CONNECTING_TO`). Mỗi khoá phải có giá trị đầy đủ ở cả `i18n/vi.yml`và`i18n/en.yml`. `components/fd_i18n/lv_i18n.c/.h` là file **sinh ra** nhưng được commit,
 nên build ESP-IDF không cần Node.js. Sau khi thêm/sửa chuỗi, chạy từ thư mục gốc (cần Node.js):
 
 ```sh
@@ -231,7 +231,7 @@ Phiên bản firmware là `PROJECT_VER` trong `CMakeLists.txt` gốc (ví dụ `
 
 ### Nạp firmware qua USB từ trình duyệt
 
-Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/fdict/firmware> bằng Chrome hoặc Edge, chọn **Tiếng Anh** hoặc **Tiếng Pháp**, bấm *Nạp firmware*, chọn cổng của máy rồi làm theo hướng dẫn. Không cần cài ESP-IDF. Bản đang phát hành chưa có file Pháp thì nút Pháp không nạp được.
+Cắm máy vào máy tính bằng cáp USB, mở <https://fkit.vn/fdict/firmware> bằng Chrome hoặc Edge, chọn **Tiếng Anh** hoặc **Tiếng Pháp**, bấm _Nạp firmware_, chọn cổng của máy rồi làm theo hướng dẫn. Không cần cài ESP-IDF. Bản đang phát hành chưa có file Pháp thì nút Pháp không nạp được.
 
 ## Phát hành OTA qua GitHub Actions
 
@@ -249,12 +249,12 @@ Bước 3 chỉ đẩy **bản app** (< 3 MiB). Hai ảnh USB đi ở bước 4.
 
 Job chạy trong environment **`production`**. Vào Settings → Environments → `production` (hoặc Settings → Secrets and variables → Actions) và tạo:
 
-| Tên | Loại | Giá trị |
-|---|---|---|
-| `DICT_API_URL` | Variable **hoặc** Secret | URL gốc máy chủ `https://host`. Workflow tự chuẩn hoá: bỏ khoảng trắng, xuống dòng, ngoặc bao quanh; chỉ giữ `https://host[:port]`, nếu có kèm đường dẫn/query thì tự cắt và báo cảnh báo. |
-| `CI_RELEASE_TOKEN` | **Secret** (bắt buộc) | token CI của máy chủ (header `X-CI-Token`) |
+| Tên                | Loại                     | Giá trị                                                                                                                                                                                    |
+| ------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DICT_API_URL`     | Variable **hoặc** Secret | URL gốc máy chủ `https://host`. Workflow tự chuẩn hoá: bỏ khoảng trắng, xuống dòng, ngoặc bao quanh; chỉ giữ `https://host[:port]`, nếu có kèm đường dẫn/query thì tự cắt và báo cảnh báo. |
+| `CI_RELEASE_TOKEN` | **Secret** (bắt buộc)    | token CI của máy chủ (header `X-CI-Token`)                                                                                                                                                 |
 
-Workflow đọc `vars.DICT_API_URL`, nếu trống thì đọc `secrets.DICT_API_URL`. Bước *Mask server URL* (`scripts/ci-url-normalize.sh`) chuẩn hoá giá trị thành `DICT_BASE`, các bước sau dùng `DICT_BASE`. Variable không được GitHub tự che, nên workflow che giá trị ngay ở bước đầu (`::add-mask::`) và không bao giờ in ra (chỉ in độ dài). GitHub vẫn có thể hiện giá trị variable trong phần `env` của bước đầu tiên; muốn giấu hoàn toàn thì dùng Secret.
+Workflow đọc `vars.DICT_API_URL`, nếu trống thì đọc `secrets.DICT_API_URL`. Bước _Mask server URL_ (`scripts/ci-url-normalize.sh`) chuẩn hoá giá trị thành `DICT_BASE`, các bước sau dùng `DICT_BASE`. Variable không được GitHub tự che, nên workflow che giá trị ngay ở bước đầu (`::add-mask::`) và không bao giờ in ra (chỉ in độ dài). GitHub vẫn có thể hiện giá trị variable trong phần `env` của bước đầu tiên; muốn giấu hoàn toàn thì dùng Secret.
 
 Lỗi thường gặp: `DICT_API_URL rong` nghĩa là chưa đặt, hoặc đặt ở environment khác `production`.
 
@@ -335,7 +335,7 @@ Thành phần bên thứ ba (SVOX Pico TTS, LVGL, font Noto Sans/Montserrat, bi�
 **FDict One** is a handheld English-vocabulary trainer on the ESP32-S3 (Freenove FNK0104B: ILI9341 LCD, FT6336U touch, ES8311 audio codec + speaker). Features: LVGL 9 UI (portrait/landscape), flash cards with a pre-session settings screen, Practice (Luyện tập) 2x2 quizzes, Dictionary (Từ điển), Word order (Sắp xếp câu), Parts of speech (Phân loại từ), Gap fill (Điền từ), auto pronunciation, offline study (lessons cached on LittleFS, results queued and sent later), offline pronunciation via SVOX Pico TTS (voice data in a separate `voice` partition), Wi-Fi manager, QR device pairing, and HTTPS OTA updates with SHA256 check and rollback.
 
 - **Build:** ESP-IDF 6.1. Dev English: `idf.py -B build-en -DFD_VOICE_LANG=en build` then `idf.py -B build-en -p <PORT> flash`. Dev French: the same with `-B build-fr -DFD_VOICE_LANG=fr`. Prod is a push to `prod`: one app build, then `full.bin` (English Pico) and `full-fr.bin` (French Pico).
-- **Configure:** production server URLs are Kconfig options (`menuconfig` / git-ignored `sdkconfig`), placeholders in Kconfig by default, and are injected at CI from `DICT_BASE`. The Lab base URL default (`https://fdict-dev.joinnow.vn`) is in `components/fd_ota/Kconfig`. Dev workflow flashes over USB only; it does not publish OTA.
+- **Configure:** production server URLs are Kconfig options (`menuconfig` / git-ignored `sdkconfig`), placeholders in Kconfig by default, and are injected at CI from `DICT_BASE`. The Lab base URL default (`https://fdict-dev.fkit.vn`) is in `components/fd_ota/Kconfig`. Dev workflow flashes over USB only; it does not publish OTA.
 - **First-time flashing:** write `...-full.bin` (English) or `...-full-fr.bin` (French) at `0x0` over USB, or pick the language at <https://fkit.vn/fdict/firmware>.
 - **app.bin vs full images:** app.bin (~1.5 MB, < 3 MiB) is the application only, for OTA into `ota_0`/`ota_1`, never at `0x0`, and it does not change the voice partition. Each full image is written at `0x0` (bootloader `0x0`, partition table `0x8000`, otadata `0x19000`, app `0x20000`, voice `0xE30000`). Prod uploads one app plus both full images from that single app build.
 - **OTA:** updates the app image only (`fdict-firmware-v<ver>-<build>-app.bin`). The device calls `GET {base}/api/ota/check`. The server decides whether an update exists and returns `update`, `release_id`, `fw_version`, `sha256`, `size`, `url`. The device verifies the SHA256 and the version string before switching slots.

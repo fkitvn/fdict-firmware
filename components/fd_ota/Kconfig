@@ -9,7 +9,7 @@ menu "FDict One OTA"
 
     config FD_OTA_LAB_BASE_URL
         string "LAB base URL (https uu tien, khong co /api; van chap nhan http LAN)"
-        default "https://fdict-dev.joinnow.vn"
+        default "https://fdict-dev.fkit.vn"
 
     config FD_OTA_BASE_URL
         string "Production base URL (https, khong co /api)"
@@ -19,7 +19,7 @@ menu "FDict One OTA"
 
     config FD_PAIR_LAB_WEB_URL
         string "LAB: trang ghep tren web (QR, them ?id=&hw=&fw=&b=)"
-        default "https://fdict-dev.joinnow.vn/device-login"
+        default "https://fdict-dev.fkit.vn/device-login"
 
     config FD_PAIR_WEB_URL
         string "Production: trang ghep tren fdict-web-app (QR, /device-login, dang nhap OTP tai do)"

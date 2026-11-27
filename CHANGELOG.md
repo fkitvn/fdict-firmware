@@ -1,189 +1,237 @@
 # Changelog
 
 Định dạng theo [Keep a Changelog](https://keepachangelog.com/), phiên bản theo [SemVer](https://semver.org/).
-Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
+Build ID (màn _Thông tin_) = 10 ký tự hex đầu (chữ thường) SHA256 của file ELF.
 
 <!-- Quy ước ghi chú phát hành: một hai câu ngắn, tiếng Việt có dấu, không dùng ký tự đặc biệt như ngoặc kép, gạch chéo, hai chấm, chấm phẩy, gạch nối. -->
 
 ## [5.4.9] - 2026-11-25
+
 - Gộp danh sách Nhại lại và Trò chơi vào bước đồng bộ định kỳ và lưu trên máy.
 - Mở Nhại lại và Trò chơi ngay lập tức bằng danh sách đã lưu mà không chờ kiểm tra phiên bản.
 - Khi có bản mới hơn sẽ tải một lần rồi mở và nếu tải lỗi sẽ mở bản cũ sẵn có.
 - Đánh dấu gói gặp lỗi kịch bản để tự tải lại khi máy chủ có phiên bản khác.
 
 ## [5.4.8] - 2026-11-25
+
 - Hiện vòng xoay khi kiểm tra và tải Nhại lại hoặc Trò chơi, không còn mở giao diện cũ khi script lỗi.
 - Sửa kiểm tra phiên bản module hết thời gian ngắn, tránh lặp tải và hỗ trợ khi mất mạng.
 - Chuyển nhiều bộ đệm sang PSRAM, tạo kênh thu âm khi ghi âm và sửa phần trăm RAM ở Thông tin.
 
 ## [5.4.7] - 2026-11-25
+
 - Câu đang đọc trong Nhại lại được in đậm và chữ cuộn đều theo nhịp đọc.
 - Chữ IPA và nghĩa to hơn một cỡ.
 
 ## [5.4.6] - 2026-11-25
+
 - Sửa Nhại lại bị ngắt nghỉ giữa câu khi máy đọc.
 - Chữ cuộn theo từng câu kể cả khi hiện IPA và nghĩa.
 
 ## [5.4.5] - 2026-11-25
+
 - Nhại lại thêm tốc độ 0.5x và 1.5x.
 - Nút nghe lại dùng icon 24 px và chạm ở mép phải vẫn nhận.
 
 ## [5.4.4] - 2026-11-25
+
 - Nhại lại thêm chỉnh tốc độ đọc không đổi cao độ và lưu lại lựa chọn.
 - Sửa nút nghe lại nổi rõ trên chữ cuộn và tên tiếng Anh thành Shadowing.
 
 ## [5.4.3] - 2026-11-25
+
 - Tự kiểm tra bản mới cho Nhại lại khi về Trang chủ, sau Đồng bộ và khi mở Nhại lại.
 - Hiện Cần cập nhật và tải bản mới trước khi mở giống Trò chơi.
 
 ## [5.4.2] - 2026-11-25
+
 - Nhại lại thêm nút bật tắt âm thanh và mặc định tắt.
 - Đổi màu tiêu đề Nhại lại giống các mục học khác.
 - Màn hình Đồng bộ hiện thêm số lượng đoạn văn Nhại lại.
 - Thêm hướng dẫn tạo nội dung trên điện thoại khi chưa có đoạn văn.
 
 ## [5.4.1] - 2026-11-25
+
 - Sửa lỗi máy khởi động lại khi mở Nhại lại.
 
 ## [5.4.0] - 2026-11-25
+
 - Nhại lại cập nhật được từ máy chủ, không cần nâng cấp máy.
 - Giao diện Nhại lại giữ nguyên như bản trước.
 - Máy chưa tải bản mới vẫn học Nhại lại bình thường.
 
 ## [5.3.5] - 2026-11-25
+
 - Nhại lại bỏ nút Trở lại, vuốt cạnh để quay về.
 - Khi thoát Nhại lại máy cắt tiếng ngay.
 - Chạm để dừng chữ cuộn, tự cuộn lại sau 3 giây.
 - Chữ nghĩa và IPA nhỏ gọn hơn.
 
 ## [5.3.4] - 2026-11-25
+
 - Nhại lại là tính năng tải về. Mã nguồn nằm trên máy chủ.
 - Ô trên trang chủ mờ khi chưa tải. Chạm vào ô để tải.
 - Sau khi tải, học đoạn văn không cần mạng.
 
 ## [5.3.3] - 2026-11-25
+
 - Nhại lại dùng đoạn văn đã lưu. Máy học không cần mạng.
 - Đoạn văn đồng bộ cùng bộ từ. Người học chọn đoạn có sẵn.
 - Ô Nhại lại dùng icon micro, khác ô Nghe.
 - Hàng thứ ba trên trang chủ là Lật từ, Nhại lại rồi Từ điển.
 
 ## [5.3.2] - 2026-11-24
+
 - Thêm module Nhại. Máy lấy đoạn văn ngắn từ các từ đã thuộc khi có mạng.
 - Người học nghe mẫu và nhại theo chữ cuộn lên. Có thể bật nghĩa và IPA.
 - Phiên Nhại chỉ lưu lịch sử học, không tính điểm và không đổi từ đã thuộc.
 
 ## [5.3.1] - 2026-11-24
+
 - Rút câu chào tiếng Pháp trên màn mở máy cho vừa một dòng.
 - Ngủ sâu thức dậy khi chạm màn hình hai lần. Nút bấm vẫn bật máy như trước.
 
 ## [5.3.0] - 2026-11-24
+
 - Thêm tiếng Pháp vào ngôn ngữ hiển thị của máy, cạnh tiếng Việt và tiếng Anh.
 - Màn cài đặt ngôn ngữ có ba lựa chọn và máy nhớ lựa chọn đó.
 - Toàn bộ nhãn giao diện có bản tiếng Pháp.
 - Ngôn ngữ học của tài khoản không đổi.
 
 ## [5.2.0] - 2026-11-24
+
 - Hỗ trợ học tiếng Pháp trên cùng một bản firmware, giọng đọc offline theo gói voice của từng máy.
 - Máy nhận ngôn ngữ học từ tài khoản khi đồng bộ, nhãn chiều học đổi Anh hoặc Pháp cho phù hợp.
 - Bộ lọc phát âm Pico chấp nhận chữ Pháp có dấu, tên file cache dùng mã băm an toàn UTF 8.
 - Đóng gói voice.bin có mã ngôn ngữ trong header, chọn lingware Anh hoặc Pháp theo SKU lúc tạo full.bin.
 
 ## [5.1.0] - 2026-11-21
+
 - Trò chơi có đồ họa đẹp hơn với nền chuyển màu, hình tròn, hiệu ứng nổ và hạt bay, chuẩn bị cho trò Bắn bóng bay.
 
 ## [5.0.1] - 2026-11-21
+
 - Thêm nút Xóa trò chơi trên màn riêng từng trò chơi, xóa trò chơi đó cùng kỷ lục và cài đặt.
 
 ## [5.0.0] - 2026-11-21
+
 - Nút Đặt lại trò chơi xóa sạch mọi trò chơi đã tải cùng kỷ lục và cài đặt rồi quay về màn hình chính.
 
 ## [4.9.9] - 2026-11-21
+
 - Chạm trò chơi đã tải là chơi ngay kể cả khi không có mạng, báo lỗi tải ngắn gọn, hộp xác nhận đặt lại gọn hơn, bàn phím Từ điển bỏ phím Xong và phím cách rộng hơn.
 
 ## [4.9.8] - 2026-11-21
+
 - Màn riêng trò chơi hiện kỷ lục cao nhất trong thẻ nhỏ có cúp ngay trên phần cài đặt.
 
 ## [4.9.7] - 2026-11-21
+
 - Giữ mọi trò chơi đã tải và chơi được khi không có mạng, danh sách trò chơi hiện ngay, thêm nút Đặt lại, nút Bắt đầu nằm cuối trang hướng dẫn.
 
 ## [4.9.6] - 2026-11-21
+
 - Trò chơi hiện phiên âm IPA cạnh từ tiếng Anh, mọi trò chơi đều tải về từ máy chủ, máy không còn trò chơi cài sẵn.
 
 ## [4.9.5] - 2026-11-21
+
 - Mọi trò chơi chạy bằng Berry, kể cả Hứng từ có sẵn trong máy, chơi được khi không có mạng.
 
 ## [4.9.4] - 2026-11-21
+
 - Cài đặt và kỷ lục nằm ngay trên màn hướng dẫn, mọi trò chơi dùng bộ từ của máy.
 
 ## [4.9.3] - 2026-11-21
+
 - Mỗi trò chơi hiện phiên bản, trò có bản mới phải tải lại mới chơi được.
 
 ## [4.9.2] - 2026-11-21
+
 - Màn Trò chơi dạng ô như trang chủ, trò chưa tải hiện mờ, mỗi trò có cài đặt và kỷ lục riêng.
 
 ## [4.9.1] - 2026-11-21
+
 - Trò chơi online hiện mọi trò chơi, chạm vào là tải về và chơi ngay.
 
 ## [4.9.0] - 2026-11-21
+
 - Chơi được trò chơi tải về viết bằng Berry, mục Trò chơi cần đăng nhập giống các mục học.
 
 ## [4.8.0] - 2026-11-21
+
 - Thêm mục Trò chơi với trò Hứng từ dùng từ vựng đã lưu trên máy, từ rơi nhanh dần, chọn cổng bằng nút theo mọi hướng xoay.
 
 ## [4.7.1] - 2026-11-21
+
 - Tăng âm lượng chung của cả máy thêm khoảng 2 dB.
 
 ## [4.7.0] - 2026-11-21
+
 - Tăng âm lượng chung của cả máy thêm khoảng 3 dB, mọi âm thanh vẫn to đều nhau và không bị vỡ tiếng.
 
 ## [4.6.10] - 2026-11-21
+
 - Chuẩn hoá âm lượng chung cho cả máy theo mức giọng đọc. Giọng đọc, âm từ, chuông, âm đúng sai, bíp âm lượng, thử loa và nghe lại ghi âm phát to đều nhau.
 
 ## [4.6.9] - 2026-11-20
+
 - Xoay 90 độ và 270 độ thì nút trên cùng là nút 1 và đáp án A. Đáp án xếp một cột từ A đến D, màn Thử nút bấm xếp nút thành cột bên cạnh nút.
 
 ## [4.6.8] - 2026-11-20
+
 - Khi xoay màn hình 0 độ thứ tự nút xoay theo. Nút bên trái là nút 1 và đáp án A, lưới đáp án và màn Thử nút bấm đưa lên phía trên gần nút.
 
 ## [4.6.7] - 2026-11-20
+
 - Bàn phím Nghe có phím thoát và phím xoá dài hơn.
 
 ## [4.6.6] - 2026-11-20
+
 - Đáp án A B C D theo đúng thứ tự nút như màn Thử nút bấm ở Luyện tập, Phân loại từ và Điền từ. Giữ nút 1 để quay lại, giữ nút 2 để mở bảng điều khiển nhanh.
 - Bàn phím Nghe và Từ điển có phím thoát ở đầu trái hàng dưới, phím xoá chuyển sang đầu phải hàng dưới.
 
 ## [4.6.5] - 2026-11-18
+
 - Thống kê hiện số lượt AI và tổng token đã dùng trong tháng.
 
 ## [4.6.4] - 2026-11-18
+
 - Màn cấu hình bộ từ xếp từng bộ thành một hàng. Tên dài được cắt bớt. Chọn một bộ không làm danh sách nhảy lên đầu.
 
 ## [4.6.3] - 2026-11-17
+
 - Tra từ hiện loại từ. Màn đang tra ghi AI đang tra cứu dựa vào bối cảnh và có hạt sáng quanh kính lúp.
 
 ## [4.6.2] - 2026-11-17
+
 - Từ điển mở cấu hình bộ tự lưu bằng nút bánh răng. Danh sách bộ nằm trong màn riêng.
 
 ## [4.6.1] - 2026-11-17
+
 - Kết hợp hiện số bộ sưu tập đã chọn trên màn chuẩn bị của các module học.
 
 ## [4.5.10] - 2026-11-17
+
 - Chọn bộ tự lưu bằng danh sách xổ xuống. Dòng chữ ghi Tự động lưu vào.
 - Tên bộ dài được cắt bớt. Chưa có bộ thì báo rõ.
 
 ## [4.5.9] - 2026-11-17
+
 - Nút cạnh ô nhập từ là kính lúp để tra. Chạm ô nhập vẫn mở bàn phím.
 
 ## [4.5.8] - 2026-11-17
+
 - Kết quả tra từ chỉ hiện bộ đã lưu, không đổi bộ tại đó.
 - Vuốt lui từ kết quả tra về màn nhập từ, không thoát Từ điển.
 
 ## [4.5.7] - 2026-11-17
+
 - Từ điển bỏ chiều Anh Việt và Việt Anh. Máy chủ tự nhận ngôn ngữ.
 - Chọn bộ từ vựng sẽ tự lưu khi tra.
 - Bỏ câu ví dụ trên màn kết quả tra từ.
 
 ## [4.5.6] - 2026-11-15
+
 - Báo rõ khi pin quá yếu để nâng cấp.
 - Tự ngủ sâu sau khi tắt màn hình, chỉnh được trong Cài đặt.
 - Tiết kiệm pin hơn khi tắt màn hình.
@@ -191,9 +239,11 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 - Luyện được câu dài tới 15 từ. Nghe có nút xem nghĩa và bàn phím gọn hơn.
 
 ## [4.5.5] - 2026-11-15
+
 - Tăng độ ổn định khi tra từ.
 
 ## [4.5.4] - 2026-11-15
+
 - Sửa lỗi ô vuông khi hiện chữ có dấu và phiên âm.
 - Đổi nhãn chiều ôn Chính tả thành Việt Anh, Anh Việt và Trộn.
 - Làm lại màn Thống kê.
@@ -201,57 +251,75 @@ Build ID (màn *Thông tin*) = 10 ký tự hex đầu (chữ thường) SHA256 c
 - Tra từ nhanh hơn và tự đồng bộ khi thoát Từ điển.
 
 ## [4.5.3] - 2026-11-15
+
 Màn Nghe gửi kết quả cho mọi câu. Câu dùng gợi ý được ghi là đã học nhưng không chấm điểm. Câu nhập sai rồi mới đúng tính là sai, giống màn Sắp xếp và Điền từ. Mỗi bài học gửi kèm mã phiên và thời gian làm để thống kê theo từng module. Màn Thống kê thêm hoạt động 7 ngày theo module. Thêm module Chính tả ghép từ từ các chữ cái đã xáo theo cả hai chiều Anh và Việt. Từ chỉ được tính là đã thuộc khi Luyện tập, Phân loại từ và Chính tả đều đúng 3 lần liên tiếp. Màn chính sắp lại thứ tự module với khối từ vựng lên đầu.
 
 ## [4.5.2] - 2026-11-15
+
 Không gửi pin và sóng Wi-Fi khi chưa đọc được. Bỏ trường ví dụ cũ khi đồng bộ và dọn các chuỗi giao diện không dùng. Màn Nghe gợi ý ô kế tiếp chưa nhập đúng thay vì luôn ô đầu tiên. Câu đã dùng gợi ý coi như chưa trả lời, không ghi nhận đúng sai và không tính vào tổng kết quả.
 
 ## [4.5.1] - 2026-11-14
+
 Sửa cảnh báo biên dịch ở màn Nghe để bản phát hành qua được bước kiểm tra.
 
 ## [4.5.0] - 2026-11-14
+
 Từ đã thuộc khi Luyện tập và Phân loại từ đều đúng 3 lần liên tiếp. Câu đã thuộc khi Sắp xếp câu, Điền từ và Nghe đều đúng 3 lần liên tiếp. Bài học câu lấy mọi câu AI của từ.
 
 ## [4.4.0] - 2026-11-14
+
 Thêm module Nghe. Câu AI chỉ tính đã thuộc khi xong cả Sắp xếp câu, Điền từ và Nghe. Màn Thống kê tách số từ đã thuộc và số câu đã thuộc.
 
 ## [4.3.9] - 2026-11-14
+
 Bài sắp xếp câu gửi kèm lời câu lên máy chủ để cộng điểm riêng cho từng câu.
 
 ## [4.3.8] - 2026-11-13
+
 Từ điển bỏ nút Trở lại sau khi tra từ. Màn kết quả ghi bộ sưu tập vừa thêm và cho đổi bộ ngay tại màn đó. Lựa chọn được nhớ cho lần tra sau.
 
 ## [4.3.7] - 2026-11-13
+
 Màn cấu hình bộ từ có nhãn nhỏ căn trái, danh sách bộ từ chỉ hiện khi chọn Kết hợp. Sắp xếp câu đổi nhãn thành Chiều với Anh Việt và Việt Anh. Thống kê đổi giao diện giống Đồng bộ.
 
 ## [4.3.6] - 2026-11-13
+
 Sửa màn cấu hình Bộ từ không chọn được nút chọn một và danh sách bộ từ. Lựa chọn được giữ đến khi bấm Lưu lại hoặc nút cứng quay lại.
 
 ## [4.3.5] - 2026-11-13
+
 Năm màn chờ học mở màn cấu hình Bộ từ. Màn cấu hình có ba nút chọn một ở hàng đầu, danh sách bộ từ xếp ngang ở hàng hai, nút Lưu lại ở cuối, chỉ ghi khi bấm Lưu, nút cứng quay lại thì hủy. Từ điển hiện câu ví dụ và nghĩa tiếng Việt cả câu do máy chủ bổ sung.
 
 ## [4.3.4] - 2026-11-13
+
 Sửa chữ Bộ từ bị ô vuông ở tiêu đề. Năm màn chờ học chọn bộ từ bằng ba nút một hàng, hiện ô đánh dấu các bộ sưu tập khi chọn Kết hợp và áp dụng ngay. Màn Bộ từ xếp nút và ô đánh dấu theo hàng, thêm nút Lưu lại, chỉ ghi khi bấm Lưu, nút cứng quay lại thì hủy. Vào Đồng bộ thì tự đồng bộ khi đã có wifi. Thống kê bỏ nút Trở lại, ra bằng nút cứng.
 
 ## [4.3.3] - 2026-11-13
+
 Năm module học mở màn hình riêng để chọn bộ từ bằng nút chọn một và ô đánh dấu. Lật từ bỏ cài đặt Thứ tự. Sắp xếp câu dùng Số câu với 10, 20 hoặc Vô tận giống các module khác, hỏi xác nhận khi thoát giữa bài làm, và bỏ bốn nhãn Trước, Sau, Xóa, Chọn vì đã chạm thẻ và vùng câu.
 
 ## [4.3.2] - 2026-11-12
+
 Từ điển ẩn bàn phím khi vào. Năm module học dùng chung cài đặt chọn bộ từ Tất cả, Từ mới thêm hoặc kết hợp nhiều bộ và giữ nguyên khi chuyển module.
 
 ## [4.3.1] - 2026-11-12
+
 Sửa mã build gửi kèm khi đồng bộ để máy chủ ghi nhận đúng.
 
 ## [4.3.0] - 2026-11-12
+
 Từ điển bỏ thông báo lỗi trùng khi không tìm thấy từ và có màn hình đang tra cứu mới. Thống kê thêm lượt scan AI và số từ scan thành công. Đồng bộ gửi kèm pin sóng wifi và phiên bản.
 
 ## [4.2.0] - 2026-11-11
+
 Bỏ liên kết Zalo. Màn hình quét mã QR gọn hơn và cần đăng nhập. Nút quay lại tự động đồng bộ. Trang chủ báo sẵn sàng học ngoại tuyến khi có từ vựng.
 
 ## [4.1.9] - 2026-11-08
+
 Sửa nút đổi chiều tra trong Từ điển. Phân loại từ và Điền từ dùng đáp án ABCD giống Luyện tập, bỏ chấm tròn. Phân loại từ có nhiều loại từ hơn. Bỏ dòng học ngoại tuyến ở Sắp xếp câu.
 
 ## [4.1.8] - 2026-11-08
+
 Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay lại. Luyện tập đáp án một màu, nhãn ABCD. Đồng bộ dùng cả câu ví dụ.
 
 ## [4.1.7] - 2026-11-08
@@ -379,7 +447,7 @@ Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay l�
 
 ## [2.3.8] - 2026-11-06
 
-- CI: sửa cảnh báo biên dịch -Wunused-function trong scr_flashcard.c (xóa helper label/hrow/btn thừa sau khi dùng mẫu cài đặt chung ui_setup_*). Bản 2.3.6 và 2.3.7 không xuất OTA vì bước Build app firmware fail.
+- CI: sửa cảnh báo biên dịch -Wunused-function trong scr*flashcard.c (xóa helper label/hrow/btn thừa sau khi dùng mẫu cài đặt chung ui_setup*\*). Bản 2.3.6 và 2.3.7 không xuất OTA vì bước Build app firmware fail.
 
 ## [2.3.7] - 2026-11-06
 
@@ -528,20 +596,20 @@ Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay l�
 
 ## [2.1.0] - 2026-11-02
 
-- Màn *Ghép thiết bị*: Bước 3 *Kích hoạt bảo hành*. Khi đã liên kết Zalo mà chưa kích hoạt: "Bước 3: Kích hoạt bảo hành" + "Kích hoạt trong Zalo Mini App Fdict" (tự hỏi lại mỗi 10 s). Đã kích hoạt: "Đã kích hoạt bảo hành" + ngày hết hạn (dd/mm/yyyy, giờ VN).
+- Màn _Ghép thiết bị_: Bước 3 _Kích hoạt bảo hành_. Khi đã liên kết Zalo mà chưa kích hoạt: "Bước 3: Kích hoạt bảo hành" + "Kích hoạt trong Zalo Mini App Fdict" (tự hỏi lại mỗi 10 s). Đã kích hoạt: "Đã kích hoạt bảo hành" + ngày hết hạn (dd/mm/yyyy, giờ VN).
 - Trạng thái bảo hành đọc từ `POST /api/devices/zalo-link/status` (`warranty_activated`, `warranty_expires_at`). Không có thao tác kích hoạt trên máy (chỉ trong Zalo Mini App).
-- Cài đặt: hàng Ghép thiết bị báo "Chưa kích hoạt bảo hành" (màu cảnh báo); *Thông tin* thêm hàng *Bảo hành*.
+- Cài đặt: hàng Ghép thiết bị báo "Chưa kích hoạt bảo hành" (màu cảnh báo); _Thông tin_ thêm hàng _Bảo hành_.
 
 ## [2.0.1] - 2026-11-02
 
-- Home: thêm ô *Shadowing* (🎬) mở trình phát video toàn màn hình (ngang 320x240; máy đang dọc thì tạm xoay ngang, thoát trả lại hướng cũ, không lưu NVS).
+- Home: thêm ô _Shadowing_ (🎬) mở trình phát video toàn màn hình (ngang 320x240; máy đang dọc thì tạm xoay ngang, thoát trả lại hướng cũ, không lưu NVS).
 - Video cố định `https://www.youtube.com/watch?v=Gp340_5dT5g`, phát qua server: `GET /api/devices/media/stream` (Bearer thiết bị, `fd_ota_base_url()`), luồng FDMS v1 = MJPEG 320x240 ~10 fps + PCM s16 mono 16 kHz.
 - Giải mã JPEG bằng TJpgDec trong ROM vào 2 bộ đệm PSRAM; âm thanh qua ES8311 bằng API luồng mới `fd_audio_stream_*` (bộ đệm jitter 3 s, bắt đầu phát khi đủ 0,8 s). Đồng bộ: âm thanh là đồng hồ, khung trễ > 200 ms bị bỏ.
 - Trạng thái: đang tải / chưa WiFi / chưa ghép / server bận (429/503) / lỗi mạng / hết video. Chạm hoặc vuốt mép để thoát.
 
 ## [2.0.0] - 2026-11-02
 
-- Màn *Ghép thiết bị* thành 2 bước: thanh bước (1) Định danh → (2) Liên kết Zalo. Bước 1 giữ nguyên QR + web (Gmail/OTP) + poll.
+- Màn _Ghép thiết bị_ thành 2 bước: thanh bước (1) Định danh → (2) Liên kết Zalo. Bước 1 giữ nguyên QR + web (Gmail/OTP) + poll.
 - Định danh xong tự chuyển thẳng Bước 2: mã 6 số (5 phút, đếm ngược, "Lấy mã mới", "Để sau"), nhập trong Mini App FDict trên Zalo. Mở lại khi đã ghép nhưng chưa liên kết Zalo -> vào thẳng Bước 2. Đã liên kết -> 2 bước đều ✓ + tài khoản / Hủy ghép đôi như cũ.
 - Cài đặt: bỏ hàng "Bước 2: Liên kết Zalo" của 1.3.7; thẻ ghép mở màn Ghép thiết bị, hiện "Chờ liên kết Zalo" khi đã ghép mà chưa liên kết.
 
@@ -553,7 +621,7 @@ Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay l�
 
 ## [1.3.6] - 2026-10-27
 
-- Lab/dev: doi base URL sang `https://fdict-dev.joinnow.vn` (QR `/pairing-device`); HTTPS dung chung certificate bundle nhu production, khong tat kiem tra chung chi. Van cho phep `http://` Lab neu cau hinh lai thanh HTTP LAN.
+- Lab/dev: doi base URL sang `https://fdict-dev.fkit.vn` (QR `/pairing-device`); HTTPS dung chung certificate bundle nhu production, khong tat kiem tra chung chi. Van cho phep `http://` Lab neu cau hinh lai thanh HTTP LAN.
 - Che do nha phat trien bat van chon Lab qua `fd_ota_base_url()` / `fd_ota_pair_web_url()`; tat van dung `https://dict.fkit.vn`.
 
 ## [1.3.5] - 2026-10-26
@@ -719,7 +787,7 @@ Từ điển tra hai chiều Anh Việt, gõ tiếng Việt, thêm phím quay l�
 - Phát âm offline bằng SVOX Pico TTS (en-US) nhúng trong firmware.
 - WiFi manager, ghép thiết bị bằng QR, OTA (SHA256 + rollback, slot 4 MB).
 - Thông báo lỗi HTTP thân thiện (401/410/429/5xx).
-- Màn *Thông tin* hiển thị kích thước firmware.
+- Màn _Thông tin_ hiển thị kích thước firmware.
 - Màn chào: logo Fdict 1 giây mỗi lần bật màn hình (khởi động và khi thức dậy), chặn thao tác trong lúc hiện.
 - Học tập: âm "ting" khi trả lời đúng, âm trầm hai nốt khi sai (tổng hợp trên máy, theo âm lượng); phát trước phần đọc từ.
 - Chế độ nhà phát triển (server Lab LAN) mặc định tắt.
